@@ -47,8 +47,12 @@ export default {
       fontFamily: {
         sans: [typography.fontFamily.sans],
         serif: [typography.fontFamily.serif],
+        "montserrat-regular": [typography.fontFamily.montserratRegular],
+        "montserrat-medium": [typography.fontFamily.montserratMedium],
         "montserrat-semibold": [typography.fontFamily.montserratSemibold],
+        "montserrat-bold": [typography.fontFamily.montserratBold],
         "montserrat-extrabold": [typography.fontFamily.montserratExtrabold],
+        "poppins-regular": [typography.fontFamily.poppinsRegular],
       },
       fontSize,
       fontWeight: typography.fontWeight,

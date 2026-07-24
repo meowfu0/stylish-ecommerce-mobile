@@ -1,8 +1,12 @@
 import {
+  Montserrat_400Regular,
+  Montserrat_500Medium,
   Montserrat_600SemiBold,
+  Montserrat_700Bold,
   Montserrat_800ExtraBold,
   useFonts,
 } from "@expo-google-fonts/montserrat";
+import { Poppins_400Regular } from "@expo-google-fonts/poppins";
 import {
   DarkTheme,
   DefaultTheme,
@@ -28,8 +32,12 @@ export const unstable_settings = {
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [fontsLoaded, fontError] = useFonts({
+    Montserrat_400Regular,
+    Montserrat_500Medium,
     Montserrat_600SemiBold,
+    Montserrat_700Bold,
     Montserrat_800ExtraBold,
+    Poppins_400Regular,
   });
 
   if (!fontsLoaded && !fontError) {
@@ -46,11 +54,14 @@ export default function RootLayout() {
           options={ONBOARDING_TRANSITION}
         />
         <Stack.Screen name="onboarding-order" options={ONBOARDING_TRANSITION} />
+        <Stack.Screen name="sign-in" options={ONBOARDING_TRANSITION} />
+        <Stack.Screen name="forgot-password" options={ONBOARDING_TRANSITION} />
+        <Stack.Screen name="sign-up" options={ONBOARDING_TRANSITION} />
+        <Stack.Screen name="get-started" options={ONBOARDING_TRANSITION} />
         <Stack.Screen
-          name="sign-in"
-          options={{ animation: "fade", animationDuration: 220 }}
+          name="(tabs)"
+          options={{ ...ONBOARDING_TRANSITION, headerShown: false }}
         />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
           name="modal"
           options={{ headerShown: true, presentation: "modal", title: "Modal" }}
