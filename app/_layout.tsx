@@ -63,7 +63,7 @@ export default function RootLayout() {
           options={{ ...ONBOARDING_TRANSITION, headerShown: false }}
         />
         <Stack.Screen
-          name="product/[id]"
+          name="checkout"
           options={ONBOARDING_TRANSITION}
         />
         <Stack.Screen
