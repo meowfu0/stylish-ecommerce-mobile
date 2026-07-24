@@ -4,6 +4,10 @@ import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors } from "@/constants/design-tokens";
+import {
+  selectCartQuantity,
+  useCartStore,
+} from "@/stores/cart-store";
 
 const TAB_ITEMS = [
   {
@@ -37,6 +41,10 @@ export function HomeTabBar({
   const cartRoute = state.routes.find((route) => route.name === "cart");
   const cartRouteIndex = cartRoute ? state.routes.indexOf(cartRoute) : -1;
   const cartFocused = state.index === cartRouteIndex;
+  const activeRouteName = state.routes[state.index]?.name;
+  const cartHighlighted =
+    cartFocused || activeRouteName === "product/[id]";
+  const cartQuantity = useCartStore(selectCartQuantity);
 
   const renderTab = (item: (typeof TAB_ITEMS)[number]) => {
     const route = state.routes.find((candidate) => candidate.name === item.route);
@@ -115,7 +123,7 @@ export function HomeTabBar({
       <Pressable
         accessibilityLabel="Shopping cart"
         accessibilityRole="tab"
-        accessibilityState={{ selected: cartFocused }}
+        accessibilityState={{ selected: cartHighlighted }}
         className="h-[58px] flex-1 items-center"
         disabled={!cartRoute}
         onLongPress={() => {
@@ -128,19 +136,33 @@ export function HomeTabBar({
         }}
         onPress={openCart}
       >
-        <View className="-mt-[6px] h-[56px] w-[56px] items-center justify-center rounded-pill bg-neutral-0 shadow-lg active:opacity-60">
+        <View
+          className="-mt-[6px] h-[56px] w-[56px] items-center justify-center rounded-pill shadow-lg active:opacity-60"
+          style={{
+            backgroundColor: cartHighlighted
+              ? colors.brand.primary
+              : colors.neutral[0],
+          }}
+        >
           <Image
             accessible={false}
             contentFit="contain"
             source={require("@/assets/icons/home/nav-cart.svg")}
             style={{
               height: 24,
-              tintColor: cartFocused
-                ? colors.brand.primary
+              tintColor: cartHighlighted
+                ? colors.neutral[0]
                 : colors.neutral[1000],
               width: 24,
             }}
           />
+          {cartQuantity > 0 ? (
+            <View className="absolute right-[2px] top-[2px] h-[18px] min-w-[18px] items-center justify-center rounded-pill bg-brand-discount px-[4px]">
+              <Text className="font-montserrat-bold text-micro text-neutral-0">
+                {cartQuantity > 99 ? "99+" : cartQuantity}
+              </Text>
+            </View>
+          ) : null}
         </View>
       </Pressable>
 
