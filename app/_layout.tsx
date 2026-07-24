@@ -63,6 +63,10 @@ export default function RootLayout() {
           options={{ ...ONBOARDING_TRANSITION, headerShown: false }}
         />
         <Stack.Screen
+          name="product/[id]"
+          options={ONBOARDING_TRANSITION}
+        />
+        <Stack.Screen
           name="modal"
           options={{ headerShown: true, presentation: "modal", title: "Modal" }}
         />
