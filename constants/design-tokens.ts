@@ -3,6 +3,7 @@ export const colors = {
     primary: "#F83758",
     blue: "#4392F9",
     blueSoft: "#CFE2FC",
+    delivery: "#FFCCD5",
     discount: "#FE735C",
     pinkSoft: "#F8BCC6",
     socialSurface: "#FCF3F6",
