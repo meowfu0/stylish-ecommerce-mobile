@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { Pressable, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { TypewriterText } from "@/components/animated/typewriter-text";
 import { spacing } from "@/constants/design-tokens";
 
 const FIGMA_FRAME = {
@@ -21,7 +22,7 @@ const FIGMA_FRAME = {
 } as const;
 
 const ONBOARDING_COPY =
-  "Amet minim mollit non deserunt ullamco est sit aliqua dolor do amet sint. Velit officia consequat duis enim velit mollit.";
+  "Browse our collection, discover products you love, and choose the perfect items that match your style.";
 
 export default function OnboardingScreen() {
   const router = useRouter();
@@ -49,7 +50,7 @@ export default function OnboardingScreen() {
   );
 
   const skipOnboarding = () => {
-    router.replace("/home");
+    router.replace("/sign-in");
   };
 
   const showNextStep = () => {
@@ -77,7 +78,7 @@ export default function OnboardingScreen() {
         </Text>
 
         <Pressable
-          accessibilityHint="Closes onboarding and opens the main app"
+          accessibilityHint="Closes onboarding and opens Sign In"
           accessibilityLabel="Skip onboarding"
           accessibilityRole="button"
           className="active:opacity-60"
@@ -103,13 +104,13 @@ export default function OnboardingScreen() {
           style={{ height: illustrationSize, width: illustrationSize }}
         />
 
-        <Text
-          accessibilityRole="header"
+        <TypewriterText
           className="font-montserrat-extrabold text-onboardingTitle text-center text-neutral-1000"
-          style={{ marginTop: FIGMA_FRAME.titleGap * heightScale }}
-        >
-          Choose Products
-        </Text>
+          containerStyle={{
+            marginTop: FIGMA_FRAME.titleGap * heightScale,
+          }}
+          text="Choose Products"
+        />
 
         <Text
           className="font-montserrat-semibold text-onboardingBody text-center tracking-[0.28px] text-neutral-400"
