@@ -3,17 +3,24 @@ export const colors = {
     primary: "#F83758",
     blue: "#4392F9",
     blueSoft: "#CFE2FC",
+    discount: "#FE735C",
     pinkSoft: "#F8BCC6",
     socialSurface: "#FCF3F6",
     offer: "#FF4B26",
+    trending: "#FD6E87",
   },
   neutral: {
     0: "#FFFFFF",
+    50: "#F9F9F9",
     100: "#F5F5F5",
     150: "#F3F3F3",
+    200: "#E7E7EB",
     300: "#C4C4C4",
+    350: "#BBBBBB",
     400: "#A8A8A9",
+    425: "#A4A9B3",
     450: "#A0A0A1",
+    475: "#808488",
     500: "#687076",
     550: "#676767",
     600: "#575757",
@@ -26,6 +33,7 @@ export const colors = {
   },
   feedback: {
     success: "#2E7D32",
+    rating: "#EDB310",
   },
 } as const;
 
@@ -53,6 +61,7 @@ export const typography = {
     poppinsRegular: "Poppins_400Regular",
   },
   fontSize: {
+    micro: 10,
     xs: 12,
     sm: 14,
     md: 16,
@@ -69,6 +78,7 @@ export const typography = {
     display: 40,
   },
   lineHeight: {
+    micro: 16,
     xs: 16,
     sm: 20,
     md: 24,
