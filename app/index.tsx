@@ -3,6 +3,14 @@ import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
+import Animated, {
+  Easing,
+  interpolate,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { spacing } from "@/constants/design-tokens";
@@ -22,6 +30,29 @@ const SPLASH_DISPLAY_DURATION = 900;
 export default function SplashScreen() {
   const { height, width } = useWindowDimensions();
   const router = useRouter();
+  const reduceMotion = useReducedMotion();
+  const logoProgress = useSharedValue(reduceMotion ? 1 : 0);
+
+  const logoAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: logoProgress.value,
+    transform: [
+      {
+        translateY: interpolate(logoProgress.value, [0, 1], [18, 0]),
+      },
+      {
+        scale: interpolate(logoProgress.value, [0, 1], [0.96, 1]),
+      },
+    ],
+  }));
+
+  useEffect(() => {
+    logoProgress.value = reduceMotion
+      ? 1
+      : withTiming(1, {
+          duration: 420,
+          easing: Easing.out(Easing.cubic),
+        });
+  }, [logoProgress, reduceMotion]);
 
   useEffect(() => {
     const transitionTimer = setTimeout(() => {
@@ -45,14 +76,9 @@ export default function SplashScreen() {
 
       <SafeAreaView className="flex-1 bg-neutral-0">
         <View className="relative flex-1 overflow-hidden">
-          <Image
-            accessibilityLabel="Stylish"
-            accessibilityRole="image"
-            accessible
-            contentFit="contain"
-            source={require("@/assets/images/stylish-logo.svg")}
+          <View
             style={[
-              styles.logo,
+              styles.logoContainer,
               {
                 height: logoHeight,
                 transform: [
@@ -62,7 +88,18 @@ export default function SplashScreen() {
                 width: logoWidth,
               },
             ]}
-          />
+          >
+            <Animated.View style={[styles.fill, logoAnimatedStyle]}>
+              <Image
+                accessibilityLabel="Stylish"
+                accessibilityRole="image"
+                accessible
+                contentFit="contain"
+                source={require("@/assets/images/stylish-logo.svg")}
+                style={styles.fill}
+              />
+            </Animated.View>
+          </View>
 
           <View
             accessibilityLabel="Loading Stylish"
@@ -90,11 +127,15 @@ export default function SplashScreen() {
 }
 
 const styles = StyleSheet.create({
+  fill: {
+    height: "100%",
+    width: "100%",
+  },
   loadingImage: {
     height: "100%",
     width: "100%",
   },
-  logo: {
+  logoContainer: {
     left: "50%",
     position: "absolute",
     top: "50%",

@@ -45,6 +45,11 @@ export default function RootLayout() {
           name="onboarding-payment"
           options={ONBOARDING_TRANSITION}
         />
+        <Stack.Screen name="onboarding-order" options={ONBOARDING_TRANSITION} />
+        <Stack.Screen
+          name="sign-in"
+          options={{ animation: "fade", animationDuration: 220 }}
+        />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
           name="modal"
