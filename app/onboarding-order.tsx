@@ -11,22 +11,20 @@ const FIGMA_FRAME = {
   height: 812,
   width: 375,
   headerTop: 45,
-  headerWidth: 345,
-  illustrationHeight: 233.333,
-  illustrationTop: 225,
-  illustrationWidth: 350,
+  headerWidth: 341,
+  illustrationSize: 350,
+  illustrationTop: 142,
   titleTop: 492,
   bodyGap: 10,
   bodyWidth: 340,
   footerBottom: 22,
-  footerHorizontalOffset: 6,
   footerWidth: 345,
 } as const;
 
-const PAYMENT_DESCRIPTION =
-  "Pay securely using your preferred payment method and complete your order with ease.";
+const ORDER_DESCRIPTION =
+  "Track your order easily and receive your purchases safely at your selected address.";
 
-export default function PaymentOnboardingScreen() {
+export default function OrderOnboardingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { height, width } = useWindowDimensions();
@@ -34,16 +32,13 @@ export default function PaymentOnboardingScreen() {
   const widthScale = Math.min(1, width / FIGMA_FRAME.width);
   const heightScale = Math.min(1, height / FIGMA_FRAME.height);
   const headerWidth = FIGMA_FRAME.headerWidth * widthScale;
-  const illustrationWidth = FIGMA_FRAME.illustrationWidth * widthScale;
-  const illustrationHeight =
-    (illustrationWidth / FIGMA_FRAME.illustrationWidth) *
-    FIGMA_FRAME.illustrationHeight;
+  const illustrationSize = FIGMA_FRAME.illustrationSize * widthScale;
   const illustrationTop = Math.max(
-    insets.top + spacing.xxl,
+    insets.top + spacing.xxxl,
     FIGMA_FRAME.illustrationTop * heightScale,
   );
   const titleTop = Math.max(
-    illustrationTop + illustrationHeight + spacing.sm,
+    illustrationTop + illustrationSize,
     FIGMA_FRAME.titleTop * heightScale,
   );
   const bodyWidth = Math.min(
@@ -63,15 +58,11 @@ export default function PaymentOnboardingScreen() {
       return;
     }
 
-    router.replace("/onboarding");
+    router.replace("/onboarding-payment");
   };
 
-  const skipOnboarding = () => {
+  const openSignIn = () => {
     router.replace("/sign-in");
-  };
-
-  const showNextStep = () => {
-    router.push("/onboarding-order");
   };
 
   return (
@@ -87,11 +78,11 @@ export default function PaymentOnboardingScreen() {
         }}
       >
         <Text
-          accessibilityLabel="Onboarding step 2 of 3"
+          accessibilityLabel="Onboarding step 3 of 3"
           accessibilityRole="header"
           className="font-montserrat-semibold text-action text-neutral-1000"
         >
-          2<Text className="text-neutral-450">/3</Text>
+          3<Text className="text-neutral-450">/3</Text>
         </Text>
 
         <Pressable
@@ -100,7 +91,7 @@ export default function PaymentOnboardingScreen() {
           accessibilityRole="button"
           className="active:opacity-60"
           hitSlop={12}
-          onPress={skipOnboarding}
+          onPress={openSignIn}
         >
           <Text className="font-montserrat-semibold text-action text-neutral-1000">
             Skip
@@ -109,17 +100,17 @@ export default function PaymentOnboardingScreen() {
       </View>
 
       <Image
-        accessibilityLabel="Customers completing a secure mobile payment"
+        accessibilityLabel="Customer receiving purchases from a shopping order"
         accessibilityRole="image"
         accessible
         contentFit="contain"
-        source={require("@/assets/images/onboarding-make-payment.svg")}
+        source={require("@/assets/images/onboarding-get-your-order.svg")}
         style={{
-          height: illustrationHeight,
-          left: (width - illustrationWidth) / 2,
+          height: illustrationSize,
+          left: (width - illustrationSize) / 2,
           position: "absolute",
           top: illustrationTop,
-          width: illustrationWidth,
+          width: illustrationSize,
         }}
       />
 
@@ -129,7 +120,7 @@ export default function PaymentOnboardingScreen() {
       >
         <TypewriterText
           className="font-montserrat-extrabold text-onboardingTitle text-center text-neutral-1000"
-          text="Make Payment"
+          text="Get Your Order"
         />
 
         <Text
@@ -139,7 +130,7 @@ export default function PaymentOnboardingScreen() {
             width: bodyWidth,
           }}
         >
-          {PAYMENT_DESCRIPTION}
+          {ORDER_DESCRIPTION}
         </Text>
       </View>
 
@@ -147,14 +138,12 @@ export default function PaymentOnboardingScreen() {
         className="absolute h-[27px] flex-row items-center justify-between"
         style={{
           bottom: footerBottom,
-          left:
-            (width - footerWidth) / 2 +
-            FIGMA_FRAME.footerHorizontalOffset * widthScale,
+          left: (width - footerWidth) / 2,
           width: footerWidth,
         }}
       >
         <Pressable
-          accessibilityHint="Returns to onboarding step 1 of 3"
+          accessibilityHint="Returns to onboarding step 2 of 3"
           accessibilityLabel="Previous"
           accessibilityRole="button"
           className="h-[27px] w-[44px] justify-center active:opacity-60"
@@ -167,25 +156,25 @@ export default function PaymentOnboardingScreen() {
         </Pressable>
 
         <View
-          accessibilityLabel="Page 2 of 3"
+          accessibilityLabel="Page 3 of 3"
           accessible
           className="h-[10px] w-[80px] flex-row items-center gap-[10px]"
         >
           <View className="h-[10px] w-[10px] rounded-pill bg-ink-primary/20" />
-          <View className="h-[8px] w-[40px] rounded-pill bg-ink-primary" />
           <View className="h-[10px] w-[10px] rounded-pill bg-ink-primary/20" />
+          <View className="h-[8px] w-[40px] rounded-pill bg-ink-primary" />
         </View>
 
         <Pressable
-          accessibilityHint="Opens onboarding step 3 of 3"
-          accessibilityLabel="Next"
+          accessibilityHint="Completes onboarding and opens Sign In"
+          accessibilityLabel="Get Started"
           accessibilityRole="button"
-          className="h-[27px] w-[65px] items-center justify-center active:opacity-60"
+          className="h-[27px] w-[105px] items-center justify-center active:opacity-60"
           hitSlop={12}
-          onPress={showNextStep}
+          onPress={openSignIn}
         >
           <Text className="font-montserrat-semibold text-action text-center text-brand-primary">
-            Next
+            Get Started
           </Text>
         </Pressable>
       </View>
