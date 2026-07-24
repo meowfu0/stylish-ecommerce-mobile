@@ -117,7 +117,7 @@ export default function TrendingProductsScreen() {
   const openProduct = useCallback(
     (product: TrendingCatalogProduct) => {
       router.push({
-        pathname: "/product/[id]",
+        pathname: "/(tabs)/product/[id]",
         params: { id: product.id },
       });
     },
