@@ -46,7 +46,7 @@ export function HomeHeader({
       </View>
 
       <Pressable
-        accessibilityHint="Opens Settings"
+        accessibilityHint="Opens your profile and account details"
         accessibilityLabel="Open profile"
         accessibilityRole="button"
         className="active:opacity-70"
