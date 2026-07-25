@@ -41,6 +41,9 @@ export const colors = {
     success: "#2E7D32",
     rating: "#EDB310",
   },
+  overlay: {
+    paymentSuccess: "#0D0B0B",
+  },
 } as const;
 
 export const spacing = {
