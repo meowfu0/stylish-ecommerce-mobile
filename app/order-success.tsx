@@ -37,9 +37,9 @@ export default function OrderSuccessScreen() {
       <StatusBar style="dark" />
 
       <ScreenHeader
-        backHint="Returns to Payment"
+        backHint="Returns to Payment Success"
         onBack={goBack}
-        title="Order Success"
+        title="Order Confirmation"
       />
 
       <View className="flex-1 items-center justify-center px-[33px] pb-[62px]">
@@ -51,7 +51,7 @@ export default function OrderSuccessScreen() {
             accessibilityRole="header"
             className="text-center font-montserrat-bold text-xl text-neutral-1000"
           >
-            Order successful
+            Order confirmed
           </Text>
           <Text className="mt-[10px] text-center font-montserrat-regular text-sm text-neutral-600">
             Your frontend demo order is ready. No real payment was processed.
