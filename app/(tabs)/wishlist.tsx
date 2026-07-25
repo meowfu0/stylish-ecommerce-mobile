@@ -114,6 +114,8 @@ export default function TrendingProductsScreen() {
     [router],
   );
 
+  const openProfile = useCallback(() => router.push("/profile"), [router]);
+
   const openProduct = useCallback(
     (product: TrendingCatalogProduct) => {
       router.push({
@@ -164,10 +166,10 @@ export default function TrendingProductsScreen() {
   const listHeader = (
     <View>
       <View className="bg-neutral-0">
-        <HomeHeader
-          onMenuPress={openSettings}
-          onProfilePress={openSettings}
-        />
+          <HomeHeader
+            onMenuPress={openSettings}
+            onProfilePress={openProfile}
+          />
       </View>
 
       <View className="items-center">

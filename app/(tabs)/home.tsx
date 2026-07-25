@@ -73,6 +73,7 @@ export default function HomeScreen() {
 
   const openSearch = () => router.push("/(tabs)/search");
   const openSettings = () => router.push("/(tabs)/settings");
+  const openProfile = () => router.push("/profile");
   const openTrendingProducts = () => router.push("/(tabs)/wishlist");
 
   return (
@@ -94,7 +95,7 @@ export default function HomeScreen() {
           <View className="bg-neutral-0">
             <HomeHeader
               onMenuPress={openSettings}
-              onProfilePress={openSettings}
+              onProfilePress={openProfile}
             />
           </View>
 
