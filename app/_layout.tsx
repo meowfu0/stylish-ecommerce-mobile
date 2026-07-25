@@ -66,6 +66,7 @@ export default function RootLayout() {
           name="checkout"
           options={ONBOARDING_TRANSITION}
         />
+        <Stack.Screen name="profile" options={ONBOARDING_TRANSITION} />
         <Stack.Screen
           name="modal"
           options={{ headerShown: true, presentation: "modal", title: "Modal" }}
