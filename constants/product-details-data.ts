@@ -103,6 +103,22 @@ export function getProductDetails(id: string | undefined): ProductDetails {
   };
 }
 
-export function formatPhilippinePeso(value: number) {
-  return `₱${value.toLocaleString("en-PH")}`;
+type PhilippinePesoFormatOptions = {
+  includeCents?: boolean;
+  separateSymbol?: boolean;
+};
+
+export function formatPhilippinePeso(
+  value: number,
+  {
+    includeCents = false,
+    separateSymbol = false,
+  }: PhilippinePesoFormatOptions = {},
+) {
+  const amount = value.toLocaleString("en-PH", {
+    maximumFractionDigits: includeCents ? 2 : 0,
+    minimumFractionDigits: includeCents ? 2 : 0,
+  });
+
+  return `₱${separateSymbol ? " " : ""}${amount}`;
 }
