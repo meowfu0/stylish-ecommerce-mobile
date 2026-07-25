@@ -1,113 +1,199 @@
-import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { Pressable, Text, useWindowDimensions, View } from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Pressable,
+  ScrollView,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
+import Animated, {
+  Easing,
+  interpolate,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { formatPlaceOrderPrice } from "@/constants/place-order-data";
+import {
+  BottomNavigation,
+  type BottomNavigationRoute,
+} from "@/components/navigation/bottom-navigation";
+import { ScreenHeader } from "@/components/navigation/screen-header";
+import { PaymentOption } from "@/components/payment/payment-option";
+import { PriceRow } from "@/components/place-order/price-row";
+import {
+  calculatePaymentSummary,
+  formatPaymentPrice,
+  MOCK_PAYMENT_METHODS,
+  MOCK_PAYMENT_ORDER_AMOUNT,
+  type PaymentMethod,
+} from "@/constants/payment-data";
 
-const CONTENT_WIDTH = 349;
+const FIGMA_CONTENT_WIDTH = 309;
+const FIGMA_HORIZONTAL_INSET = 33;
+
+const TAB_DESTINATIONS = {
+  cart: "/(tabs)/cart",
+  home: "/(tabs)/home",
+  search: "/(tabs)/search",
+  settings: "/(tabs)/settings",
+  wishlist: "/(tabs)/wishlist",
+} as const;
 
 export default function PaymentScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const { coupon, quantity, size, total } = useLocalSearchParams<{
-    coupon?: string | string[];
-    quantity?: string | string[];
-    size?: string | string[];
+  const reduceMotion = useReducedMotion();
+  const entranceProgress = useSharedValue(reduceMotion ? 1 : 0);
+  const { total } = useLocalSearchParams<{
     total?: string | string[];
   }>();
-  const contentWidth = Math.min(CONTENT_WIDTH, Math.max(0, width - 44));
-  const routeTotal = Array.isArray(total) ? total[0] : total;
-  const routeSize = Array.isArray(size) ? size[0] : size;
-  const routeQuantity = Array.isArray(quantity) ? quantity[0] : quantity;
-  const routeCoupon = Array.isArray(coupon) ? coupon[0] : coupon;
-  const numericTotal = Number(routeTotal);
-  const formattedTotal = formatPlaceOrderPrice(
-    Number.isFinite(numericTotal) ? numericTotal : 0,
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>(
+    MOCK_PAYMENT_METHODS[0],
   );
 
+  const contentWidth = Math.min(
+    FIGMA_CONTENT_WIDTH,
+    Math.max(0, width - FIGMA_HORIZONTAL_INSET * 2),
+  );
+  const routeTotal = Array.isArray(total) ? total[0] : total;
+  const parsedOrderAmount = Number(routeTotal);
+  const orderAmount = Number.isFinite(parsedOrderAmount)
+    ? parsedOrderAmount
+    : MOCK_PAYMENT_ORDER_AMOUNT;
+  const summary = useMemo(
+    () => calculatePaymentSummary(orderAmount),
+    [orderAmount],
+  );
+
+  const entranceStyle = useAnimatedStyle(() => ({
+    opacity: entranceProgress.value,
+    transform: [
+      {
+        translateY: interpolate(entranceProgress.value, [0, 1], [10, 0]),
+      },
+    ],
+  }));
+
+  useEffect(() => {
+    entranceProgress.value = reduceMotion
+      ? 1
+      : withTiming(1, {
+          duration: 220,
+          easing: Easing.out(Easing.cubic),
+        });
+  }, [entranceProgress, reduceMotion]);
+
+  const goBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    router.replace("/place-order");
+  };
+
+  const openTab = (route: BottomNavigationRoute) => {
+    router.push(TAB_DESTINATIONS[route]);
+  };
+
+  const continueToSuccess = () => {
+    router.push({
+      pathname: "/order-success",
+      params: {
+        method: selectedMethod.label,
+        total: String(summary.total),
+      },
+    });
+  };
+
   return (
-    <SafeAreaView className="flex-1 bg-neutral-25" edges={["top", "bottom"]}>
+    <SafeAreaView className="flex-1 bg-neutral-25" edges={["top"]}>
       <StatusBar style="dark" />
 
-      <View className="h-[62px] items-center justify-center border-b border-neutral-200">
-        <View
-          className="h-full items-center justify-center"
-          style={{ width: contentWidth }}
+      <Animated.View style={[{ flex: 1 }, entranceStyle]}>
+        <ScreenHeader
+          backHint="Returns to Place Order"
+          onBack={goBack}
+          title="Checkout"
+        />
+
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{ alignItems: "center", paddingBottom: 24 }}
+          decelerationRate="normal"
+          directionalLockEnabled
+          showsVerticalScrollIndicator={false}
         >
-          <Pressable
-            accessibilityHint="Returns to Place Order"
-            accessibilityLabel="Go back"
-            accessibilityRole="button"
-            className="absolute left-[-14px] h-[44px] w-[44px] items-center justify-center active:opacity-60"
-            hitSlop={4}
-            onPress={() => router.back()}
-          >
-            <Image
-              accessible={false}
-              contentFit="contain"
-              source={require("@/assets/icons/place-order/back.svg")}
-              style={{ height: 21, width: 11 }}
+          <View className="pt-[7px]" style={{ width: contentWidth }}>
+            <PriceRow
+              label="Order"
+              labelTone="muted"
+              size="summary"
+              value={formatPaymentPrice(summary.orderAmount)}
+              valueTone="muted"
             />
-          </Pressable>
-          <Text
-            accessibilityRole="header"
-            className="font-montserrat-semibold text-md text-neutral-1000"
-          >
-            Payment
-          </Text>
-        </View>
-      </View>
+            <PriceRow
+              label="Shipping"
+              labelTone="muted"
+              size="summary"
+              value={formatPaymentPrice(summary.shippingFee)}
+              valueTone="muted"
+            />
+            <PriceRow
+              label="Total"
+              labelTone="tertiary"
+              size="summary"
+              value={formatPaymentPrice(summary.total)}
+              valueTone="tertiary"
+            />
 
-      <View className="flex-1 items-center px-[22px] pt-xl">
-        <View
-          className="rounded-md bg-neutral-0 p-lg shadow-sm"
-          style={{ width: contentWidth }}
-        >
-          <Text className="font-montserrat-semibold text-lg text-neutral-1000">
-            Order ready
-          </Text>
-          <Text className="mt-[8px] font-montserrat-regular text-sm text-neutral-600">
-            Payment methods are not connected yet. This screen confirms that
-            the frontend navigation is ready for the next Figma payment flow.
-          </Text>
+            <View className="mt-[13px] h-[1.5px] bg-neutral-300" />
 
-          <View className="my-lg h-px bg-neutral-200" />
-          <View className="flex-row justify-between">
-            <Text className="font-montserrat-regular text-xs text-neutral-600">
-              Size
+            <Text
+              accessibilityRole="header"
+              className="mt-[26px] font-montserrat-medium text-action leading-[27px] text-neutral-900"
+            >
+              Payment
             </Text>
-            <Text className="font-montserrat-semibold text-xs text-neutral-1000">
-              {routeSize ?? "42"}
-            </Text>
+
+            <View
+              accessibilityLabel="Payment methods"
+              className="mt-[10px] gap-[25px]"
+            >
+              {MOCK_PAYMENT_METHODS.map((method) => (
+                <PaymentOption
+                  key={method.id}
+                  method={method}
+                  onSelect={setSelectedMethod}
+                  selected={method.id === selectedMethod.id}
+                />
+              ))}
+            </View>
+
+            <Pressable
+              accessibilityHint="Opens the frontend-only Order Success screen"
+              accessibilityLabel={`Continue with ${selectedMethod.label}`}
+              accessibilityRole="button"
+              className="mt-[25px] h-[59px] items-center justify-center rounded-sm bg-brand-primary active:opacity-80"
+              onPress={continueToSuccess}
+            >
+              <Text className="font-montserrat-bold text-[22px] leading-[22px] text-neutral-0">
+                Continue
+              </Text>
+            </Pressable>
           </View>
-          <View className="mt-[10px] flex-row justify-between">
-            <Text className="font-montserrat-regular text-xs text-neutral-600">
-              Quantity
-            </Text>
-            <Text className="font-montserrat-semibold text-xs text-neutral-1000">
-              {routeQuantity ?? "1"}
-            </Text>
-          </View>
-          <View className="mt-[10px] flex-row justify-between">
-            <Text className="font-montserrat-regular text-xs text-neutral-600">
-              Coupon
-            </Text>
-            <Text className="font-montserrat-semibold text-xs text-neutral-1000">
-              {routeCoupon ?? "None"}
-            </Text>
-          </View>
-          <View className="mt-lg flex-row items-center justify-between">
-            <Text className="font-montserrat-semibold text-sm text-neutral-1000">
-              Total
-            </Text>
-            <Text className="font-montserrat-bold text-lg text-brand-primary">
-              {formattedTotal}
-            </Text>
-          </View>
-        </View>
-      </View>
+        </ScrollView>
+
+        <BottomNavigation
+          activeRoute="cart"
+          onNavigate={openTab}
+        />
+      </Animated.View>
     </SafeAreaView>
   );
 }
