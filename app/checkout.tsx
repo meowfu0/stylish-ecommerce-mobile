@@ -247,6 +247,17 @@ export default function CheckoutScreen() {
                     {formatPhilippinePeso(subtotal)}
                   </Text>
                 </View>
+                <Pressable
+                  accessibilityHint="Opens the Place Order screen"
+                  accessibilityLabel="Continue to place order"
+                  accessibilityRole="button"
+                  className="mt-[14px] h-[48px] items-center justify-center rounded-[5px] bg-brand-primary active:opacity-80"
+                  onPress={() => router.push("/place-order")}
+                >
+                  <Text className="font-montserrat-semibold text-sm text-neutral-0">
+                    Place Order
+                  </Text>
+                </Pressable>
               </View>
             </View>
           </ScrollView>

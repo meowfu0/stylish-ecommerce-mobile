@@ -66,6 +66,8 @@ export default function RootLayout() {
           name="checkout"
           options={ONBOARDING_TRANSITION}
         />
+        <Stack.Screen name="place-order" options={ONBOARDING_TRANSITION} />
+        <Stack.Screen name="payment" options={ONBOARDING_TRANSITION} />
         <Stack.Screen name="profile" options={ONBOARDING_TRANSITION} />
         <Stack.Screen
           name="modal"
