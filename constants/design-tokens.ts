@@ -1,5 +1,6 @@
 export const colors = {
   brand: {
+    cart: "#EB3030",
     primary: "#F83758",
     blue: "#4392F9",
     blueSoft: "#CFE2FC",
@@ -14,6 +15,7 @@ export const colors = {
     0: "#FFFFFF",
     25: "#FDFDFD",
     50: "#F9F9F9",
+    75: "#F4F4F4",
     100: "#F5F5F5",
     150: "#F3F3F3",
     200: "#E7E7EB",
@@ -24,8 +26,10 @@ export const colors = {
     450: "#A0A0A1",
     475: "#808488",
     500: "#687076",
+    525: "#6E7179",
     550: "#676767",
     600: "#575757",
+    650: "#4C5059",
     700: "#3A3D40",
     900: "#11181C",
     1000: "#000000",
@@ -36,6 +40,9 @@ export const colors = {
   feedback: {
     success: "#2E7D32",
     rating: "#EDB310",
+  },
+  overlay: {
+    paymentSuccess: "#0D0B0B",
   },
 } as const;
 
