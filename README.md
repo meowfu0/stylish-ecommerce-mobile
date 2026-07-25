@@ -48,3 +48,9 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+## Project overview
+
+Stylish is a cross-platform e-commerce mobile application built with Expo, React Native, TypeScript, Expo Router, and NativeWind.
+
+The frontend currently includes onboarding, authentication interfaces, product browsing, shopping, checkout, payment selection, and payment confirmation flows based on the project’s Figma design.
