@@ -55,5 +55,6 @@ Stylish is a cross-platform e-commerce mobile application built with Expo, React
 
 The frontend currently includes onboarding, authentication interfaces, product browsing, shopping, checkout, payment selection, and payment confirmation flows based on the project’s Figma design.
 
+## Accessibility and responsive design
 
-
+Stylish uses accessible labels, responsive layouts, and keyboard-aware forms to provide a consistent shopping experience across supported phone sizes.
