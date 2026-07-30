@@ -18,6 +18,7 @@ import {
 } from "react-native-safe-area-context";
 
 import { colors, spacing } from "@/constants/design-tokens";
+import { isDesktopWeb } from "@/constants/responsive";
 
 const FIGMA_FRAME = {
   width: 375,
@@ -58,12 +59,17 @@ export default function SignInScreen() {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const { width } = useWindowDimensions();
 
+  const desktopWeb = isDesktopWeb(width);
   const widthScale = Math.min(1, width / FIGMA_FRAME.width);
-  const fieldWidth = FIGMA_FRAME.fieldWidth * widthScale;
-  const fieldLeft = FIGMA_FRAME.fieldLeft * widthScale;
-  const buttonOffset =
-    (FIGMA_FRAME.fieldLeft - FIGMA_FRAME.buttonLeft) * widthScale;
-  const contentTop = Math.max(0, FIGMA_FRAME.titleTop - insets.top);
+  const fieldWidth = desktopWeb ? 440 : FIGMA_FRAME.fieldWidth * widthScale;
+  const cardWidth = desktopWeb ? 520 : fieldWidth;
+  const fieldLeft = desktopWeb ? 0 : FIGMA_FRAME.fieldLeft * widthScale;
+  const buttonOffset = desktopWeb
+    ? 0
+    : (FIGMA_FRAME.fieldLeft - FIGMA_FRAME.buttonLeft) * widthScale;
+  const contentTop = desktopWeb
+    ? spacing.xl
+    : Math.max(0, FIGMA_FRAME.titleTop - insets.top);
 
   const openGetStarted = () => {
     router.push("/get-started");
@@ -72,11 +78,14 @@ export default function SignInScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.select({ android: "height", ios: "padding" })}
-      className="flex-1 bg-neutral-0"
+      className={`flex-1 ${desktopWeb ? "bg-neutral-50" : "bg-neutral-0"}`}
     >
       <StatusBar style="dark" />
 
-      <SafeAreaView className="flex-1 bg-neutral-0">
+      <SafeAreaView
+        className={`flex-1 ${desktopWeb ? "bg-neutral-50" : "bg-neutral-0"}`}
+        edges={desktopWeb ? [] : undefined}
+      >
         <ScrollView
           automaticallyAdjustKeyboardInsets
           contentContainerStyle={{
@@ -87,14 +96,26 @@ export default function SignInScreen() {
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
           overScrollMode="never"
-          showsVerticalScrollIndicator={false}
+          showsVerticalScrollIndicator={desktopWeb}
         >
-          <View style={{ marginLeft: fieldLeft, width: fieldWidth }}>
+          <View
+            className={
+              desktopWeb
+                ? "rounded-lg border border-neutral-200 bg-neutral-0 p-[40px] shadow-sm"
+                : ""
+            }
+            style={{
+              marginLeft: desktopWeb
+                ? Math.max(spacing.xl, (width - cardWidth) / 2)
+                : fieldLeft,
+              width: cardWidth,
+            }}
+          >
             <Text
               accessibilityRole="header"
               className="font-montserrat-bold text-authTitle text-neutral-1000"
             >
-              {"Welcome\nBack!"}
+              {desktopWeb ? "Welcome back!" : "Welcome\nBack!"}
             </Text>
 
             <View className="mt-[33px]">
@@ -196,7 +217,10 @@ export default function SignInScreen() {
 
             <View
               className="items-center"
-              style={{ marginLeft: -fieldLeft, width }}
+              style={{
+                marginLeft: desktopWeb ? 0 : -fieldLeft,
+                width: desktopWeb ? fieldWidth : width,
+              }}
             >
               <Text className="mt-[75px] font-montserrat-medium text-authField text-neutral-600">
                 - OR Continue with -
