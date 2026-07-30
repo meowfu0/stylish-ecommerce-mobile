@@ -1,8 +1,8 @@
 import { Image } from "expo-image";
-import { useRouter } from "expo-router";
+import { usePathname, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
-import { StyleSheet, useWindowDimensions, View } from "react-native";
+import { Platform, StyleSheet, useWindowDimensions, View } from "react-native";
 import Animated, {
   Easing,
   interpolate,
@@ -29,9 +29,11 @@ const SPLASH_DISPLAY_DURATION = 900;
 
 export default function SplashScreen() {
   const { height, width } = useWindowDimensions();
+  const pathname = usePathname();
   const router = useRouter();
   const reduceMotion = useReducedMotion();
   const logoProgress = useSharedValue(reduceMotion ? 1 : 0);
+  const isDesktopWeb = Platform.OS === "web" && width >= 1024;
 
   const logoAnimatedStyle = useAnimatedStyle(() => ({
     opacity: logoProgress.value,
@@ -55,12 +57,21 @@ export default function SplashScreen() {
   }, [logoProgress, reduceMotion]);
 
   useEffect(() => {
+    if (pathname !== "/") {
+      return;
+    }
+
+    if (isDesktopWeb) {
+      router.replace("/(tabs)/home");
+      return;
+    }
+
     const transitionTimer = setTimeout(() => {
       router.replace("/onboarding");
     }, SPLASH_DISPLAY_DURATION);
 
     return () => clearTimeout(transitionTimer);
-  }, [router]);
+  }, [isDesktopWeb, pathname, router]);
 
   const logoWidth = Math.min(
     FIGMA_FRAME.logoWidth,
@@ -69,6 +80,10 @@ export default function SplashScreen() {
   const logoHeight = logoWidth / LOGO_ASPECT_RATIO;
   const verticalScale = Math.min(1, height / FIGMA_FRAME.height);
   const loadingOffset = FIGMA_FRAME.loadingCenterOffset * verticalScale;
+
+  if (isDesktopWeb) {
+    return <View className="flex-1 bg-neutral-25" />;
+  }
 
   return (
     <View className="flex-1 bg-neutral-0">
