@@ -8,12 +8,14 @@ import {
   Platform,
   Pressable,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { z } from "zod";
 
 import { ProfileFormField } from "@/components/profile/profile-form-field";
 import { colors } from "@/constants/design-tokens";
+import { isDesktopWeb } from "@/constants/responsive";
 
 const changePasswordSchema = z
   .object({
@@ -50,6 +52,8 @@ export function ChangePasswordModal({
   onPasswordChange,
   visible,
 }: ChangePasswordModalProps) {
+  const { width } = useWindowDimensions();
+  const desktopWeb = isDesktopWeb(width);
   const {
     control,
     handleSubmit,
@@ -92,7 +96,9 @@ export function ChangePasswordModal({
     >
       <KeyboardAvoidingView
         behavior={Platform.select({ ios: "padding" })}
-        className="flex-1 justify-end"
+        className={`flex-1 ${
+          desktopWeb ? "items-center justify-center px-lg" : "justify-end"
+        }`}
       >
         <Pressable
           accessibilityLabel="Close change password dialog"
@@ -105,7 +111,10 @@ export function ChangePasswordModal({
         <View
           accessibilityLabel="Change password"
           accessibilityRole="summary"
-          className="rounded-t-lg bg-neutral-0 px-lg pb-xl pt-lg"
+          className={`bg-neutral-0 px-lg pb-xl pt-lg ${
+            desktopWeb ? "rounded-lg shadow-lg" : "rounded-t-lg"
+          }`}
+          style={{ width: desktopWeb ? 520 : width }}
         >
           <Text
             accessibilityRole="header"
@@ -155,9 +164,7 @@ export function ChangePasswordModal({
                   label="Confirm New Password"
                   onBlur={onBlur}
                   onChangeText={onChange}
-                  onSubmitEditing={() =>
-                    void handleSubmit(submitPassword)()
-                  }
+                  onSubmitEditing={() => void handleSubmit(submitPassword)()}
                   placeholder="Re-enter the new password"
                   returnKeyType="done"
                   secureTextEntry
