@@ -1,5 +1,6 @@
 import { Image } from "expo-image";
-import { Pressable, Text, View } from "react-native";
+import { useRouter } from "expo-router";
+import { Platform, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors } from "@/constants/design-tokens";
@@ -51,8 +52,13 @@ export function BottomNavigation({
   onLongPress,
   onNavigate,
 }: BottomNavigationProps) {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const tabHeight = 58 + insets.bottom;
+  const webClientWidth =
+    Platform.OS === "web" && typeof document !== "undefined"
+      ? document.documentElement.clientWidth
+      : undefined;
 
   const renderTab = (item: (typeof TAB_ITEMS)[number]) => {
     const selected = activeRoute === item.route;
@@ -90,21 +96,26 @@ export function BottomNavigation({
     <View
       accessibilityRole="tablist"
       className="flex-row border-t border-neutral-200 bg-neutral-0 shadow-lg"
-      style={{ height: tabHeight, paddingBottom: insets.bottom }}
+      style={{
+        alignSelf: "center",
+        height: tabHeight,
+        paddingBottom: insets.bottom,
+        width: webClientWidth,
+      }}
     >
       {renderTab(TAB_ITEMS[0])}
       {renderTab(TAB_ITEMS[1])}
 
-      <Pressable
-        accessibilityLabel="Shopping cart"
-        accessibilityRole="tab"
-        accessibilityState={{ selected: activeRoute === "cart" }}
-        className="h-[58px] flex-1 items-center"
-        onLongPress={() => onLongPress?.("cart")}
-        onPress={() => onNavigate("cart")}
-      >
-        <View
+      <View className="h-[58px] flex-1 items-center">
+        <Pressable
+          accessibilityHint="Opens your shopping cart"
+          accessibilityLabel="Shopping cart"
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeRoute === "cart" }}
           className="-mt-[6px] h-[56px] w-[56px] items-center justify-center rounded-pill shadow-lg active:opacity-60"
+          hitSlop={10}
+          onLongPress={() => onLongPress?.("cart")}
+          onPress={() => router.push("/(tabs)/cart")}
           style={{
             backgroundColor:
               activeRoute === "cart"
@@ -132,8 +143,8 @@ export function BottomNavigation({
               </Text>
             </View>
           ) : null}
-        </View>
-      </Pressable>
+        </Pressable>
+      </View>
 
       {renderTab(TAB_ITEMS[2])}
       {renderTab(TAB_ITEMS[3])}
