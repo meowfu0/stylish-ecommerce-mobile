@@ -7,11 +7,13 @@ import {
   ScrollView,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 
 import type { CheckoutAddress } from "@/constants/checkout-data";
 import { colors } from "@/constants/design-tokens";
+import { isDesktopWeb } from "@/constants/responsive";
 
 type AddressEditorMode = "add" | "edit";
 
@@ -93,6 +95,8 @@ export function AddressEditorModal({
   onSave,
   visible,
 }: AddressEditorModalProps) {
+  const { width } = useWindowDimensions();
+  const desktopWeb = isDesktopWeb(width);
   const [draft, setDraft] = useState<CheckoutAddress>(EMPTY_ADDRESS);
   const [errors, setErrors] = useState<Partial<Record<FieldName, string>>>({});
 
@@ -130,10 +134,7 @@ export function AddressEditorModal({
       ...draft,
       addressLine: draft.addressLine.trim(),
       contact: draft.contact.trim(),
-      id:
-        mode === "add"
-          ? `temporary-address-${Date.now()}`
-          : draft.id,
+      id: mode === "add" ? `temporary-address-${Date.now()}` : draft.id,
       label: draft.label.trim(),
     });
   };
@@ -148,7 +149,9 @@ export function AddressEditorModal({
     >
       <KeyboardAvoidingView
         behavior={Platform.select({ ios: "padding" })}
-        className="flex-1 justify-end"
+        className={`flex-1 ${
+          desktopWeb ? "items-center justify-center px-lg" : "justify-end"
+        }`}
       >
         <Pressable
           accessibilityLabel="Close address editor"
@@ -157,7 +160,12 @@ export function AddressEditorModal({
           onPress={onClose}
         />
 
-        <View className="max-h-[88%] rounded-t-lg bg-neutral-0 px-lg pb-xl pt-lg">
+        <View
+          className={`max-h-[88%] bg-neutral-0 px-lg pb-xl pt-lg ${
+            desktopWeb ? "rounded-lg shadow-lg" : "rounded-t-lg"
+          }`}
+          style={{ width: desktopWeb ? 560 : width }}
+        >
           <ScrollView
             bounces={false}
             keyboardShouldPersistTaps="handled"
