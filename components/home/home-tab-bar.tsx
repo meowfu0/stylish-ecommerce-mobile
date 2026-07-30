@@ -1,18 +1,14 @@
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import { Platform, useWindowDimensions } from "react-native";
 
 import {
   BottomNavigation,
   type BottomNavigationRoute,
 } from "@/components/navigation/bottom-navigation";
-import {
-  selectCartQuantity,
-  useCartStore,
-} from "@/stores/cart-store";
+import { selectCartQuantity, useCartStore } from "@/stores/cart-store";
 
-export function HomeTabBar({
-  navigation,
-  state,
-}: BottomTabBarProps) {
+export function HomeTabBar({ navigation, state }: BottomTabBarProps) {
+  const { width } = useWindowDimensions();
   const cartQuantity = useCartStore(selectCartQuantity);
   const activeRouteName = state.routes[state.index]?.name;
   const activeRoute: BottomNavigationRoute =
@@ -56,6 +52,10 @@ export function HomeTabBar({
       });
     }
   };
+
+  if (Platform.OS === "web" && width >= 1024) {
+    return null;
+  }
 
   return (
     <BottomNavigation
