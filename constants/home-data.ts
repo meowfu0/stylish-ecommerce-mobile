@@ -18,6 +18,118 @@ export type HomeProduct = {
   title: string;
 };
 
+export type HomeProductSort =
+  | "name-ascending"
+  | "price-ascending"
+  | "price-descending"
+  | "recommended";
+
+export type HomeProductPriceFilter =
+  | "all"
+  | "from-1000-to-2000"
+  | "over-2000"
+  | "under-1000";
+
+export const HOME_PRODUCT_SORT_OPTIONS = [
+  {
+    description: "Keep the original featured order.",
+    label: "Recommended",
+    value: "recommended",
+  },
+  {
+    description: "Show the most affordable products first.",
+    label: "Price: Low to High",
+    value: "price-ascending",
+  },
+  {
+    description: "Show the highest-priced products first.",
+    label: "Price: High to Low",
+    value: "price-descending",
+  },
+  {
+    description: "Arrange products alphabetically.",
+    label: "Product Name: A to Z",
+    value: "name-ascending",
+  },
+] as const satisfies readonly {
+  description: string;
+  label: string;
+  value: HomeProductSort;
+}[];
+
+export const HOME_PRODUCT_PRICE_FILTER_OPTIONS = [
+  {
+    description: "Show products from every price range.",
+    label: "All Prices",
+    value: "all",
+  },
+  {
+    description: "Show products priced below ₱1,000.",
+    label: "Under ₱1,000",
+    value: "under-1000",
+  },
+  {
+    description: "Show products from ₱1,000 through ₱2,000.",
+    label: "₱1,000–₱2,000",
+    value: "from-1000-to-2000",
+  },
+  {
+    description: "Show products priced above ₱2,000.",
+    label: "Above ₱2,000",
+    value: "over-2000",
+  },
+] as const satisfies readonly {
+  description: string;
+  label: string;
+  value: HomeProductPriceFilter;
+}[];
+
+function getNumericPrice(price: string) {
+  return Number(price.replace(/[^\d.]/g, ""));
+}
+
+export function applyHomeProductOptions<
+  Product extends Pick<HomeProduct, "price" | "title">,
+>(
+  products: readonly Product[],
+  sort: HomeProductSort,
+  priceFilter: HomeProductPriceFilter,
+) {
+  const filteredProducts = products.filter((product) => {
+    const price = getNumericPrice(product.price);
+
+    switch (priceFilter) {
+      case "under-1000":
+        return price < 1000;
+      case "from-1000-to-2000":
+        return price >= 1000 && price <= 2000;
+      case "over-2000":
+        return price > 2000;
+      default:
+        return true;
+    }
+  });
+
+  return [...filteredProducts].sort((firstProduct, secondProduct) => {
+    switch (sort) {
+      case "price-ascending":
+        return (
+          getNumericPrice(firstProduct.price) -
+          getNumericPrice(secondProduct.price)
+        );
+      case "price-descending":
+        return (
+          getNumericPrice(secondProduct.price) -
+          getNumericPrice(firstProduct.price)
+        );
+      case "name-ascending":
+        return firstProduct.title.localeCompare(secondProduct.title);
+      default:
+        return 0;
+    }
+  });
+}
+
 export const HOME_CATEGORIES = [
   {
     id: "beauty",
