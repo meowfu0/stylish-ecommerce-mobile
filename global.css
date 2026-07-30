@@ -1,3 +1,218 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+html,
+body,
+#root {
+  width: 100%;
+  min-width: 0;
+}
+
+body {
+  margin: 0;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100%;
+}
+
+[data-testid="storefront-page-root"],
+[data-testid="storefront-page-motion"],
+[data-testid="storefront-natural-page"] {
+  height: auto !important;
+  min-height: 100%;
+  overflow: visible !important;
+}
+
+html:has([data-testid="storefront-page-root"]),
+body:has([data-testid="storefront-page-root"]),
+#root:has([data-testid="storefront-page-root"]) {
+  height: auto !important;
+  min-height: 100%;
+  overflow: visible !important;
+}
+
+body:has([data-testid="storefront-page-root"]) {
+  min-height: 100vh;
+}
+
+#root *:has([data-testid="storefront-page-root"]) {
+  inset: auto !important;
+  flex: 0 0 auto !important;
+  width: 100%;
+  height: auto !important;
+  min-height: 100%;
+  max-height: none !important;
+  overflow: visible !important;
+  position: relative !important;
+}
+
+:root {
+  --stylish-motion-duration: 380ms;
+  --stylish-motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+[data-testid^="scroll-reveal:"] {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  transition:
+    opacity var(--stylish-motion-duration) var(--stylish-motion-ease),
+    transform var(--stylish-motion-duration) var(--stylish-motion-ease);
+  will-change: opacity, transform;
+}
+
+[data-testid*=":ready:hidden:forward:"] {
+  opacity: 0;
+  transform: translate3d(0, 22px, 0);
+}
+
+[data-testid*=":ready:hidden:backward:"] {
+  opacity: 0;
+  transform: translate3d(0, -18px, 0);
+}
+
+[data-testid^="scroll-reveal:"][data-testid$=":1"] {
+  transition-delay: 55ms;
+}
+
+[data-testid^="scroll-reveal:"][data-testid$=":2"] {
+  transition-delay: 110ms;
+}
+
+[data-testid^="scroll-reveal:"][data-testid$=":3"] {
+  transition-delay: 165ms;
+}
+
+[data-testid^="scroll-reveal:"][data-testid$=":4"] {
+  transition-delay: 220ms;
+}
+
+[data-testid^="scroll-reveal:"][data-testid$=":5"] {
+  transition-delay: 275ms;
+}
+
+[data-testid^="scroll-reveal:"][data-testid$=":6"] {
+  transition-delay: 330ms;
+}
+
+[data-testid^="scroll-reveal:"][data-testid$=":7"] {
+  transition-delay: 385ms;
+}
+
+[data-testid="motion-card"] {
+  backface-visibility: hidden;
+  overflow: hidden;
+  transform: translate3d(0, 0, 0) scale(1);
+  transform-origin: center;
+  transition:
+    box-shadow 340ms var(--stylish-motion-ease),
+    transform 340ms var(--stylish-motion-ease);
+  will-change: transform;
+}
+
+[data-testid="motion-image-frame"] {
+  overflow: hidden;
+}
+
+[data-testid="motion-image-frame"] > * {
+  backface-visibility: hidden;
+  transform: scale(1);
+  transform-origin: center;
+  transition: transform 440ms var(--stylish-motion-ease);
+  will-change: transform;
+}
+
+[role="button"],
+[role="link"] {
+  transition:
+    color 300ms ease,
+    background-color 300ms ease,
+    border-color 300ms ease,
+    opacity 300ms ease,
+    transform 300ms var(--stylish-motion-ease);
+}
+
+[data-testid="catalog-options-trigger"],
+[data-testid="catalog-option-row"],
+[data-testid="catalog-options-close"] {
+  transition:
+    box-shadow 240ms var(--stylish-motion-ease),
+    filter 240ms var(--stylish-motion-ease),
+    opacity 240ms var(--stylish-motion-ease),
+    transform 240ms var(--stylish-motion-ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-testid="motion-card"]:hover {
+    filter: drop-shadow(0 14px 20px rgba(39, 27, 33, 0.14));
+    transform: translate3d(0, -6px, 0) scale(1.012);
+  }
+
+  [data-testid="motion-card"]:hover
+    [data-testid="motion-image-frame"]
+    > * {
+    transform: scale(1.045);
+  }
+
+  [data-testid="motion-image-frame"]:hover > * {
+    transform: scale(1.035);
+  }
+
+  [role="button"]:not([data-testid="motion-card"]):hover,
+  [role="link"]:hover {
+    transform: translate3d(0, -1px, 0);
+  }
+
+  [data-testid="catalog-options-trigger"]:hover {
+    filter: brightness(0.99);
+    transform: translate3d(0, -2px, 0);
+  }
+
+  [data-testid="catalog-option-row"]:hover {
+    filter: brightness(0.985);
+    transform: translate3d(2px, 0, 0);
+  }
+}
+
+[data-testid="motion-card"]:active {
+  transform: translate3d(0, -2px, 0) scale(0.995);
+}
+
+@media (max-width: 1023px) {
+  body:has([data-testid="storefront-page-root"]) [role="tablist"] {
+    position: fixed !important;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 50;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  [data-testid^="scroll-reveal:"],
+  [data-testid="motion-card"],
+  [data-testid="motion-image-frame"] > * {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
