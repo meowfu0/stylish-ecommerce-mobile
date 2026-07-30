@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   FlatList,
   Platform,
@@ -18,12 +18,17 @@ import Animated, {
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { ScrollReveal } from "@/components/animated/scroll-reveal";
 import { CatalogProductCard } from "@/components/catalog/catalog-product-card";
 import { FilterButton } from "@/components/catalog/filter-button";
 import { SortButton } from "@/components/catalog/sort-button";
 import { HomeHeader } from "@/components/home/home-header";
 import { HomeSearchBar } from "@/components/home/home-search-bar";
 import { spacing } from "@/constants/design-tokens";
+import {
+  getResponsiveContentWidth,
+  isDesktopWeb,
+} from "@/constants/responsive";
 import {
   TRENDING_CATALOG_PRODUCTS,
   type TrendingCatalogProduct,
@@ -72,14 +77,19 @@ type ProductBand = (typeof PRODUCT_BANDS)[number];
 export default function TrendingProductsScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
+  const [searchQuery, setSearchQuery] = useState("");
   const reduceMotion = useReducedMotion();
   const entranceProgress = useSharedValue(reduceMotion ? 1 : 0);
-  const contentWidth = Math.min(
-    FIGMA_CONTENT_WIDTH,
-    Math.max(0, width - spacing.md * 2),
-  );
+  const desktopWeb = isDesktopWeb(width);
+  const contentWidth = getResponsiveContentWidth({
+    mobileMax: FIGMA_CONTENT_WIDTH,
+    width,
+  });
   const horizontalInset = Math.max(spacing.md, (width - contentWidth) / 2);
-  const cardWidth = (contentWidth - COLUMN_GAP) / 2;
+  const cardWidth = desktopWeb
+    ? (contentWidth - spacing.lg * 3) / 4
+    : (contentWidth - COLUMN_GAP) / 2;
+  const searchWidth = desktopWeb ? Math.min(720, contentWidth) : contentWidth;
 
   const entranceStyle = useAnimatedStyle(() => ({
     opacity: entranceProgress.value,
@@ -100,10 +110,16 @@ export default function TrendingProductsScreen() {
   }, [entranceProgress, reduceMotion]);
 
   const openSearch = useCallback(
-    (mode?: "filter" | "sort") => {
+    (mode?: "filter" | "sort", query?: string) => {
       router.push({
         pathname: "/(tabs)/search",
-        params: mode ? { mode } : undefined,
+        params:
+          mode || query
+            ? {
+                ...(mode ? { mode } : {}),
+                ...(query ? { query: query.trim() } : {}),
+              }
+            : undefined,
       });
     },
     [router],
@@ -127,66 +143,119 @@ export default function TrendingProductsScreen() {
   );
 
   const renderProductBand = useCallback(
-    ({ item }: { item: ProductBand }) => (
-      <View
-        className="flex-row"
-        style={{
-          columnGap: COLUMN_GAP,
-          marginHorizontal: horizontalInset,
-          width: contentWidth,
-        }}
-      >
-        <View style={{ rowGap: COLUMN_GAP, width: cardWidth }}>
-          {item.left.map((slot) => (
-            <CatalogProductCard
-              imageSize={slot.imageSize}
-              key={slot.product.id}
-              onPress={() => openProduct(slot.product)}
-              product={slot.product}
-              width={cardWidth}
-            />
-          ))}
+    ({ item }: { item: ProductBand }) => {
+      if (desktopWeb) {
+        const slots = [...item.left, ...item.right];
+
+        return (
+          <View
+            className="flex-row"
+            style={{
+              columnGap: spacing.lg,
+              marginHorizontal: horizontalInset,
+              width: contentWidth,
+            }}
+          >
+            {slots.map((slot, index) => (
+              <ScrollReveal
+                key={slot.product.id}
+                staggerIndex={index}
+                style={{ width: cardWidth }}
+              >
+                <CatalogProductCard
+                  imageSize={slot.imageSize}
+                  onPress={() => openProduct(slot.product)}
+                  product={slot.product}
+                  width={cardWidth}
+                />
+              </ScrollReveal>
+            ))}
+          </View>
+        );
+      }
+
+      return (
+        <View
+          className="flex-row"
+          style={{
+            columnGap: COLUMN_GAP,
+            marginHorizontal: horizontalInset,
+            width: contentWidth,
+          }}
+        >
+          <View style={{ rowGap: COLUMN_GAP, width: cardWidth }}>
+            {item.left.map((slot, index) => (
+              <ScrollReveal
+                key={slot.product.id}
+                staggerIndex={index}
+                style={{ width: cardWidth }}
+              >
+                <CatalogProductCard
+                  imageSize={slot.imageSize}
+                  onPress={() => openProduct(slot.product)}
+                  product={slot.product}
+                  width={cardWidth}
+                />
+              </ScrollReveal>
+            ))}
+          </View>
+          <View style={{ rowGap: COLUMN_GAP, width: cardWidth }}>
+            {item.right.map((slot, index) => (
+              <ScrollReveal
+                key={slot.product.id}
+                staggerIndex={index + item.left.length}
+                style={{ width: cardWidth }}
+              >
+                <CatalogProductCard
+                  imageSize={slot.imageSize}
+                  onPress={() => openProduct(slot.product)}
+                  product={slot.product}
+                  width={cardWidth}
+                />
+              </ScrollReveal>
+            ))}
+          </View>
         </View>
-        <View style={{ rowGap: COLUMN_GAP, width: cardWidth }}>
-          {item.right.map((slot) => (
-            <CatalogProductCard
-              imageSize={slot.imageSize}
-              key={slot.product.id}
-              onPress={() => openProduct(slot.product)}
-              product={slot.product}
-              width={cardWidth}
-            />
-          ))}
-        </View>
-      </View>
-    ),
-    [cardWidth, contentWidth, horizontalInset, openProduct],
+      );
+    },
+    [cardWidth, contentWidth, desktopWeb, horizontalInset, openProduct],
   );
 
   const listHeader = (
     <View>
       <View className="bg-neutral-0">
-          <HomeHeader
-            onMenuPress={openSettings}
-            onProfilePress={openProfile}
-          />
+        <HomeHeader onMenuPress={openSettings} onProfilePress={openProfile} />
       </View>
 
       <View className="items-center">
-        <View className="mt-md">
-          <HomeSearchBar onPress={() => openSearch()} width={contentWidth} />
+        <View className={desktopWeb ? "mt-lg" : "mt-md"}>
+          <HomeSearchBar
+            onChangeText={setSearchQuery}
+            onSubmitEditing={() => openSearch(undefined, searchQuery)}
+            value={searchQuery}
+            width={searchWidth}
+          />
         </View>
 
         <View
-          className="mt-md h-[24px] flex-row items-center justify-between"
+          className="mt-md h-[32px] flex-row items-center justify-between"
           style={{ width: contentWidth }}
         >
-          <Text
-            accessibilityRole="header"
-            className="font-montserrat-semibold text-action text-neutral-1000"
-          >
-            52,082+ Items
-          </Text>
+          <View>
+            <Text
+              accessibilityRole="header"
+              className={`font-montserrat-semibold text-neutral-1000 ${
+                desktopWeb ? "text-xl" : "text-action"
+              }`}
+            >
+              Trending Products
+            </Text>
+            {desktopWeb ? (
+              <Text className="mt-xxs font-montserrat-regular text-xs text-neutral-500">
+                52,082+ pieces curated for you
+              </Text>
+            ) : null}
+          </View>
 
           <View className="flex-row gap-[12px]">
             <SortButton onPress={() => openSearch("sort")} />
@@ -204,11 +273,15 @@ export default function TrendingProductsScreen() {
       <Animated.View style={[{ flex: 1 }, entranceStyle]}>
         <FlatList
           accessibilityLabel="Trending products"
-          contentContainerStyle={{ paddingBottom: spacing.md }}
+          contentContainerStyle={{
+            paddingBottom: desktopWeb ? spacing.xxl : spacing.md,
+          }}
           data={PRODUCT_BANDS}
           decelerationRate="normal"
           initialNumToRender={2}
-          ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
+          ItemSeparatorComponent={() => (
+            <View style={{ height: desktopWeb ? spacing.lg : spacing.md }} />
+          )}
           keyExtractor={(item) => item.id}
           keyboardDismissMode="on-drag"
           ListHeaderComponent={listHeader}
