@@ -12,12 +12,19 @@ import {
   DefaultTheme,
   ThemeProvider,
 } from "@react-navigation/native";
-import { Stack } from "expo-router";
+import { Stack, usePathname } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
+import { useEffect } from "react";
+import { useWindowDimensions, View } from "react-native";
 import "react-native-reanimated";
 
+import { DesktopWebHeader } from "@/components/web/desktop-web-header";
+import { isDesktopWeb } from "@/constants/responsive";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
 import "../global.css";
+
+SplashScreen.preventAutoHideAsync();
 
 const ONBOARDING_TRANSITION = {
   animation: "fade_from_bottom" as const,
@@ -31,6 +38,8 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const pathname = usePathname();
+  const { width } = useWindowDimensions();
   const [fontsLoaded, fontError] = useFonts({
     Montserrat_400Regular,
     Montserrat_500Medium,
@@ -40,42 +49,75 @@ export default function RootLayout() {
     Poppins_400Regular,
   });
 
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      SplashScreen.hide();
+    }
+  }, [fontError, fontsLoaded]);
+
   if (!fontsLoaded && !fontError) {
     return null;
   }
 
+  const desktopWeb = isDesktopWeb(width);
+  const showDesktopHeader =
+    desktopWeb &&
+    pathname !== "/" &&
+    pathname !== "/home" &&
+    !pathname.startsWith("/onboarding") &&
+    pathname !== "/get-started";
+
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="onboarding" options={ONBOARDING_TRANSITION} />
-        <Stack.Screen
-          name="onboarding-payment"
-          options={ONBOARDING_TRANSITION}
-        />
-        <Stack.Screen name="onboarding-order" options={ONBOARDING_TRANSITION} />
-        <Stack.Screen name="sign-in" options={ONBOARDING_TRANSITION} />
-        <Stack.Screen name="forgot-password" options={ONBOARDING_TRANSITION} />
-        <Stack.Screen name="sign-up" options={ONBOARDING_TRANSITION} />
-        <Stack.Screen name="get-started" options={ONBOARDING_TRANSITION} />
-        <Stack.Screen
-          name="(tabs)"
-          options={{ ...ONBOARDING_TRANSITION, headerShown: false }}
-        />
-        <Stack.Screen
-          name="checkout"
-          options={ONBOARDING_TRANSITION}
-        />
-        <Stack.Screen name="place-order" options={ONBOARDING_TRANSITION} />
-        <Stack.Screen name="payment" options={ONBOARDING_TRANSITION} />
-        <Stack.Screen name="payment-success" options={ONBOARDING_TRANSITION} />
-        <Stack.Screen name="order-success" options={ONBOARDING_TRANSITION} />
-        <Stack.Screen name="profile" options={ONBOARDING_TRANSITION} />
-        <Stack.Screen
-          name="modal"
-          options={{ headerShown: true, presentation: "modal", title: "Modal" }}
-        />
-      </Stack>
+      <View className="flex-1 bg-neutral-50">
+        {showDesktopHeader ? <DesktopWebHeader /> : null}
+
+        <View className="min-h-0 flex-1">
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="index" />
+            <Stack.Screen name="onboarding" options={ONBOARDING_TRANSITION} />
+            <Stack.Screen
+              name="onboarding-payment"
+              options={ONBOARDING_TRANSITION}
+            />
+            <Stack.Screen
+              name="onboarding-order"
+              options={ONBOARDING_TRANSITION}
+            />
+            <Stack.Screen name="sign-in" options={ONBOARDING_TRANSITION} />
+            <Stack.Screen
+              name="forgot-password"
+              options={ONBOARDING_TRANSITION}
+            />
+            <Stack.Screen name="sign-up" options={ONBOARDING_TRANSITION} />
+            <Stack.Screen name="get-started" options={ONBOARDING_TRANSITION} />
+            <Stack.Screen
+              name="(tabs)"
+              options={{ ...ONBOARDING_TRANSITION, headerShown: false }}
+            />
+            <Stack.Screen name="checkout" options={ONBOARDING_TRANSITION} />
+            <Stack.Screen name="place-order" options={ONBOARDING_TRANSITION} />
+            <Stack.Screen name="payment" options={ONBOARDING_TRANSITION} />
+            <Stack.Screen
+              name="payment-success"
+              options={ONBOARDING_TRANSITION}
+            />
+            <Stack.Screen
+              name="order-success"
+              options={ONBOARDING_TRANSITION}
+            />
+            <Stack.Screen name="profile" options={ONBOARDING_TRANSITION} />
+            <Stack.Screen
+              name="modal"
+              options={{
+                headerShown: true,
+                presentation: "modal",
+                title: "Modal",
+              }}
+            />
+          </Stack>
+        </View>
+      </View>
     </ThemeProvider>
   );
 }
