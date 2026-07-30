@@ -35,6 +35,7 @@ export const colors = {
     1000: "#000000",
   },
   ink: {
+    footer: "#271B21",
     primary: "#17223B",
   },
   feedback: {
