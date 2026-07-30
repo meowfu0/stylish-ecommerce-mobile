@@ -5,7 +5,9 @@ import { Pressable, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { TypewriterText } from "@/components/animated/typewriter-text";
+import { DesktopOnboardingScreen } from "@/components/onboarding/desktop-onboarding-screen";
 import { spacing } from "@/constants/design-tokens";
+import { isDesktopWeb } from "@/constants/responsive";
 
 const FIGMA_FRAME = {
   height: 812,
@@ -64,6 +66,22 @@ export default function OrderOnboardingScreen() {
   const openSignIn = () => {
     router.replace("/sign-in");
   };
+
+  if (isDesktopWeb(width)) {
+    return (
+      <DesktopOnboardingScreen
+        description={ORDER_DESCRIPTION}
+        image={require("@/assets/images/onboarding-get-your-order.svg")}
+        imageLabel="Customer receiving purchases from a shopping order"
+        nextLabel="Get Started"
+        onNext={openSignIn}
+        onPrevious={goToPreviousStep}
+        onSkip={openSignIn}
+        step={3}
+        title="Get Your Order"
+      />
+    );
+  }
 
   return (
     <View className="flex-1 bg-neutral-0">
