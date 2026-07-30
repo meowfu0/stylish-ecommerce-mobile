@@ -10,6 +10,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { isDesktopWeb } from "@/constants/responsive";
+
 const FIGMA_FRAME = {
   width: 390,
   buttonWidth: 280,
@@ -22,6 +24,7 @@ export default function GetStartedScreen() {
   const widthScale = Math.min(1, width / FIGMA_FRAME.width);
   const buttonWidth = FIGMA_FRAME.buttonWidth * widthScale;
   const copyWidth = FIGMA_FRAME.copyWidth * widthScale;
+  const desktopWeb = isDesktopWeb(width);
 
   const openHome = () => {
     router.replace("/(tabs)/home");
@@ -46,18 +49,32 @@ export default function GetStartedScreen() {
       />
 
       <SafeAreaView className="flex-1">
-        <View className="flex-1 items-center justify-end">
+        <View
+          className={`flex-1 ${
+            desktopWeb
+              ? "mx-auto w-full max-w-[1280px] items-start justify-center px-[72px]"
+              : "items-center justify-end"
+          }`}
+        >
           <Text
             accessibilityRole="header"
-            className="text-center font-montserrat-bold text-heroTitle text-neutral-0"
-            style={{ width: copyWidth }}
+            className={`font-montserrat-bold text-neutral-0 ${
+              desktopWeb
+                ? "max-w-[680px] text-left text-[56px] leading-[64px]"
+                : "text-center text-heroTitle"
+            }`}
+            style={desktopWeb ? undefined : { width: copyWidth }}
           >
             Authentic style, made easy.
           </Text>
 
           <Text
-            className="mt-[12px] text-center font-montserrat-regular text-xs text-neutral-0"
-            style={{ width: copyWidth }}
+            className={`mt-[12px] font-montserrat-regular text-neutral-0 ${
+              desktopWeb
+                ? "max-w-[560px] text-left text-lg leading-[30px]"
+                : "text-center text-xs"
+            }`}
+            style={desktopWeb ? undefined : { width: copyWidth }}
           >
             Discover products you’ll love and shop them in just a few taps.
           </Text>
@@ -66,9 +83,9 @@ export default function GetStartedScreen() {
             accessibilityHint="Opens the Home screen"
             accessibilityLabel="Get Started"
             accessibilityRole="button"
-            className="mt-[30px] h-[55px] items-center justify-center rounded-xs bg-brand-primary active:opacity-80"
+            className="mt-[30px] h-[55px] cursor-pointer items-center justify-center rounded-xs bg-brand-primary active:opacity-80"
             onPress={openHome}
-            style={{ width: buttonWidth }}
+            style={{ width: desktopWeb ? 220 : buttonWidth }}
           >
             <Text className="font-montserrat-semibold text-authButton text-neutral-0">
               Get Started
