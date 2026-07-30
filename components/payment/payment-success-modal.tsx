@@ -18,6 +18,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors } from "@/constants/design-tokens";
+import { isDesktopWeb } from "@/constants/responsive";
 
 const FIGMA_FRAME_HEIGHT = 852;
 const FIGMA_MODAL_TOP = 260;
@@ -43,21 +44,28 @@ export function PaymentSuccessModal({
   const modalProgress = useSharedValue(reduceMotion ? 1 : 0);
   const [canContinue, setCanContinue] = useState(false);
 
-  const modalWidth = Math.min(
-    FIGMA_MODAL_WIDTH,
-    Math.max(0, width - FIGMA_HORIZONTAL_INSET * 2),
-  );
+  const desktopWeb = isDesktopWeb(width);
+  const modalWidth = desktopWeb
+    ? Math.min(480, width - 64)
+    : Math.min(
+        FIGMA_MODAL_WIDTH,
+        Math.max(0, width - FIGMA_HORIZONTAL_INSET * 2),
+      );
   const scale = modalWidth / FIGMA_MODAL_WIDTH;
   const modalHeight = FIGMA_MODAL_HEIGHT * scale;
   const modalLeft = (width - modalWidth) / 2;
-  const modalTop = Math.max(
-    insets.top + 130,
-    Math.min(
-      (height / FIGMA_FRAME_HEIGHT) * FIGMA_MODAL_TOP,
-      height - insets.bottom - modalHeight - 136,
-    ),
-  );
-  const paymentButtonWidth = Math.min(309, Math.max(0, width - 66));
+  const modalTop = desktopWeb
+    ? Math.max(32, (height - modalHeight) / 2)
+    : Math.max(
+        insets.top + 130,
+        Math.min(
+          (height / FIGMA_FRAME_HEIGHT) * FIGMA_MODAL_TOP,
+          height - insets.bottom - modalHeight - 136,
+        ),
+      );
+  const paymentButtonWidth = desktopWeb
+    ? 480
+    : Math.min(309, Math.max(0, width - 66));
 
   const overlayStyle = useAnimatedStyle(() => ({
     opacity: interpolate(overlayProgress.value, [0, 1], [0, 0.6]),
@@ -267,26 +275,30 @@ export function PaymentSuccessModal({
           height: 59,
           left: (width - paymentButtonWidth) / 2,
           position: "absolute",
-          top: insets.top + FIGMA_PAYMENT_BUTTON_TOP_AFTER_SAFE_AREA,
+          top: desktopWeb
+            ? modalTop + modalHeight
+            : insets.top + FIGMA_PAYMENT_BUTTON_TOP_AFTER_SAFE_AREA,
           width: paymentButtonWidth,
         }}
       />
 
-      <Pressable
-        accessibilityHint="Returns to the Home screen"
-        accessibilityLabel="Home"
-        accessibilityRole="button"
-        accessibilityState={{ disabled: !canContinue }}
-        disabled={!canContinue}
-        onPress={onHome}
-        style={{
-          bottom: 0,
-          height: 58 + insets.bottom,
-          left: 0,
-          position: "absolute",
-          width: width / 5,
-        }}
-      />
+      {!desktopWeb ? (
+        <Pressable
+          accessibilityHint="Returns to the Home screen"
+          accessibilityLabel="Home"
+          accessibilityRole="button"
+          accessibilityState={{ disabled: !canContinue }}
+          disabled={!canContinue}
+          onPress={onHome}
+          style={{
+            bottom: 0,
+            height: 58 + insets.bottom,
+            left: 0,
+            position: "absolute",
+            width: width / 5,
+          }}
+        />
+      ) : null}
     </View>
   );
 }
