@@ -31,6 +31,10 @@ import {
   type PaymentMethod,
   type PaymentSummary,
 } from "@/constants/payment-data";
+import {
+  getResponsiveContentWidth,
+  isDesktopWeb,
+} from "@/constants/responsive";
 
 const FIGMA_CONTENT_WIDTH = 309;
 const FIGMA_HORIZONTAL_INSET = 33;
@@ -61,10 +65,17 @@ export function PaymentMethodScreen({
   const entranceProgress = useSharedValue(
     reduceMotion || !animateEntrance ? 1 : 0,
   );
-  const contentWidth = Math.min(
-    FIGMA_CONTENT_WIDTH,
-    Math.max(0, width - FIGMA_HORIZONTAL_INSET * 2),
-  );
+  const desktopWeb = isDesktopWeb(width);
+  const contentWidth = getResponsiveContentWidth({
+    desktopMax: 920,
+    mobileGutter: FIGMA_HORIZONTAL_INSET,
+    mobileMax: FIGMA_CONTENT_WIDTH,
+    width,
+  });
+  const summaryWidth = desktopWeb ? 300 : contentWidth;
+  const paymentWidth = desktopWeb
+    ? contentWidth - summaryWidth - 32
+    : contentWidth;
   const summary = useMemo(
     () => calculatePaymentSummary(orderAmount),
     [orderAmount],
@@ -90,7 +101,10 @@ export function PaymentMethodScreen({
   }, [animateEntrance, entranceProgress, reduceMotion]);
 
   return (
-    <SafeAreaView className="flex-1 bg-neutral-25" edges={["top"]}>
+    <SafeAreaView
+      className="flex-1 bg-neutral-25"
+      edges={desktopWeb ? [] : ["top"]}
+    >
       <StatusBar style="dark" />
 
       <Animated.View style={[{ flex: 1 }, entranceStyle]}>
@@ -102,76 +116,116 @@ export function PaymentMethodScreen({
 
         <ScrollView
           className="flex-1"
-          contentContainerStyle={{ alignItems: "center", paddingBottom: 24 }}
+          contentContainerStyle={{
+            alignItems: "center",
+            paddingBottom: desktopWeb ? 48 : 24,
+          }}
           decelerationRate="normal"
           directionalLockEnabled
           scrollEnabled={interactionEnabled}
-          showsVerticalScrollIndicator={false}
+          showsVerticalScrollIndicator={desktopWeb}
         >
-          <View className="pt-[7px]" style={{ width: contentWidth }}>
-            <PriceRow
-              label="Order"
-              labelTone="muted"
-              size="summary"
-              value={formatPaymentPrice(summary.orderAmount)}
-              valueTone="muted"
-            />
-            <PriceRow
-              label="Shipping"
-              labelTone="muted"
-              size="summary"
-              value={formatPaymentPrice(summary.shippingFee)}
-              valueTone="muted"
-            />
-            <PriceRow
-              label="Total"
-              labelTone="tertiary"
-              size="summary"
-              value={formatPaymentPrice(summary.total)}
-              valueTone="tertiary"
-            />
-
-            <View className="mt-[13px] h-[1.5px] bg-neutral-300" />
-
-            <Text
-              accessibilityRole="header"
-              className="mt-[26px] font-montserrat-medium text-action leading-[27px] text-neutral-900"
-            >
-              Payment
-            </Text>
-
+          <View
+            className={
+              desktopWeb ? "flex-row items-start gap-xl pt-xl" : "pt-[7px]"
+            }
+            style={{ width: contentWidth }}
+          >
             <View
-              accessibilityLabel="Payment methods"
-              className="mt-[10px] gap-[25px]"
+              className={
+                desktopWeb
+                  ? "rounded-lg border border-neutral-200 bg-neutral-0 p-lg shadow-sm"
+                  : ""
+              }
+              style={{ width: summaryWidth }}
             >
-              {MOCK_PAYMENT_METHODS.map((method) => (
-                <PaymentOption
-                  disabled={!interactionEnabled}
-                  key={method.id}
-                  method={method}
-                  onSelect={onSelectMethod}
-                  selected={method.id === selectedMethod.id}
-                />
-              ))}
+              {desktopWeb ? (
+                <Text
+                  accessibilityRole="header"
+                  className="mb-lg font-serif text-[30px] leading-[36px] text-neutral-1000"
+                >
+                  Order summary
+                </Text>
+              ) : null}
+              <PriceRow
+                label="Order"
+                labelTone="muted"
+                size="summary"
+                value={formatPaymentPrice(summary.orderAmount)}
+                valueTone="muted"
+              />
+              <PriceRow
+                label="Shipping"
+                labelTone="muted"
+                size="summary"
+                value={formatPaymentPrice(summary.shippingFee)}
+                valueTone="muted"
+              />
+              <PriceRow
+                label="Total"
+                labelTone="tertiary"
+                size="summary"
+                value={formatPaymentPrice(summary.total)}
+                valueTone="tertiary"
+              />
+
+              <View className="mt-[13px] h-[1.5px] bg-neutral-300" />
             </View>
 
-            <Pressable
-              accessibilityHint="Opens the frontend-only Payment Success screen"
-              accessibilityLabel={`Continue with ${selectedMethod.label}`}
-              accessibilityRole="button"
-              accessibilityState={{ disabled: !interactionEnabled }}
-              className="mt-[25px] h-[59px] items-center justify-center rounded-sm bg-brand-primary active:opacity-80"
-              disabled={!interactionEnabled}
-              onPress={() => onContinue(summary)}
+            <View
+              className={
+                desktopWeb
+                  ? "rounded-lg border border-neutral-200 bg-neutral-0 p-lg shadow-sm"
+                  : ""
+              }
+              style={{ width: paymentWidth }}
             >
-              <Text className="font-montserrat-bold text-[22px] leading-[22px] text-neutral-0">
-                Continue
+              <Text
+                accessibilityRole="header"
+                className={`font-montserrat-medium text-neutral-900 ${
+                  desktopWeb
+                    ? "font-serif text-[30px] leading-[36px]"
+                    : "mt-[26px] text-action leading-[27px]"
+                }`}
+              >
+                Payment
               </Text>
-            </Pressable>
+
+              <View
+                accessibilityLabel="Payment methods"
+                className={`mt-lg ${desktopWeb ? "gap-sm" : "gap-[25px]"}`}
+              >
+                {MOCK_PAYMENT_METHODS.map((method) => (
+                  <PaymentOption
+                    disabled={!interactionEnabled}
+                    key={method.id}
+                    method={method}
+                    onSelect={onSelectMethod}
+                    selected={method.id === selectedMethod.id}
+                  />
+                ))}
+              </View>
+
+              <Pressable
+                accessibilityHint="Opens the frontend-only Payment Success screen"
+                accessibilityLabel={`Continue with ${selectedMethod.label}`}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: !interactionEnabled }}
+                className="mt-[25px] h-[59px] items-center justify-center rounded-sm bg-brand-primary active:opacity-80"
+                disabled={!interactionEnabled}
+                onPress={() => onContinue(summary)}
+              >
+                <Text className="font-montserrat-bold text-[22px] leading-[22px] text-neutral-0">
+                  Continue
+                </Text>
+              </Pressable>
+            </View>
           </View>
         </ScrollView>
 
-        <BottomNavigation activeRoute="cart" onNavigate={onNavigate} />
+        {!desktopWeb ? (
+          <BottomNavigation activeRoute="cart" onNavigate={onNavigate} />
+        ) : null}
       </Animated.View>
     </SafeAreaView>
   );
