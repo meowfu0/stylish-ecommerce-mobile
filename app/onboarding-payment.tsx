@@ -5,7 +5,9 @@ import { Pressable, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { TypewriterText } from "@/components/animated/typewriter-text";
+import { DesktopOnboardingScreen } from "@/components/onboarding/desktop-onboarding-screen";
 import { spacing } from "@/constants/design-tokens";
+import { isDesktopWeb } from "@/constants/responsive";
 
 const FIGMA_FRAME = {
   height: 812,
@@ -73,6 +75,22 @@ export default function PaymentOnboardingScreen() {
   const showNextStep = () => {
     router.push("/onboarding-order");
   };
+
+  if (isDesktopWeb(width)) {
+    return (
+      <DesktopOnboardingScreen
+        description={PAYMENT_DESCRIPTION}
+        image={require("@/assets/images/onboarding-make-payment.svg")}
+        imageLabel="Customers completing a secure mobile payment"
+        nextLabel="Continue"
+        onNext={showNextStep}
+        onPrevious={goToPreviousStep}
+        onSkip={skipOnboarding}
+        step={2}
+        title="Make Payment"
+      />
+    );
+  }
 
   return (
     <View className="flex-1 bg-neutral-0">
