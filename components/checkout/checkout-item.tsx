@@ -33,20 +33,27 @@ export function CheckoutItem({ item, width }: CheckoutItemProps) {
       accessibilityLabel={`${item.title}. Variants ${item.variants.join(", ")}. Rated ${item.rating} out of 5. Price ${formatPhilippinePeso(item.price)}. ${discountPercent} percent off. Quantity ${item.quantity}. Item total ${formatPhilippinePeso(itemTotal)}.`}
       className="min-h-[191px] rounded-[6px] bg-neutral-0 px-[10px] pb-[8px] pt-[10px] shadow-sm"
       style={{ width }}
+      testID="motion-card"
     >
       <View className="flex-row">
-        <Image
-          accessible={false}
-          contentFit="cover"
-          recyclingKey={item.id}
-          source={item.image}
+        <View
           style={{
             borderRadius: 4,
             height: imageHeight,
+            overflow: "hidden",
             width: imageWidth,
           }}
-          transition={120}
-        />
+          testID="motion-image-frame"
+        >
+          <Image
+            accessible={false}
+            contentFit="cover"
+            recyclingKey={item.id}
+            source={item.image}
+            style={{ height: "100%", width: "100%" }}
+            transition={120}
+          />
+        </View>
 
         <View className="ml-[8px] min-w-0 flex-1 pt-[4px]">
           <Text
