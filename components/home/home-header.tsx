@@ -1,15 +1,26 @@
 import { Image } from "expo-image";
-import { Pressable, Text, View } from "react-native";
+import {
+  Platform,
+  Pressable,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
+
+import { DESKTOP_WEB_BREAKPOINT } from "@/constants/responsive";
 
 type HomeHeaderProps = {
   onMenuPress: () => void;
   onProfilePress: () => void;
 };
 
-export function HomeHeader({
-  onMenuPress,
-  onProfilePress,
-}: HomeHeaderProps) {
+export function HomeHeader({ onMenuPress, onProfilePress }: HomeHeaderProps) {
+  const { width } = useWindowDimensions();
+
+  if (Platform.OS === "web" && width >= DESKTOP_WEB_BREAKPOINT) {
+    return null;
+  }
+
   return (
     <View className="h-[56px] flex-row items-center justify-between px-md">
       <Pressable
