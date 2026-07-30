@@ -21,6 +21,7 @@ import {
 import { z } from "zod";
 
 import { colors, spacing } from "@/constants/design-tokens";
+import { isDesktopWeb } from "@/constants/responsive";
 
 const FIGMA_FRAME = {
   width: 375,
@@ -89,10 +90,14 @@ export default function SignUpScreen() {
     resolver: zodResolver(signUpSchema),
   });
 
+  const desktopWeb = isDesktopWeb(width);
   const widthScale = Math.min(1, width / FIGMA_FRAME.width);
-  const contentWidth = FIGMA_FRAME.contentWidth * widthScale;
-  const contentLeft = (width - contentWidth) / 2;
-  const contentTop = Math.max(0, FIGMA_FRAME.titleTop - insets.top);
+  const contentWidth = desktopWeb ? 440 : FIGMA_FRAME.contentWidth * widthScale;
+  const cardWidth = desktopWeb ? 520 : contentWidth;
+  const contentLeft = (width - cardWidth) / 2;
+  const contentTop = desktopWeb
+    ? spacing.xl
+    : Math.max(0, FIGMA_FRAME.titleTop - insets.top);
 
   const submitValidatedForm = (_values: SignUpFormValues) => {
     // Backend account creation will be connected in a later implementation.
@@ -114,11 +119,14 @@ export default function SignUpScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.select({ android: "height", ios: "padding" })}
-      className="flex-1 bg-neutral-0"
+      className={`flex-1 ${desktopWeb ? "bg-neutral-50" : "bg-neutral-0"}`}
     >
       <StatusBar style="dark" />
 
-      <SafeAreaView className="flex-1 bg-neutral-0">
+      <SafeAreaView
+        className={`flex-1 ${desktopWeb ? "bg-neutral-50" : "bg-neutral-0"}`}
+        edges={desktopWeb ? [] : undefined}
+      >
         <ScrollView
           automaticallyAdjustKeyboardInsets
           contentContainerStyle={{
@@ -129,14 +137,21 @@ export default function SignUpScreen() {
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
           overScrollMode="never"
-          showsVerticalScrollIndicator={false}
+          showsVerticalScrollIndicator={desktopWeb}
         >
-          <View style={{ marginLeft: contentLeft, width: contentWidth }}>
+          <View
+            className={
+              desktopWeb
+                ? "rounded-lg border border-neutral-200 bg-neutral-0 p-[40px] shadow-sm"
+                : ""
+            }
+            style={{ marginLeft: contentLeft, width: cardWidth }}
+          >
             <Text
               accessibilityRole="header"
               className="font-montserrat-bold text-authTitle text-neutral-1000"
             >
-              {"Create an\naccount"}
+              {desktopWeb ? "Create your account" : "Create an\naccount"}
             </Text>
 
             <View className="mt-[33px]">
