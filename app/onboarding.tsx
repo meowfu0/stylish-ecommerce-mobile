@@ -5,7 +5,9 @@ import { Pressable, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { TypewriterText } from "@/components/animated/typewriter-text";
+import { DesktopOnboardingScreen } from "@/components/onboarding/desktop-onboarding-screen";
 import { spacing } from "@/constants/design-tokens";
+import { isDesktopWeb } from "@/constants/responsive";
 
 const FIGMA_FRAME = {
   height: 812,
@@ -56,6 +58,21 @@ export default function OnboardingScreen() {
   const showNextStep = () => {
     router.push("/onboarding-payment");
   };
+
+  if (isDesktopWeb(width)) {
+    return (
+      <DesktopOnboardingScreen
+        description={ONBOARDING_COPY}
+        image={require("@/assets/images/onboarding-choose-products.svg")}
+        imageLabel="People choosing clothing in a fashion shop"
+        nextLabel="Continue"
+        onNext={showNextStep}
+        onSkip={skipOnboarding}
+        step={1}
+        title="Choose Products"
+      />
+    );
+  }
 
   return (
     <View className="flex-1 bg-neutral-0">
