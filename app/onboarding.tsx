@@ -1,169 +1,86 @@
-import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
-import { Pressable, Text, useWindowDimensions, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useState } from "react";
 
-import { TypewriterText } from "@/components/animated/typewriter-text";
-import { DesktopOnboardingScreen } from "@/components/onboarding/desktop-onboarding-screen";
-import { spacing } from "@/constants/design-tokens";
-import { isDesktopWeb } from "@/constants/responsive";
+import { OnboardingStepScreen } from "@/components/onboarding/choose-products-onboarding-screen";
+import { markOnboardingCompleted } from "@/stores/onboarding-storage";
 
-const FIGMA_FRAME = {
-  height: 812,
-  width: 375,
-  headerTop: 45,
-  horizontalInset: 17,
-  illustrationSize: 300,
-  illustrationTop: 177,
-  titleGap: 15,
-  bodyGap: 10,
-  bodyWidth: 340,
-  indicatorBottom: 31,
-  nextBottom: 24,
-} as const;
+type OnboardingStep = 1 | 2 | 3;
 
-const ONBOARDING_COPY =
-  "Browse our collection, discover products you love, and choose the perfect items that match your style.";
+const ONBOARDING_STEPS = {
+  1: {
+    continueLabel: "Continue",
+    description:
+      "Browse our collection, discover products you love, and choose the perfect items that match your style.",
+    image: require("@/assets/images/onboarding-choose-products-desktop.jpg"),
+    imageLabel: "A customer choosing clothing in a fashion store",
+    title: "Choose Products",
+  },
+  2: {
+    continueLabel: "Continue",
+    description:
+      "Pay securely using your preferred payment method and complete your order with ease.",
+    image: require("@/assets/images/onboarding-make-payment-desktop.jpg"),
+    imageLabel: "A customer completing a secure card payment on her phone",
+    title: "Make Payment",
+  },
+  3: {
+    continueLabel: "Get Started",
+    description:
+      "Track your order easily and receive your purchases safely at your selected address.",
+    image: require("@/assets/images/onboarding-get-your-order-desktop.jpg"),
+    imageLabel: "A customer receiving a delivery at her selected address",
+    title: "Get Your Order",
+  },
+} as const satisfies Record<
+  OnboardingStep,
+  {
+    continueLabel: string;
+    description: string;
+    image: number;
+    imageLabel: string;
+    title: string;
+  }
+>;
 
 export default function OnboardingScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const { height, width } = useWindowDimensions();
-
-  const widthScale = Math.min(1, width / FIGMA_FRAME.width);
-  const heightScale = Math.min(1, height / FIGMA_FRAME.height);
-  const illustrationSize = Math.min(
-    FIGMA_FRAME.illustrationSize * widthScale,
-    width - spacing.xl * 2,
-  );
-  const illustrationTop = Math.max(
-    insets.top + spacing.xl,
-    FIGMA_FRAME.illustrationTop * heightScale,
-  );
-  const bodyWidth = Math.min(
-    FIGMA_FRAME.bodyWidth * widthScale,
-    width - spacing.md * 2,
-  );
-  const indicatorBottom = Math.max(spacing.md, insets.bottom - spacing.xxs + 1);
-  const nextBottom = Math.max(
-    spacing.xs,
-    indicatorBottom - (FIGMA_FRAME.indicatorBottom - FIGMA_FRAME.nextBottom),
-  );
+  const [step, setStep] = useState<OnboardingStep>(1);
+  const content = ONBOARDING_STEPS[step];
 
   const skipOnboarding = () => {
     router.replace("/sign-in");
   };
 
-  const showNextStep = () => {
-    router.push("/onboarding-payment");
+  const showPreviousStep = () => {
+    setStep((step - 1) as OnboardingStep);
   };
 
-  if (isDesktopWeb(width)) {
-    return (
-      <DesktopOnboardingScreen
-        description={ONBOARDING_COPY}
-        image={require("@/assets/images/onboarding-choose-products.svg")}
-        imageLabel="People choosing clothing in a fashion shop"
-        nextLabel="Continue"
-        onNext={showNextStep}
-        onSkip={skipOnboarding}
-        step={1}
-        title="Choose Products"
-      />
-    );
-  }
+  const showNextStep = async () => {
+    if (step < 3) {
+      setStep((step + 1) as OnboardingStep);
+      return;
+    }
+
+    try {
+      await markOnboardingCompleted();
+    } catch {
+      // Navigation remains available if device storage is temporarily unavailable.
+    }
+
+    router.replace("/sign-in");
+  };
 
   return (
-    <View className="flex-1 bg-neutral-0">
-      <StatusBar style="dark" />
-
-      <View
-        className="absolute flex-row items-start justify-between"
-        style={{
-          left: FIGMA_FRAME.horizontalInset,
-          right: FIGMA_FRAME.horizontalInset,
-          top: Math.max(insets.top + 1, FIGMA_FRAME.headerTop * heightScale),
-        }}
-      >
-        <Text
-          accessibilityLabel="Onboarding step 1 of 3"
-          accessibilityRole="header"
-          className="font-montserrat-semibold text-action text-neutral-1000"
-        >
-          1<Text className="text-neutral-450">/3</Text>
-        </Text>
-
-        <Pressable
-          accessibilityHint="Closes onboarding and opens Sign In"
-          accessibilityLabel="Skip onboarding"
-          accessibilityRole="button"
-          className="active:opacity-60"
-          hitSlop={12}
-          onPress={skipOnboarding}
-        >
-          <Text className="font-montserrat-semibold text-action text-neutral-1000">
-            Skip
-          </Text>
-        </Pressable>
-      </View>
-
-      <View
-        className="absolute left-0 right-0 items-center"
-        style={{ top: illustrationTop }}
-      >
-        <Image
-          accessibilityLabel="People choosing clothing in a fashion shop"
-          accessibilityRole="image"
-          accessible
-          contentFit="contain"
-          source={require("@/assets/images/onboarding-choose-products.svg")}
-          style={{ height: illustrationSize, width: illustrationSize }}
-        />
-
-        <TypewriterText
-          className="font-montserrat-extrabold text-onboardingTitle text-center text-neutral-1000"
-          containerStyle={{
-            marginTop: FIGMA_FRAME.titleGap * heightScale,
-          }}
-          text="Choose Products"
-        />
-
-        <Text
-          className="font-montserrat-semibold text-onboardingBody text-center tracking-[0.28px] text-neutral-400"
-          style={{
-            marginTop: FIGMA_FRAME.bodyGap * heightScale,
-            width: bodyWidth,
-          }}
-        >
-          {ONBOARDING_COPY}
-        </Text>
-      </View>
-
-      <View
-        accessibilityLabel="Page 1 of 3"
-        accessible
-        className="absolute left-0 right-0 h-[10px] flex-row items-center justify-center gap-[10px]"
-        style={{ bottom: indicatorBottom }}
-      >
-        <View className="h-[8px] w-[40px] rounded-pill bg-ink-primary" />
-        <View className="h-[10px] w-[10px] rounded-pill bg-ink-primary/20" />
-        <View className="h-[10px] w-[10px] rounded-pill bg-ink-primary/20" />
-      </View>
-
-      <Pressable
-        accessibilityHint="Opens onboarding step 2 of 3"
-        accessibilityLabel="Next"
-        accessibilityRole="button"
-        className="absolute right-[17px] active:opacity-60"
-        hitSlop={12}
-        onPress={showNextStep}
-        style={{ bottom: nextBottom }}
-      >
-        <Text className="font-montserrat-semibold text-action text-brand-primary">
-          Next
-        </Text>
-      </Pressable>
-    </View>
+    <OnboardingStepScreen
+      continueLabel={content.continueLabel}
+      description={content.description}
+      image={content.image}
+      imageLabel={content.imageLabel}
+      onContinue={showNextStep}
+      onPrevious={step > 1 ? showPreviousStep : undefined}
+      onSkip={step < 3 ? skipOnboarding : undefined}
+      step={step}
+      title={content.title}
+    />
   );
 }
