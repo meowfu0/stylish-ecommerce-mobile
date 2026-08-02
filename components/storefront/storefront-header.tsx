@@ -1,9 +1,12 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { Image } from "expo-image";
-import type { ComponentProps } from "react";
-import { Pressable, Text, View } from "react-native";
+import { type ComponentProps, useEffect, useRef, useState } from "react";
+import { Platform, Pressable, Text, View } from "react-native";
 
+import { StylishLogo } from "@/components/brand/stylish-logo";
 import { colors } from "@/constants/design-tokens";
+
+const HEADER_EXPANDED_OFFSET = 24;
+const HEADER_COMPACT_OFFSET = 72;
 
 type HeaderIconName = ComponentProps<typeof MaterialIcons>["name"];
 
@@ -65,6 +68,8 @@ export function StorefrontHeader({
   onTrendingPress,
   onWishlistPress,
 }: StorefrontHeaderProps) {
+  const [headerCompact, setHeaderCompact] = useState(false);
+  const headerCompactRef = useRef(false);
   const navigationItems = [
     { label: "New arrivals", onPress: onNewArrivalsPress },
     { label: "Shop", onPress: onShopPress },
@@ -72,11 +77,53 @@ export function StorefrontHeader({
     { label: "Our story", onPress: onStoryPress },
   ];
 
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof window === "undefined") {
+      return;
+    }
+
+    let animationFrame: number | undefined;
+    const updateHeaderSize = () => {
+      animationFrame = undefined;
+
+      const currentScrollY = Math.max(0, window.scrollY);
+      const nextCompact = headerCompactRef.current
+        ? currentScrollY > HEADER_EXPANDED_OFFSET
+        : currentScrollY >= HEADER_COMPACT_OFFSET;
+
+      if (nextCompact !== headerCompactRef.current) {
+        headerCompactRef.current = nextCompact;
+        setHeaderCompact(nextCompact);
+      }
+    };
+
+    const handleScroll = () => {
+      animationFrame ??= window.requestAnimationFrame(updateHeaderSize);
+    };
+
+    updateHeaderSize();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+
+      if (animationFrame !== undefined) {
+        window.cancelAnimationFrame(animationFrame);
+      }
+    };
+  }, []);
+
   return (
-    <View className="items-center border-b border-neutral-200 bg-neutral-0">
+    <View
+      className="items-center border-b border-brand-storefrontBorder bg-brand-storefrontSurface"
+      testID={`storefront-desktop-header:${
+        headerCompact ? "compact" : "expanded"
+      }`}
+    >
       <View
         className="h-[88px] flex-row items-center justify-between"
         style={{ width: contentWidth }}
+        testID="storefront-desktop-header-inner"
       >
         <View className="flex-1 flex-row items-center gap-[28px]">
           {navigationItems.map((item) => (
@@ -97,14 +144,17 @@ export function StorefrontHeader({
         <View
           accessibilityLabel="Stylish"
           accessibilityRole="header"
-          className="absolute left-1/2"
+          className="absolute left-1/2 h-[52px] w-[130px]"
           style={{ transform: [{ translateX: -65 }] }}
         >
-          <Image
-            accessible={false}
-            contentFit="contain"
-            source={require("@/assets/images/stylish-logo.svg")}
-            style={{ height: 52, width: 130 }}
+          <StylishLogo
+            style={{
+              left: 0,
+              position: "absolute",
+              top: 2,
+            }}
+            testID="storefront-header-logo-full"
+            width={130}
           />
         </View>
 
