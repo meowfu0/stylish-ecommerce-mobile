@@ -1,8 +1,8 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 
+import { StylishLogo } from "@/components/brand/stylish-logo";
 import { colors } from "@/constants/design-tokens";
 import { selectCartQuantity, useCartStore } from "@/stores/cart-store";
 
@@ -92,12 +92,7 @@ export function DesktopWebHeader() {
             transform: [{ translateX: -65 }],
           }}
         >
-          <Image
-            accessible={false}
-            contentFit="contain"
-            source={require("@/assets/images/stylish-logo.svg")}
-            style={{ height: 50, width: 130 }}
-          />
+          <StylishLogo width={130} />
         </Pressable>
 
         <View className="flex-1 flex-row items-center justify-end gap-xs">
