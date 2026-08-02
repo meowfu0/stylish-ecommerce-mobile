@@ -34,8 +34,8 @@ export function StorefrontSectionHeader({
         </Text>
         <Text
           accessibilityRole="header"
-          className={`mt-xs font-serif text-neutral-900 ${
-            compact ? "text-xl" : "text-[36px] leading-[42px]"
+          className={`mt-xs font-montserrat-bold tracking-[-0.45px] text-neutral-900 ${
+            compact ? "text-headingMedium" : "text-[36px] leading-[44px]"
           }`}
         >
           {title}
@@ -44,11 +44,7 @@ export function StorefrontSectionHeader({
       {action ? (
         <View
           className={
-            stacked
-              ? "self-end"
-              : centered
-                ? "absolute bottom-0 right-0"
-                : ""
+            stacked ? "self-end" : centered ? "absolute bottom-0 right-0" : ""
           }
         >
           {action}
