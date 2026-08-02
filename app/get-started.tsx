@@ -1,15 +1,10 @@
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from "react-native";
+import { Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { StylishText } from "@/components/typography/stylish-text";
 import { isDesktopWeb } from "@/constants/responsive";
 
 const FIGMA_FRAME = {
@@ -56,28 +51,26 @@ export default function GetStartedScreen() {
               : "items-center justify-end"
           }`}
         >
-          <Text
+          <StylishText
             accessibilityRole="header"
-            className={`font-montserrat-bold text-neutral-0 ${
-              desktopWeb
-                ? "max-w-[680px] text-left text-[56px] leading-[64px]"
-                : "text-center text-heroTitle"
+            className={`text-neutral-0 ${
+              desktopWeb ? "max-w-[680px] text-left" : "text-center"
             }`}
             style={desktopWeb ? undefined : { width: copyWidth }}
+            variant="hero-title"
           >
             Authentic style, made easy.
-          </Text>
+          </StylishText>
 
-          <Text
-            className={`mt-[12px] font-montserrat-regular text-neutral-0 ${
-              desktopWeb
-                ? "max-w-[560px] text-left text-lg leading-[30px]"
-                : "text-center text-xs"
+          <StylishText
+            className={`mt-[12px] text-neutral-0 ${
+              desktopWeb ? "max-w-[560px] text-left" : "text-center"
             }`}
             style={desktopWeb ? undefined : { width: copyWidth }}
+            variant="body"
           >
             Discover products you’ll love and shop them in just a few taps.
-          </Text>
+          </StylishText>
 
           <Pressable
             accessibilityHint="Opens the Home screen"
@@ -87,9 +80,9 @@ export default function GetStartedScreen() {
             onPress={openHome}
             style={{ width: desktopWeb ? 220 : buttonWidth }}
           >
-            <Text className="font-montserrat-semibold text-authButton text-neutral-0">
+            <StylishText className="text-neutral-0" variant="button">
               Get Started
-            </Text>
+            </StylishText>
           </Pressable>
         </View>
       </SafeAreaView>
