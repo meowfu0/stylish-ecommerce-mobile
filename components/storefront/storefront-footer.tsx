@@ -1,5 +1,7 @@
 import { Pressable, Text, View } from "react-native";
 
+import { StylishLogo } from "@/components/brand/stylish-logo";
+
 type FooterLinkGroup = {
   links: readonly string[];
   title: string;
@@ -50,9 +52,10 @@ export function StorefrontFooter({
           }`}
         >
           <View style={{ maxWidth: compact ? contentWidth : 360 }}>
-            <Text className="font-serif text-[30px] leading-[34px] text-brand-primary">
-              STYLISH
-            </Text>
+            <StylishLogo
+              testID="storefront-footer-brand-logo"
+              width={compact ? 140 : 160}
+            />
             <Text className="mt-lg font-montserrat-regular text-sm leading-[24px] text-neutral-300">
               Clothes for making an entrance—or simply making every day feel
               more special.
