@@ -6,7 +6,6 @@ import {
   Montserrat_800ExtraBold,
   useFonts,
 } from "@expo-google-fonts/montserrat";
-import { Poppins_400Regular } from "@expo-google-fonts/poppins";
 import {
   DarkTheme,
   DefaultTheme,
@@ -21,6 +20,8 @@ import "react-native-reanimated";
 import { DesktopWebHeader } from "@/components/web/desktop-web-header";
 import { isDesktopWeb } from "@/constants/responsive";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { restoreAuthSession } from "@/services/auth/auth-session";
+import { useAuthSessionStore } from "@/stores/auth-session-store";
 
 import "../global.css";
 
@@ -39,6 +40,7 @@ export const unstable_settings = {
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const pathname = usePathname();
+  const authStatus = useAuthSessionStore((state) => state.status);
   const { width } = useWindowDimensions();
   const [fontsLoaded, fontError] = useFonts({
     Montserrat_400Regular,
@@ -46,24 +48,37 @@ export default function RootLayout() {
     Montserrat_600SemiBold,
     Montserrat_700Bold,
     Montserrat_800ExtraBold,
-    Poppins_400Regular,
   });
 
   useEffect(() => {
-    if (fontsLoaded || fontError) {
+    void restoreAuthSession();
+  }, []);
+
+  useEffect(() => {
+    if ((fontsLoaded || fontError) && authStatus !== "restoring") {
       SplashScreen.hide();
     }
-  }, [fontError, fontsLoaded]);
+  }, [authStatus, fontError, fontsLoaded]);
 
-  if (!fontsLoaded && !fontError) {
+  if ((!fontsLoaded && !fontError) || authStatus === "restoring") {
     return null;
   }
 
   const desktopWeb = isDesktopWeb(width);
+  const isAuthRoute = [
+    "/auth/choose-workspace",
+    "/auth/reset-password",
+    "/auth/verify-email",
+    "/forgot-password",
+    "/sign-in",
+    "/sign-up",
+  ].includes(pathname);
   const showDesktopHeader =
     desktopWeb &&
     pathname !== "/" &&
     pathname !== "/home" &&
+    !isAuthRoute &&
+    !pathname.startsWith("/merchant/") &&
     !pathname.startsWith("/onboarding") &&
     pathname !== "/get-started";
 
@@ -90,31 +105,56 @@ export default function RootLayout() {
               options={ONBOARDING_TRANSITION}
             />
             <Stack.Screen name="sign-up" options={ONBOARDING_TRANSITION} />
+            <Stack.Screen
+              name="auth/reset-password"
+              options={ONBOARDING_TRANSITION}
+            />
+            <Stack.Screen
+              name="auth/verify-email"
+              options={ONBOARDING_TRANSITION}
+            />
             <Stack.Screen name="get-started" options={ONBOARDING_TRANSITION} />
-            <Stack.Screen
-              name="(tabs)"
-              options={{ ...ONBOARDING_TRANSITION, headerShown: false }}
-            />
-            <Stack.Screen name="checkout" options={ONBOARDING_TRANSITION} />
-            <Stack.Screen name="place-order" options={ONBOARDING_TRANSITION} />
-            <Stack.Screen name="payment" options={ONBOARDING_TRANSITION} />
-            <Stack.Screen
-              name="payment-success"
-              options={ONBOARDING_TRANSITION}
-            />
-            <Stack.Screen
-              name="order-success"
-              options={ONBOARDING_TRANSITION}
-            />
-            <Stack.Screen name="profile" options={ONBOARDING_TRANSITION} />
-            <Stack.Screen
-              name="modal"
-              options={{
-                headerShown: true,
-                presentation: "modal",
-                title: "Modal",
-              }}
-            />
+            <Stack.Protected guard={authStatus === "authenticated"}>
+              <Stack.Screen
+                name="auth/choose-workspace"
+                options={ONBOARDING_TRANSITION}
+              />
+              <Stack.Screen
+                name="(tabs)"
+                options={{ ...ONBOARDING_TRANSITION, headerShown: false }}
+              />
+              <Stack.Screen name="checkout" options={ONBOARDING_TRANSITION} />
+              <Stack.Screen
+                name="place-order"
+                options={ONBOARDING_TRANSITION}
+              />
+              <Stack.Screen name="payment" options={ONBOARDING_TRANSITION} />
+              <Stack.Screen
+                name="payment-success"
+                options={ONBOARDING_TRANSITION}
+              />
+              <Stack.Screen
+                name="order-success"
+                options={ONBOARDING_TRANSITION}
+              />
+              <Stack.Screen name="profile" options={ONBOARDING_TRANSITION} />
+              <Stack.Screen
+                name="merchant/dashboard"
+                options={{ ...ONBOARDING_TRANSITION, headerShown: false }}
+              />
+              <Stack.Screen
+                name="merchant/dashboard-docs"
+                options={{ ...ONBOARDING_TRANSITION, headerShown: false }}
+              />
+              <Stack.Screen
+                name="modal"
+                options={{
+                  headerShown: true,
+                  presentation: "modal",
+                  title: "Modal",
+                }}
+              />
+            </Stack.Protected>
           </Stack>
         </View>
       </View>
