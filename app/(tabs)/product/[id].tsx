@@ -297,7 +297,10 @@ export default function ProductDetailsScreen() {
                 </Text>
                 <Text className="mt-[4px] font-montserrat-regular text-xs text-neutral-1000">
                   {product.description}
-                  <Text className="text-brand-trending"> More</Text>
+                  <Text className="font-montserrat-medium text-brand-trending">
+                    {" "}
+                    More
+                  </Text>
                 </Text>
 
                 <View className="mt-[8px] flex-row flex-wrap gap-[8px]">
