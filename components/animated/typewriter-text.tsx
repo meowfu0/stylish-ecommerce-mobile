@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
-import { type StyleProp, Text, type ViewStyle, View } from "react-native";
+import { type StyleProp, type ViewStyle, View } from "react-native";
 import { useReducedMotion } from "react-native-reanimated";
+
+import {
+  StylishText,
+  type StylishTextVariant,
+} from "@/components/typography/stylish-text";
 
 const CHARACTER_INTERVAL = 45;
 
@@ -8,12 +13,14 @@ type TypewriterTextProps = {
   className: string;
   containerStyle?: StyleProp<ViewStyle>;
   text: string;
+  variant?: StylishTextVariant;
 };
 
 export function TypewriterText({
   className,
   containerStyle,
   text,
+  variant = "section-title",
 }: TypewriterTextProps) {
   const reduceMotion = useReducedMotion();
   const [visibleText, setVisibleText] = useState(reduceMotion ? text : "");
@@ -47,9 +54,9 @@ export function TypewriterText({
       className="items-center"
       style={containerStyle}
     >
-      <Text accessible={false} className={className}>
+      <StylishText accessible={false} className={className} variant={variant}>
         {visibleText || "\u00A0"}
-      </Text>
+      </StylishText>
     </View>
   );
 }
