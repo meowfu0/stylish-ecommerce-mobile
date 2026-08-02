@@ -6,11 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "@/constants/design-tokens";
 
 export type BottomNavigationRoute =
-  | "cart"
-  | "home"
-  | "search"
-  | "settings"
-  | "wishlist";
+  "cart" | "home" | "search" | "settings" | "wishlist";
 
 type BottomNavigationProps = {
   activeRoute: BottomNavigationRoute;
@@ -62,9 +58,7 @@ export function BottomNavigation({
 
   const renderTab = (item: (typeof TAB_ITEMS)[number]) => {
     const selected = activeRoute === item.route;
-    const tintColor = selected
-      ? colors.brand.primary
-      : colors.neutral[1000];
+    const tintColor = selected ? colors.brand.primary : colors.neutral[1000];
 
     return (
       <Pressable
@@ -83,7 +77,7 @@ export function BottomNavigation({
           style={{ height: 24, tintColor, width: 24 }}
         />
         <Text
-          className="mt-[2px] font-sans text-xs"
+          className="mt-[2px] font-montserrat-medium text-xs"
           style={{ color: tintColor }}
         >
           {item.label}
@@ -118,9 +112,7 @@ export function BottomNavigation({
           onPress={() => router.push("/(tabs)/cart")}
           style={{
             backgroundColor:
-              activeRoute === "cart"
-                ? colors.brand.cart
-                : colors.neutral[0],
+              activeRoute === "cart" ? colors.brand.cart : colors.neutral[0],
           }}
         >
           <Image
