@@ -1,7 +1,8 @@
 import { Image } from "expo-image";
-import { Pressable, Text, useWindowDimensions, View } from "react-native";
+import { Pressable, useWindowDimensions, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { StylishText } from "@/components/typography/stylish-text";
 import { spacing } from "@/constants/design-tokens";
 import { getResponsiveContentWidth } from "@/constants/responsive";
 
@@ -59,9 +60,12 @@ export function DesktopOnboardingScreen({
 
           <View className="w-[46%] px-[56px] py-[48px]">
             <View className="flex-row items-center justify-between">
-              <Text className="font-montserrat-semibold text-sm uppercase tracking-[2px] text-brand-primary">
+              <StylishText
+                className="tracking-[2px] text-brand-primary"
+                variant="eyebrow"
+              >
                 Step {step} of 3
-              </Text>
+              </StylishText>
 
               <Pressable
                 accessibilityHint="Closes onboarding and opens Sign In"
@@ -71,22 +75,29 @@ export function DesktopOnboardingScreen({
                 hitSlop={8}
                 onPress={onSkip}
               >
-                <Text className="font-montserrat-semibold text-sm text-neutral-700">
+                <StylishText
+                  className="text-neutral-700"
+                  variant="navigation-strong"
+                >
                   Skip
-                </Text>
+                </StylishText>
               </Pressable>
             </View>
 
             <View className="flex-1 justify-center">
-              <Text
+              <StylishText
                 accessibilityRole="header"
-                className="font-montserrat-bold text-[44px] leading-[52px] text-neutral-1000"
+                className="max-w-[420px] text-neutral-1000"
+                variant="page-title"
               >
                 {title}
-              </Text>
-              <Text className="mt-lg max-w-[420px] font-montserrat-regular text-base leading-[26px] text-neutral-550">
+              </StylishText>
+              <StylishText
+                className="mt-lg max-w-[420px] text-neutral-550"
+                variant="body"
+              >
                 {description}
-              </Text>
+              </StylishText>
             </View>
 
             <View>
@@ -115,9 +126,12 @@ export function DesktopOnboardingScreen({
                     className="h-[52px] w-[132px] cursor-pointer items-center justify-center rounded-xs border border-neutral-250 bg-neutral-0 active:opacity-70"
                     onPress={onPrevious}
                   >
-                    <Text className="font-montserrat-semibold text-sm text-neutral-700">
+                    <StylishText
+                      className="text-neutral-700"
+                      variant="navigation-strong"
+                    >
                       Previous
-                    </Text>
+                    </StylishText>
                   </Pressable>
                 ) : null}
 
@@ -127,9 +141,9 @@ export function DesktopOnboardingScreen({
                   className="h-[52px] flex-1 cursor-pointer items-center justify-center rounded-xs bg-brand-primary active:opacity-80"
                   onPress={onNext}
                 >
-                  <Text className="font-montserrat-semibold text-base text-neutral-0">
+                  <StylishText className="text-neutral-0" variant="button">
                     {nextLabel}
-                  </Text>
+                  </StylishText>
                 </Pressable>
               </View>
             </View>
