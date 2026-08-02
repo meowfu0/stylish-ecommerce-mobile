@@ -1,4 +1,3 @@
-import { Image } from "expo-image";
 import { usePathname, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
@@ -13,25 +12,36 @@ import Animated, {
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { spacing } from "@/constants/design-tokens";
+import { SplashLoadingDots } from "@/components/animated/splash-loading-dots";
+import {
+  STYLISH_LOGO_ASPECT_RATIO,
+  StylishLogo,
+} from "@/components/brand/stylish-logo";
+import { colors, spacing } from "@/constants/design-tokens";
+import { hasCompletedOnboarding } from "@/stores/onboarding-storage";
+import {
+  destinationForWorkspace,
+  workspacesFromAuthContext,
+} from "@/services/auth/auth-workspaces";
+import { useAuthSessionStore } from "@/stores/auth-session-store";
+import { useAuthWorkspaceStore } from "@/stores/auth-workspace-store";
 
-const FIGMA_FRAME = {
-  height: 812,
-  logoHeight: 100,
-  logoWidth: 275,
-  loadingCenterOffset: 164,
-  loadingHeight: 18,
-  loadingWidth: 42,
-} as const;
-
-const LOGO_ASPECT_RATIO = FIGMA_FRAME.logoWidth / FIGMA_FRAME.logoHeight;
-const SPLASH_DISPLAY_DURATION = 900;
+const MAX_DESKTOP_LOGO_WIDTH = 217;
+const MAX_MOBILE_LOGO_WIDTH = 180;
+const SPLASH_DISPLAY_DURATION = 1_600;
+const REDUCED_MOTION_DISPLAY_DURATION = 900;
 
 export default function SplashScreen() {
   const { height, width } = useWindowDimensions();
   const pathname = usePathname();
   const router = useRouter();
   const reduceMotion = useReducedMotion();
+  const authReason = useAuthSessionStore((state) => state.reason);
+  const authStatus = useAuthSessionStore((state) => state.status);
+  const authUser = useAuthSessionStore((state) => state.user);
+  const selectWorkspace = useAuthWorkspaceStore(
+    (state) => state.selectWorkspace,
+  );
   const logoProgress = useSharedValue(reduceMotion ? 1 : 0);
   const isDesktopWeb = Platform.OS === "web" && width >= 1024;
 
@@ -61,79 +71,134 @@ export default function SplashScreen() {
       return;
     }
 
-    if (isDesktopWeb) {
-      router.replace("/(tabs)/home");
+    let active = true;
+    if (authStatus === "restoring") {
       return;
     }
 
-    const transitionTimer = setTimeout(() => {
-      router.replace("/onboarding");
-    }, SPLASH_DISPLAY_DURATION);
+    const completionState = hasCompletedOnboarding();
+    const transitionTimer = setTimeout(
+      () => {
+        void completionState.then((onboardingCompleted) => {
+          if (!active) {
+            return;
+          }
 
-    return () => clearTimeout(transitionTimer);
-  }, [isDesktopWeb, pathname, router]);
+          if (authStatus === "authenticated" && authUser) {
+            const workspaces = workspacesFromAuthContext(authUser);
+            if (workspaces.length === 1) {
+              selectWorkspace(workspaces[0]);
+              router.replace(destinationForWorkspace(workspaces[0]));
+              return;
+            }
 
-  const logoWidth = Math.min(
-    FIGMA_FRAME.logoWidth,
-    Math.max(0, width - spacing.lg * 2),
-  );
-  const logoHeight = logoWidth / LOGO_ASPECT_RATIO;
-  const verticalScale = Math.min(1, height / FIGMA_FRAME.height);
-  const loadingOffset = FIGMA_FRAME.loadingCenterOffset * verticalScale;
+            router.replace("/auth/choose-workspace");
+            return;
+          }
 
-  if (isDesktopWeb) {
-    return <View className="flex-1 bg-neutral-25" />;
-  }
+          if (!onboardingCompleted) {
+            router.replace("/onboarding");
+            return;
+          }
+
+          router.replace(
+            authReason === "session-expired"
+              ? { pathname: "/sign-in", params: { reason: "session-expired" } }
+              : "/sign-in",
+          );
+        });
+      },
+      reduceMotion ? REDUCED_MOTION_DISPLAY_DURATION : SPLASH_DISPLAY_DURATION,
+    );
+
+    return () => {
+      active = false;
+      clearTimeout(transitionTimer);
+    };
+  }, [
+    authReason,
+    authStatus,
+    authUser,
+    pathname,
+    reduceMotion,
+    router,
+    selectWorkspace,
+  ]);
+
+  const responsiveLogoWidth = isDesktopWeb
+    ? Math.min(MAX_DESKTOP_LOGO_WIDTH, width * 0.18)
+    : Math.min(MAX_MOBILE_LOGO_WIDTH, Math.max(0, width - spacing.xxl));
+  const logoWidth = Math.max(0, responsiveLogoWidth);
+  const logoHeight = logoWidth / STYLISH_LOGO_ASPECT_RATIO;
+  const contentGap = isDesktopWeb
+    ? Math.min(spacing.xxl, Math.max(spacing.xl, height * 0.054))
+    : spacing.xl;
+  const pinkGlowSize = isDesktopWeb
+    ? Math.min(421, width * 0.33)
+    : Math.min(280, width * 0.75);
+  const blueGlowSize = isDesktopWeb
+    ? Math.min(461, width * 0.35)
+    : Math.min(300, width * 0.8);
+  const glowBlur = isDesktopWeb ? 90 : 56;
+  const dotSize = isDesktopWeb ? 10 : 8;
+  const dotGap = isDesktopWeb ? 10 : 8;
 
   return (
     <View className="flex-1 bg-neutral-0">
       <StatusBar hidden />
 
-      <SafeAreaView className="flex-1 bg-neutral-0">
+      <SafeAreaView className="flex-1">
         <View className="relative flex-1 overflow-hidden">
           <View
+            pointerEvents="none"
             style={[
-              styles.logoContainer,
+              styles.glow,
               {
-                height: logoHeight,
-                transform: [
-                  { translateX: -logoWidth / 2 },
-                  { translateY: -logoHeight / 2 },
-                ],
-                width: logoWidth,
+                backgroundColor: colors.brand.pinkSoft,
+                filter:
+                  Platform.OS === "web"
+                    ? `blur(${glowBlur}px)`
+                    : [{ blur: glowBlur }],
+                height: pinkGlowSize,
+                left: -pinkGlowSize * 0.34,
+                opacity: 0.24,
+                top: -pinkGlowSize * 0.3,
+                width: pinkGlowSize,
               },
             ]}
-          >
-            <Animated.View style={[styles.fill, logoAnimatedStyle]}>
-              <Image
-                accessibilityLabel="Stylish"
-                accessibilityRole="image"
-                accessible
-                contentFit="contain"
-                source={require("@/assets/images/stylish-logo.svg")}
-                style={styles.fill}
-              />
-            </Animated.View>
-          </View>
+          />
+          <View
+            pointerEvents="none"
+            style={[
+              styles.glow,
+              {
+                backgroundColor: colors.brand.blueSoft,
+                bottom: -blueGlowSize * 0.32,
+                filter:
+                  Platform.OS === "web"
+                    ? `blur(${glowBlur}px)`
+                    : [{ blur: glowBlur }],
+                height: blueGlowSize,
+                opacity: 0.32,
+                right: -blueGlowSize * 0.26,
+                width: blueGlowSize,
+              },
+            ]}
+          />
 
           <View
-            accessibilityLabel="Loading Stylish"
-            accessibilityRole="progressbar"
-            accessible
-            className="absolute left-1/2 top-1/2 h-[18px] w-[42px]"
-            style={{
-              transform: [
-                { translateX: -FIGMA_FRAME.loadingWidth / 2 },
-                { translateY: loadingOffset - FIGMA_FRAME.loadingHeight / 2 },
-              ],
-            }}
+            pointerEvents="none"
+            style={[styles.content, { rowGap: contentGap }]}
           >
-            <Image
-              accessible={false}
-              contentFit="contain"
-              source={require("@/assets/images/splash-loading.svg")}
-              style={styles.loadingImage}
-            />
+            <Animated.View
+              style={[
+                { height: logoHeight, width: logoWidth },
+                logoAnimatedStyle,
+              ]}
+            >
+              <StylishLogo testID="splash-brand-logo" width={logoWidth} />
+            </Animated.View>
+            <SplashLoadingDots gap={dotGap} size={dotSize} />
           </View>
         </View>
       </SafeAreaView>
@@ -142,17 +207,13 @@ export default function SplashScreen() {
 }
 
 const styles = StyleSheet.create({
-  fill: {
-    height: "100%",
-    width: "100%",
+  content: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  loadingImage: {
-    height: "100%",
-    width: "100%",
-  },
-  logoContainer: {
-    left: "50%",
+  glow: {
+    borderRadius: 9999,
     position: "absolute",
-    top: "50%",
   },
 });
