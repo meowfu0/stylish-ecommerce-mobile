@@ -5,48 +5,226 @@
 html,
 body,
 #root {
+  height: 100%;
   width: 100%;
   min-width: 0;
 }
 
 body {
+  font-family: "Montserrat_400Regular", "Montserrat", Arial, sans-serif;
   margin: 0;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
-#root {
-  min-height: 100%;
+button,
+input,
+textarea {
+  font: inherit;
 }
 
-[data-testid="storefront-page-root"],
-[data-testid="storefront-page-motion"],
-[data-testid="storefront-natural-page"] {
-  height: auto !important;
-  min-height: 100%;
-  overflow: visible !important;
+/*
+ * React Native Web renders TextInput as an HTML input or textarea. The field
+ * shell owns every visible surface; the nested browser control must stay
+ * transparent in default, focus, active, selected, and password-manager states.
+ */
+input,
+textarea {
+  -webkit-appearance: none;
+  appearance: none;
+  background-color: transparent !important;
+  background-image: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-sizing: border-box;
+  box-shadow: none !important;
+  min-width: 0;
+  outline: 0 !important;
 }
 
-html:has([data-testid="storefront-page-root"]),
-body:has([data-testid="storefront-page-root"]),
-#root:has([data-testid="storefront-page-root"]) {
-  height: auto !important;
-  min-height: 100%;
-  overflow: visible !important;
+input:focus,
+input:focus-visible,
+input:active,
+textarea:focus,
+textarea:focus-visible,
+textarea:active {
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  outline: 0 !important;
 }
 
-body:has([data-testid="storefront-page-root"]) {
-  min-height: 100vh;
+input::selection,
+textarea::selection {
+  background-color: rgba(248, 55, 88, 0.18);
+  color: inherit;
 }
 
-#root *:has([data-testid="storefront-page-root"]) {
-  inset: auto !important;
-  flex: 0 0 auto !important;
-  width: 100%;
-  height: auto !important;
-  min-height: 100%;
-  max-height: none !important;
-  overflow: visible !important;
-  position: relative !important;
+input::-ms-clear,
+input::-ms-reveal {
+  display: none;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+textarea:-webkit-autofill:active,
+input:autofill,
+textarea:autofill {
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  caret-color: currentColor !important;
+  -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
+  box-shadow: 0 0 0 1000px transparent inset !important;
+  -webkit-text-fill-color: currentColor !important;
+  transition: background-color 9999s ease-out 0s;
+}
+
+.st-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(248, 188, 198, 0.45) transparent;
+  overscroll-behavior: contain;
+}
+
+.st-scroll::-webkit-scrollbar {
+  width: 10px;
+  background: transparent;
+}
+
+.st-scroll::-webkit-scrollbar-track,
+.st-scroll::-webkit-scrollbar-corner {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.st-scroll::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.st-scroll::-webkit-scrollbar-thumb {
+  min-height: 40px;
+  border-radius: 999px;
+  border-right: 6px solid transparent;
+  background-color: rgba(248, 188, 198, 0.45);
+  background-clip: padding-box;
+  transition:
+    background-color 180ms ease,
+    opacity 180ms ease;
+}
+
+.st-scroll:hover,
+.st-scroll:focus-within,
+.st-scroll.is-scrolling,
+.st-scroll--demo-scrolling {
+  scrollbar-color: rgba(248, 188, 198, 0.7) transparent;
+}
+
+.st-scroll:hover::-webkit-scrollbar-thumb,
+.st-scroll:focus-within::-webkit-scrollbar-thumb,
+.st-scroll.is-scrolling::-webkit-scrollbar-thumb,
+.st-scroll--demo-scrolling::-webkit-scrollbar-thumb {
+  background-color: rgba(248, 188, 198, 0.7);
+}
+
+.st-scroll::-webkit-scrollbar-thumb:hover,
+.st-scroll--demo-hover::-webkit-scrollbar-thumb {
+  background-color: #f83758;
+}
+
+.st-scroll::-webkit-scrollbar-thumb:active,
+.st-scroll--demo-active::-webkit-scrollbar-thumb {
+  background-color: #e62f50;
+}
+
+.st-scroll:focus-visible {
+  scrollbar-color: #f83758 transparent;
+}
+
+.st-scroll:focus-visible::-webkit-scrollbar-thumb {
+  background-color: #f83758;
+}
+
+@media (max-width: 767px) and (pointer: coarse) {
+  .st-scroll {
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .st-scroll::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+}
+
+@keyframes st-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+
+  40% {
+    opacity: 1;
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes st-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes st-drift {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  to {
+    transform: translate3d(0, -18px, 0) scale(1.06);
+  }
+}
+
+@keyframes st-shimmer {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.st-shimmer {
+  animation: st-shimmer 1.4s ease-in-out infinite;
+}
+
+.st-dot {
+  animation: st-dot 1.3s infinite ease-in-out both;
+}
+
+.st-enter {
+  animation: st-fade-up 0.45s ease-out both;
+}
+
+.st-drift {
+  animation: st-drift 9s ease-in-out infinite alternate;
 }
 
 :root {
@@ -140,9 +318,15 @@ html {
 
 [data-testid="catalog-options-trigger"],
 [data-testid="catalog-option-row"],
-[data-testid="catalog-options-close"] {
+[data-testid="catalog-options-close"],
+[data-testid="catalog-filter-choice"],
+[data-testid="catalog-filter-section-toggle"],
+[data-testid="catalog-filter-chip"],
+[data-testid="catalog-filter-apply"] {
   transition:
     box-shadow 240ms var(--stylish-motion-ease),
+    background-color 240ms var(--stylish-motion-ease),
+    border-color 240ms var(--stylish-motion-ease),
     filter 240ms var(--stylish-motion-ease),
     opacity 240ms var(--stylish-motion-ease),
     transform 240ms var(--stylish-motion-ease);
@@ -154,9 +338,7 @@ html {
     transform: translate3d(0, -6px, 0) scale(1.012);
   }
 
-  [data-testid="motion-card"]:hover
-    [data-testid="motion-image-frame"]
-    > * {
+  [data-testid="motion-card"]:hover [data-testid="motion-image-frame"] > * {
     transform: scale(1.045);
   }
 
@@ -178,10 +360,475 @@ html {
     filter: brightness(0.985);
     transform: translate3d(2px, 0, 0);
   }
+
+  [data-testid="catalog-filter-choice"]:hover,
+  [data-testid="catalog-filter-section-toggle"]:hover,
+  [data-testid="catalog-filter-chip"]:hover {
+    filter: brightness(0.985);
+  }
+
+  [data-testid="catalog-filter-choice"]:hover {
+    transform: translate3d(2px, 0, 0);
+  }
 }
 
 [data-testid="motion-card"]:active {
   transform: translate3d(0, -2px, 0) scale(0.995);
+}
+
+@keyframes onboarding-header-enter {
+  from {
+    transform: translate3d(0, -10px, 0);
+  }
+
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes onboarding-card-enter {
+  from {
+    transform: translate3d(0, 18px, 0) scale(0.992);
+  }
+
+  to {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes onboarding-image-enter {
+  from {
+    transform: scale(1.025);
+  }
+
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes onboarding-content-enter {
+  from {
+    transform: translate3d(14px, 0, 0);
+  }
+
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+[data-testid^="onboarding-step-"][data-testid$="-header"] {
+  animation: onboarding-header-enter 360ms var(--stylish-motion-ease) both;
+}
+
+[data-testid^="onboarding-step-"][data-testid$="-card"] {
+  animation: onboarding-card-enter 480ms 70ms var(--stylish-motion-ease) both;
+}
+
+[data-testid^="onboarding-step-"][data-testid$="-image-frame"] {
+  animation: onboarding-image-enter 520ms 150ms var(--stylish-motion-ease) both;
+}
+
+[data-testid^="onboarding-step-"][data-testid$="-content"] {
+  animation: onboarding-content-enter 440ms 190ms var(--stylish-motion-ease)
+    both;
+}
+
+@keyframes auth-visual-enter {
+  from {
+    opacity: 0.7;
+    transform: translate3d(-12px, 0, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes auth-card-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(20px, 0, 0) scale(0.992);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes auth-content-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes auth-state-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -6px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+[data-testid="auth-visual-pane"] {
+  animation: auth-visual-enter 520ms var(--stylish-motion-ease) both;
+  background: #fcf3f6 !important;
+}
+
+[data-testid="auth-photo-fade"] {
+  background: linear-gradient(
+    90deg,
+    #fcf3f6 0%,
+    rgba(252, 243, 246, 0.45) 50%,
+    rgba(252, 243, 246, 0) 100%
+  );
+}
+
+[data-testid="auth-editorial-copy"] {
+  animation: auth-content-enter 480ms 160ms var(--stylish-motion-ease) both;
+}
+
+[data-testid="auth-editorial-title"],
+[data-testid="auth-editorial-description"] {
+  display: block;
+}
+
+[data-testid="auth-sign-in-card"],
+[data-testid="auth-create-account-card"],
+[data-testid="auth-verify-email-card"],
+[data-testid="auth-forgot-password-card"],
+[data-testid="auth-reset-password-card"] {
+  animation: auth-card-enter 520ms 90ms var(--stylish-motion-ease) both;
+  box-shadow: 0 18px 24px rgba(17, 34, 59, 0.28);
+}
+
+[data-testid="auth-sign-in-submit"],
+[data-testid="auth-create-account-submit"] {
+  box-shadow: 0 6px 8px rgba(248, 55, 88, 0.75);
+}
+
+[data-testid="auth-sign-in-content"],
+[data-testid="auth-create-account-content"],
+[data-testid="auth-verify-email-content"],
+[data-testid="auth-forgot-password-content"],
+[data-testid="auth-reset-password-content"] {
+  animation: auth-content-enter 440ms 190ms var(--stylish-motion-ease) both;
+}
+
+[data-testid="auth-workspace-header"],
+[data-testid="auth-workspace-intro"] {
+  animation: auth-content-enter 440ms var(--stylish-motion-ease) both;
+}
+
+[data-testid="auth-workspace-intro"] {
+  animation-delay: 70ms;
+}
+
+[data-testid^="auth-workspace-card-"] {
+  animation: auth-card-enter 460ms var(--stylish-motion-ease) both;
+  transition:
+    border-color 260ms var(--stylish-motion-ease),
+    box-shadow 260ms var(--stylish-motion-ease),
+    transform 260ms var(--stylish-motion-ease);
+}
+
+[data-testid="auth-workspace-card-0"] {
+  animation-delay: 120ms;
+}
+
+[data-testid="auth-workspace-card-1"] {
+  animation-delay: 170ms;
+}
+
+[data-testid="auth-workspace-card-2"] {
+  animation-delay: 220ms;
+}
+
+[data-testid^="auth-workspace-continue-"] {
+  box-shadow: 0 6px 8px rgba(248, 55, 88, 0.52);
+}
+
+[data-testid="auth-workspace-sign-out"]:focus-visible,
+[data-testid^="auth-workspace-continue-"]:focus-visible,
+[data-testid="auth-workspace-status-action"]:focus-visible {
+  outline: 3px solid rgba(67, 146, 249, 0.45);
+  outline-offset: 3px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-testid^="auth-workspace-card-"]:hover {
+    border-color: #cfe2fc;
+    box-shadow: 0 16px 30px rgba(23, 34, 59, 0.1);
+    transform: translate3d(0, -4px, 0);
+  }
+
+  [data-testid^="auth-workspace-continue-"]:hover {
+    box-shadow: 0 8px 12px rgba(248, 55, 88, 0.58);
+  }
+}
+
+[data-testid="auth-verify-email-card"]
+  [data-testid="stylish-type-section-title"] {
+  font-size: 30px !important;
+  line-height: 38px !important;
+  letter-spacing: -0.45px !important;
+}
+
+[data-testid="auth-verify-email-card"] [data-testid="stylish-type-body"] {
+  font-size: 15px !important;
+  line-height: 24px !important;
+}
+
+[data-testid="auth-forgot-password-title"] {
+  font-size: 30px !important;
+  line-height: 38px !important;
+  letter-spacing: -0.45px !important;
+}
+
+[data-testid="auth-forgot-password-description"] {
+  font-size: 15px !important;
+  line-height: 24px !important;
+}
+
+[data-testid="auth-reset-password-title"] {
+  font-size: 30px !important;
+  line-height: 38px !important;
+  letter-spacing: -0.45px !important;
+}
+
+[data-testid="auth-reset-password-description"] {
+  font-size: 15px !important;
+  line-height: 24px !important;
+}
+
+[data-testid="auth-verify-email-card"] [data-testid="stylish-type-button"],
+[data-testid="auth-verify-email-different-email"]
+  [data-testid="stylish-type-navigation-strong"] {
+  font-size: 16px !important;
+  line-height: 16px !important;
+}
+
+[data-testid="auth-forgot-password-submit"] [data-testid="stylish-type-button"],
+[data-testid="auth-forgot-password-back"]
+  [data-testid="stylish-type-navigation-strong"] {
+  font-size: 16px !important;
+  line-height: 16px !important;
+}
+
+[data-testid="auth-reset-password-submit"] [data-testid="stylish-type-button"],
+[data-testid="auth-reset-password-primary-action"]
+  [data-testid="stylish-type-button"] {
+  font-size: 16px !important;
+  line-height: 16px !important;
+}
+
+[data-testid^="auth-"][data-testid$="-input-shell"] {
+  background-clip: padding-box;
+  box-sizing: border-box;
+  isolation: isolate;
+  overflow: hidden;
+  outline: 0;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease;
+}
+
+[data-testid^="auth-"][data-testid$="-input-shell"] * {
+  box-sizing: border-box;
+}
+
+[data-testid^="auth-"][data-testid$="-visibility"],
+[data-testid^="auth-"][data-testid$="-visibility"] > *,
+[data-testid^="auth-"][data-testid$="-visibility"] img,
+[data-testid^="auth-"][data-testid$="-input-shell"] [data-expoimage] {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+}
+
+[data-testid^="auth-"][data-testid$="-input-shell"]:focus-within {
+  background-color: #fff !important;
+  border-color: #f83758 !important;
+  box-shadow: 0 0 0 3px rgba(248, 55, 88, 0.18);
+}
+
+[data-testid^="auth-"][data-testid$="-input-shell"]:has(
+    [data-testid^="auth-"][data-testid$="-input"][aria-invalid="true"]
+  ) {
+  background-color: #fff !important;
+  border-color: #c81e3e !important;
+}
+
+[data-testid="auth-alert-banner"],
+[data-testid^="auth-verify-email-state:"],
+[data-testid^="auth-forgot-password-state:"],
+[data-testid^="auth-reset-password-state:"],
+[data-testid^="auth-"][data-testid$="-error"] {
+  animation: auth-state-enter 220ms var(--stylish-motion-ease) both;
+}
+
+[data-testid="auth-verify-email-card"],
+[data-testid="auth-forgot-password-card"],
+[data-testid="auth-reset-password-card"] {
+  transition: min-height 260ms var(--stylish-motion-ease);
+}
+
+[data-testid="auth-sign-in-submit"],
+[data-testid="auth-create-account-submit"],
+[data-testid="auth-verify-email-primary"],
+[data-testid="auth-verify-email-resend"],
+[data-testid="auth-forgot-password-submit"],
+[data-testid="auth-forgot-password-resend"],
+[data-testid="auth-forgot-password-different-email"],
+[data-testid="auth-forgot-password-back"],
+[data-testid="auth-reset-password-submit"],
+[data-testid="auth-reset-password-primary-action"] {
+  transition:
+    filter 180ms ease,
+    box-shadow 180ms var(--stylish-motion-ease),
+    opacity 180ms ease,
+    transform 180ms var(--stylish-motion-ease);
+}
+
+[data-testid^="auth-"]:focus-visible {
+  outline: 3px solid rgba(248, 55, 88, 0.26);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-testid^="auth-"][data-testid$="-input-shell"]:not(:focus-within):hover {
+    border-color: #c4c4c4 !important;
+  }
+
+  [data-testid="auth-sign-in-submit"]:hover,
+  [data-testid="auth-create-account-submit"]:hover,
+  [data-testid="auth-verify-email-primary"]:hover:not([aria-disabled="true"]),
+  [data-testid="auth-forgot-password-submit"]:hover:not([aria-disabled="true"]),
+  [data-testid="auth-forgot-password-resend"]:hover:not([aria-disabled="true"]),
+  [data-testid="auth-reset-password-submit"]:hover:not([aria-disabled="true"]),
+  [data-testid="auth-reset-password-primary-action"]:hover:not(
+      [aria-disabled="true"]
+    ) {
+    filter: brightness(1.035);
+    box-shadow: 0 9px 18px rgba(248, 55, 88, 0.4);
+    transform: translate3d(0, -2px, 0);
+  }
+}
+
+@media (min-width: 1024px) {
+  [data-testid="stylish-type-page-title"] {
+    font-family:
+      "Montserrat_700Bold", "Montserrat", Arial, sans-serif !important;
+    font-size: clamp(40px, calc(0.962vw + 30.154px), 44px) !important;
+    line-height: clamp(48px, calc(0.962vw + 38.154px), 52px) !important;
+    letter-spacing: -0.03em !important;
+  }
+
+  [data-testid="stylish-type-section-title"] {
+    font-family:
+      "Montserrat_700Bold", "Montserrat", Arial, sans-serif !important;
+    font-size: clamp(28px, calc(0.962vw + 18.154px), 32px) !important;
+    line-height: clamp(36px, calc(0.962vw + 26.154px), 40px) !important;
+    letter-spacing: -0.02em !important;
+  }
+
+  [data-testid="stylish-type-hero-title"] {
+    font-family:
+      "Montserrat_700Bold", "Montserrat", Arial, sans-serif !important;
+    font-size: clamp(40px, calc(3.846vw + 0.615px), 56px) !important;
+    line-height: clamp(48px, calc(3.846vw + 8.615px), 64px) !important;
+    letter-spacing: -0.035em !important;
+  }
+
+  [data-testid="stylish-type-body"] {
+    font-family:
+      "Montserrat_400Regular", "Montserrat", Arial, sans-serif !important;
+    font-size: clamp(15px, calc(0.24vw + 12.54px), 16px) !important;
+    line-height: clamp(24px, calc(0.481vw + 19.077px), 26px) !important;
+    letter-spacing: 0 !important;
+  }
+
+  [data-testid="stylish-type-button"] {
+    font-family:
+      "Montserrat_600SemiBold", "Montserrat", Arial, sans-serif !important;
+    font-size: 16px !important;
+    line-height: 20px !important;
+    letter-spacing: 0.01em !important;
+  }
+
+  [data-testid="stylish-type-form-label"] {
+    font-family:
+      "Montserrat_500Medium", "Montserrat", Arial, sans-serif !important;
+    font-size: clamp(13px, calc(0.24vw + 10.54px), 14px) !important;
+    line-height: 20px !important;
+    letter-spacing: 0.01em !important;
+  }
+
+  [data-testid="stylish-type-helper"] {
+    font-family:
+      "Montserrat_400Regular", "Montserrat", Arial, sans-serif !important;
+    font-size: 12px !important;
+    line-height: 18px !important;
+    letter-spacing: 0.005em !important;
+  }
+
+  [data-testid="stylish-type-navigation"],
+  [data-testid="stylish-type-navigation-strong"],
+  [data-testid="stylish-type-eyebrow"] {
+    font-size: 14px !important;
+    line-height: 20px !important;
+    letter-spacing: 0.005em !important;
+  }
+
+  [data-testid^="storefront-desktop-header:"] {
+    position: sticky !important;
+    top: 0;
+    z-index: 60;
+    transition:
+      border-color 260ms var(--stylish-motion-ease),
+      box-shadow 260ms var(--stylish-motion-ease);
+  }
+
+  [data-testid="storefront-desktop-header-inner"] {
+    transition: height 260ms var(--stylish-motion-ease);
+  }
+
+  [data-testid="storefront-desktop-header:compact"] {
+    box-shadow: 0 10px 30px rgba(39, 27, 33, 0.08);
+  }
+
+  [data-testid="storefront-desktop-header:compact"]
+    [data-testid="storefront-desktop-header-inner"] {
+    height: 64px;
+  }
+
+  [data-testid="storefront-header-logo-full"] {
+    transition:
+      opacity 220ms var(--stylish-motion-ease),
+      transform 260ms var(--stylish-motion-ease);
+    will-change: opacity, transform;
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  [data-testid="storefront-desktop-header:compact"]
+    [data-testid="storefront-header-logo-full"] {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(0.9);
+  }
 }
 
 @media (max-width: 1023px) {
@@ -209,10 +856,68 @@ html {
     transition-duration: 0.01ms !important;
   }
 
+  [data-testid="onboarding-progress-pill"] {
+    transition: none !important;
+  }
+
   [data-testid^="scroll-reveal:"],
   [data-testid="motion-card"],
-  [data-testid="motion-image-frame"] > * {
+  [data-testid="motion-image-frame"] > *,
+  [data-testid^="onboarding-step-"][data-testid$="-header"],
+  [data-testid^="onboarding-step-"][data-testid$="-card"],
+  [data-testid^="onboarding-step-"][data-testid$="-image-frame"],
+  [data-testid^="onboarding-step-"][data-testid$="-content"] {
+    animation: none !important;
     opacity: 1 !important;
     transform: none !important;
+  }
+
+  [data-testid="auth-visual-pane"],
+  [data-testid="auth-editorial-copy"],
+  [data-testid="auth-sign-in-card"],
+  [data-testid="auth-sign-in-content"],
+  [data-testid="auth-create-account-card"],
+  [data-testid="auth-create-account-content"],
+  [data-testid="auth-verify-email-card"],
+  [data-testid="auth-verify-email-content"],
+  [data-testid="auth-forgot-password-card"],
+  [data-testid="auth-forgot-password-content"],
+  [data-testid="auth-reset-password-card"],
+  [data-testid="auth-reset-password-content"],
+  [data-testid="auth-workspace-header"],
+  [data-testid="auth-workspace-intro"],
+  [data-testid^="auth-workspace-card-"] {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  [data-testid="auth-alert-banner"],
+  [data-testid^="auth-verify-email-state:"],
+  [data-testid^="auth-forgot-password-state:"],
+  [data-testid^="auth-reset-password-state:"],
+  [data-testid^="auth-"][data-testid$="-error"] {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .st-dot,
+  .st-enter,
+  .st-drift,
+  .st-shimmer {
+    animation: none !important;
+  }
+
+  .st-dot {
+    opacity: 0.55;
+  }
+
+  .st-scroll {
+    scroll-behavior: auto;
+  }
+
+  .st-scroll::-webkit-scrollbar-thumb {
+    transition: none;
   }
 }

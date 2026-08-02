@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "stylishecommercemobile",
+    "scheme": ["stylishecommercemobile", "stylish"],
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -24,10 +24,11 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/stylish-auth-logo-mark.png"
     },
     "plugins": [
       "expo-router",
+      "expo-secure-store",
       [
         "expo-image-picker",
         {
@@ -39,8 +40,8 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
+          "image": "./assets/images/stylish-auth-logo-mark.png",
+          "imageWidth": 104,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
           "dark": {
