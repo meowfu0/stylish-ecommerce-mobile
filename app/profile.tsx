@@ -328,7 +328,7 @@ export default function ProfileScreen() {
                 <View className="mb-xl">
                   <Text
                     accessibilityRole="header"
-                    className="font-serif text-[38px] leading-[46px] text-neutral-1000"
+                    className="font-montserrat-bold text-display tracking-[-0.8px] text-neutral-1000"
                   >
                     Account details
                   </Text>
