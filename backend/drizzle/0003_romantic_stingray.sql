@@ -1,0 +1,1 @@
+CREATE INDEX "inventory_movements_merchant_created_at_idx" ON "inventory_movements" USING btree ("merchant_id","created_at","id");
