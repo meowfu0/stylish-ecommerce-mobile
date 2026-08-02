@@ -5,6 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import {
   type PropsWithChildren,
   type RefObject,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -16,7 +17,6 @@ import {
   Pressable,
   ScrollView,
   Text,
-  TextInput,
   useWindowDimensions,
   View,
 } from "react-native";
@@ -33,8 +33,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { HeroWritingHeadline } from "@/components/animated/hero-writing-headline";
 import { ScrollReveal } from "@/components/animated/scroll-reveal";
+import { StylishTextInput } from "@/components/forms/stylish-text-input";
+import { CatalogFilterChips } from "@/components/catalog/catalog-filter-chips";
 import { CatalogProductCard } from "@/components/catalog/catalog-product-card";
 import { FilterButton } from "@/components/catalog/filter-button";
+import { ProductFilterSheet } from "@/components/catalog/product-filter-sheet";
 import { ProductOptionsSheet } from "@/components/catalog/product-options-sheet";
 import { SortButton } from "@/components/catalog/sort-button";
 import { HomeHeader } from "@/components/home/home-header";
@@ -44,18 +47,24 @@ import { StorefrontFooter } from "@/components/storefront/storefront-footer";
 import { StorefrontHeader } from "@/components/storefront/storefront-header";
 import { StorefrontProductCard } from "@/components/storefront/storefront-product-card";
 import { StorefrontSectionHeader } from "@/components/storefront/storefront-section-header";
-import { colors, spacing } from "@/constants/design-tokens";
 import {
-  applyHomeProductOptions,
-  HOME_PRODUCT_PRICE_FILTER_OPTIONS,
-  HOME_PRODUCT_SORT_OPTIONS,
-  type HomeProductPriceFilter,
-  type HomeProductSort,
-} from "@/constants/home-data";
+  applyCatalogProductOptions,
+  CATALOG_SORT_OPTIONS,
+  cloneCatalogFilters,
+  EMPTY_CATALOG_FILTERS,
+  getActiveCatalogFilterCount,
+  getCatalogFilterChips,
+  removeCatalogFilterChip,
+  type CatalogFilterChip,
+  type CatalogFilterState,
+  type CatalogSort,
+} from "@/constants/catalog-options";
+import { colors, spacing } from "@/constants/design-tokens";
 import { filterSearchableProducts } from "@/constants/search-data";
 import {
   STOREFRONT_CATEGORIES,
   STOREFRONT_EDITORIAL_IMAGE,
+  STOREFRONT_HERO_IMAGE,
   STOREFRONT_NEW_ARRIVALS,
   STOREFRONT_TRENDING_PRODUCTS,
 } from "@/constants/storefront-data";
@@ -70,6 +79,11 @@ const TABLET_BREAKPOINT = 720;
 const TWO_COLUMN_PHONE_BREAKPOINT = 360;
 const MAX_CONTENT_WIDTH = 1440;
 const MAX_FEATURE_WIDTH = 1600;
+const MAX_HERO_WIDTH = 1440;
+const ALL_STOREFRONT_PRODUCTS = [
+  ...STOREFRONT_TRENDING_PRODUCTS,
+  ...STOREFRONT_NEW_ARRIVALS,
+] as const;
 
 function clamp(minimum: number, value: number, maximum: number) {
   return Math.min(maximum, Math.max(minimum, value));
@@ -85,28 +99,14 @@ function StorefrontPageScroller({
   desktopWeb,
   scrollRef,
 }: StorefrontPageScrollerProps) {
-  if (Platform.OS === "web") {
-    return (
-      <View
-        accessibilityLabel="Stylish storefront home"
-        className="bg-neutral-25"
-        style={{
-          minWidth: 0,
-          paddingBottom: desktopWeb ? 0 : 58,
-          width: "100%",
-        }}
-        testID="storefront-natural-page"
-      >
-        {children}
-      </View>
-    );
-  }
-
   return (
     <ScrollView
       accessibilityLabel="Stylish storefront home"
       className="flex-1 bg-neutral-25"
-      contentContainerStyle={{ width: "100%" }}
+      contentContainerStyle={{
+        paddingBottom: desktopWeb ? 0 : 58,
+        width: "100%",
+      }}
       contentInsetAdjustmentBehavior="never"
       decelerationRate="normal"
       directionalLockEnabled
@@ -116,7 +116,8 @@ function StorefrontPageScroller({
       scrollEventThrottle={16}
       scrollsToTop
       showsVerticalScrollIndicator={desktopWeb}
-      style={{ minWidth: 0, width: "100%" }}
+      style={{ minHeight: 0, minWidth: 0, width: "100%" }}
+      testID="storefront-page-scroller"
     >
       {children}
     </ScrollView>
@@ -124,34 +125,48 @@ function StorefrontPageScroller({
 }
 
 type StorefrontTextLinkProps = {
+  editorial?: boolean;
   label: string;
   light?: boolean;
   onPress: () => void;
 };
 
 function StorefrontTextLink({
+  editorial = false,
   label,
   light = false,
   onPress,
 }: StorefrontTextLinkProps) {
+  const borderClass = light
+    ? "border-neutral-0"
+    : editorial
+      ? "border-brand-editorialAccent"
+      : "border-brand-primary";
+  const textClass = light
+    ? "text-neutral-0"
+    : editorial
+      ? "text-ink-editorialAction"
+      : "text-brand-primary";
+  const iconColor = light
+    ? colors.neutral[0]
+    : editorial
+      ? colors.brand.editorialAccent
+      : colors.brand.primary;
+
   return (
     <Pressable
       accessibilityLabel={label}
       accessibilityRole="link"
-      className={`min-h-[44px] flex-row items-center border-b-2 pb-xs pt-sm active:opacity-60 ${
-        light ? "border-neutral-0" : "border-brand-primary"
-      }`}
+      className={`min-h-[44px] flex-row items-center border-b-2 pb-xs pt-sm active:opacity-60 ${borderClass}`}
       onPress={onPress}
     >
       <Text
-        className={`font-montserrat-bold text-xs uppercase tracking-[1.5px] ${
-          light ? "text-neutral-0" : "text-brand-primary"
-        }`}
+        className={`font-montserrat-bold text-xs uppercase tracking-[1.5px] ${textClass}`}
       >
         {label}
       </Text>
       <MaterialIcons
-        color={light ? colors.neutral[0] : colors.brand.primary}
+        color={iconColor}
         name="arrow-forward"
         size={16}
         style={{ marginLeft: spacing.sm }}
@@ -171,11 +186,15 @@ export function StorefrontHome() {
   const cartQuantity = useCartStore(selectCartQuantity);
   const [activeOptionsSheet, setActiveOptionsSheet] =
     useState<ActiveProductOptionsSheet>(null);
-  const [priceFilter, setPriceFilter] = useState<HomeProductPriceFilter>("all");
-  const [productSort, setProductSort] =
-    useState<HomeProductSort>("recommended");
+  const [catalogFilters, setCatalogFilters] = useState<CatalogFilterState>(() =>
+    cloneCatalogFilters(EMPTY_CATALOG_FILTERS),
+  );
+  const [productSort, setProductSort] = useState<CatalogSort>("recommended");
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [savedProductIds, setSavedProductIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   const [newsletterEmail, setNewsletterEmail] = useState("");
   const [newsletterStatus, setNewsletterStatus] =
     useState<NewsletterStatus>("idle");
@@ -204,6 +223,13 @@ export function StorefrontHome() {
     MAX_FEATURE_WIDTH,
     Math.max(0, layoutWidth - (isDesktop ? horizontalPadding * 2 : 0)),
   );
+  const heroWidth = Math.min(
+    MAX_HERO_WIDTH,
+    Math.max(0, layoutWidth - (isDesktop ? horizontalPadding * 2 : 0)),
+  );
+  const heroHeight = isDesktop
+    ? clamp(500, heroWidth * (620 / 1440), 620)
+    : undefined;
   const sectionPadding = clamp(48, layoutWidth * 0.055, 96);
   const gridColumns =
     layoutWidth >= LARGE_DESKTOP_BREAKPOINT
@@ -216,8 +242,12 @@ export function StorefrontHome() {
   const gridGap = clamp(12, layoutWidth * 0.014, 24);
   const gridCardWidth =
     (contentWidth - gridGap * (gridColumns - 1)) / gridColumns;
-  const headlineSize = clamp(42, layoutWidth * 0.052, 82);
-  const heroTextPadding = clamp(28, featureWidth * 0.06, 96);
+  const headlineSize = isDesktop
+    ? clamp(48, heroWidth * (72 / 1440), 72)
+    : clamp(34, layoutWidth * 0.09, 48);
+  const heroTextPadding = isDesktop
+    ? clamp(56, heroWidth * (108.57 / 1440), 108)
+    : clamp(24, layoutWidth * 0.07, 40);
   const editorialTextPadding = clamp(28, featureWidth * 0.05, 80);
   const searchVisible = !isDesktop || searchExpanded;
   const searchResults = useMemo(
@@ -231,21 +261,35 @@ export function StorefrontHome() {
   );
   const visibleTrendingProducts = useMemo(
     () =>
-      applyHomeProductOptions(
+      applyCatalogProductOptions(
         STOREFRONT_TRENDING_PRODUCTS,
         productSort,
-        priceFilter,
+        catalogFilters,
       ),
-    [priceFilter, productSort],
+    [catalogFilters, productSort],
   );
   const visibleNewArrivals = useMemo(
     () =>
-      applyHomeProductOptions(
+      applyCatalogProductOptions(
         STOREFRONT_NEW_ARRIVALS,
         productSort,
-        priceFilter,
+        catalogFilters,
       ),
-    [priceFilter, productSort],
+    [catalogFilters, productSort],
+  );
+  const activeFilterCount = getActiveCatalogFilterCount(catalogFilters);
+  const activeFilterChips = useMemo(
+    () => getCatalogFilterChips(catalogFilters),
+    [catalogFilters],
+  );
+  const getMatchingProductCount = useCallback(
+    (filters: CatalogFilterState) =>
+      applyCatalogProductOptions(
+        ALL_STOREFRONT_PRODUCTS,
+        "recommended",
+        filters,
+      ).length,
+    [],
   );
 
   const entranceStyle = useAnimatedStyle(() => ({
@@ -260,11 +304,7 @@ export function StorefrontHome() {
     opacity: heroDescriptionProgress.value,
     transform: [
       {
-        translateY: interpolate(
-          heroDescriptionProgress.value,
-          [0, 1],
-          [10, 0],
-        ),
+        translateY: interpolate(heroDescriptionProgress.value, [0, 1], [10, 0]),
       },
     ],
   }));
@@ -325,16 +365,8 @@ export function StorefrontHome() {
     });
 
   const scrollToSection = (sectionY: number) => {
-    if (isWeb && typeof window !== "undefined") {
-      window.scrollTo({
-        behavior: reduceMotion ? "auto" : "smooth",
-        top: Math.max(0, sectionY - spacing.md),
-      });
-      return;
-    }
-
     scrollRef.current?.scrollTo({
-      animated: true,
+      animated: !reduceMotion,
       y: Math.max(0, sectionY - spacing.md),
     });
   };
@@ -362,6 +394,26 @@ export function StorefrontHome() {
     router.push("/(tabs)/settings");
   };
 
+  const removeActiveFilter = (chip: CatalogFilterChip) => {
+    setCatalogFilters((currentFilters) =>
+      removeCatalogFilterChip(currentFilters, chip),
+    );
+  };
+
+  const toggleSavedProduct = useCallback((productId: string) => {
+    setSavedProductIds((currentIds) => {
+      const nextIds = new Set(currentIds);
+
+      if (nextIds.has(productId)) {
+        nextIds.delete(productId);
+      } else {
+        nextIds.add(productId);
+      }
+
+      return nextIds;
+    });
+  }, []);
+
   const productControls = (
     <View className="flex-row gap-[8px]">
       <SortButton
@@ -369,7 +421,8 @@ export function StorefrontHome() {
         onPress={() => setActiveOptionsSheet("sort")}
       />
       <FilterButton
-        active={priceFilter !== "all"}
+        active={activeFilterCount > 0}
+        count={activeFilterCount}
         onPress={() => setActiveOptionsSheet("filter")}
       />
     </View>
@@ -377,19 +430,19 @@ export function StorefrontHome() {
 
   return (
     <SafeAreaView
-      className={isWeb ? "bg-neutral-25" : "flex-1 bg-neutral-25"}
+      className="flex-1 bg-neutral-25"
       edges={isDesktop ? [] : ["top"]}
-      style={{ minWidth: 0, width: "100%" }}
+      style={{ minHeight: 0, minWidth: 0, width: "100%" }}
       testID="storefront-page-root"
     >
       <StatusBar style="dark" />
 
       <Animated.View
-        className={isWeb ? "" : "flex-1"}
+        className="flex-1"
         style={[
           {
-            flex: isWeb ? undefined : 1,
-            minHeight: isWeb ? undefined : 0,
+            flex: 1,
+            minHeight: 0,
             minWidth: 0,
             width: "100%",
           },
@@ -397,10 +450,7 @@ export function StorefrontHome() {
         ]}
         testID="storefront-page-motion"
       >
-        <StorefrontPageScroller
-          desktopWeb={isDesktop}
-          scrollRef={scrollRef}
-        >
+        <StorefrontPageScroller desktopWeb={isDesktop} scrollRef={scrollRef}>
           <View className="h-[33px] items-center justify-center bg-brand-primary px-md">
             <Text
               className="font-montserrat-bold text-micro uppercase tracking-[1.5px] text-neutral-0"
@@ -502,42 +552,42 @@ export function StorefrontHome() {
               style={{
                 alignSelf: "center",
                 alignItems: "stretch",
-                width: featureWidth,
+                height: heroHeight,
+                width: heroWidth,
               }}
             >
               <View
-                className="justify-center bg-brand-socialSurface"
+                className="justify-center bg-brand-editorialSurface"
                 style={{
                   paddingHorizontal: heroTextPadding,
                   paddingVertical: isDesktop
-                    ? clamp(64, layoutWidth * 0.055, 96)
-                    : clamp(48, layoutWidth * 0.13, 72),
-                  width: isDesktop ? "50%" : "100%",
+                    ? clamp(52, (heroHeight ?? 620) * 0.1, 64)
+                    : clamp(40, layoutWidth * 0.11, 64),
+                  width: isDesktop ? "46%" : "100%",
                 }}
               >
-                <Text className="font-montserrat-bold text-micro uppercase tracking-[2px] text-brand-primary">
+                <Text className="font-montserrat-bold text-[11px] uppercase leading-[17px] tracking-[2.09px] text-brand-editorialEyebrow">
                   The summer edit / 2026
                 </Text>
                 <HeroWritingHeadline
                   style={{
                     fontSize: headlineSize,
-                    letterSpacing: -headlineSize * 0.035,
-                    lineHeight: headlineSize * 0.94,
+                    letterSpacing: -headlineSize * 0.02,
+                    lineHeight: headlineSize * 0.98,
+                    width: "100%",
                   }}
                 />
                 <Animated.View
                   style={[
                     {
-                      marginTop: spacing.lg,
-                      maxWidth: 410,
+                      marginTop: isDesktop ? 28 : spacing.lg,
+                      maxWidth: 384,
+                      width: "100%",
                     },
                     heroDescriptionStyle,
                   ]}
                 >
-                  <Text
-                    className="font-montserrat-regular text-sm text-neutral-600"
-                    style={{ lineHeight: 26 }}
-                  >
+                  <Text className="font-montserrat-regular text-bodyLarge text-ink-editorialMuted">
                     Dresses that move with you, color that brightens the
                     everyday, and the kind of details you remember.
                   </Text>
@@ -546,12 +596,13 @@ export function StorefrontHome() {
                   style={[
                     {
                       alignSelf: "flex-start",
-                      marginTop: spacing.lg,
+                      marginTop: isDesktop ? 32 : spacing.lg,
                     },
                     heroCtaStyle,
                   ]}
                 >
                   <StorefrontTextLink
+                    editorial
                     label="Shop the collection"
                     onPress={() => openSearch("fashion")}
                   />
@@ -559,16 +610,46 @@ export function StorefrontHome() {
               </View>
 
               <View
-                accessibilityLabel="Stylish summer collection color panel"
-                accessibilityRole="image"
-                className="bg-brand-pinkSoft"
+                className="relative overflow-hidden bg-brand-pinkSoft"
                 style={{
                   alignSelf: isDesktop ? "stretch" : undefined,
-                  aspectRatio: isDesktop ? undefined : isTablet ? 1.8 : 1.45,
+                  aspectRatio: isDesktop ? undefined : isTablet ? 1.45 : 0.92,
                   minHeight: isDesktop ? 1 : undefined,
-                  width: isDesktop ? "50%" : "100%",
+                  width: isDesktop ? "54%" : "100%",
                 }}
-              />
+              >
+                <View
+                  className="absolute inset-0 overflow-hidden"
+                  testID="motion-image-frame"
+                >
+                  <Image
+                    accessibilityLabel={STOREFRONT_HERO_IMAGE.imageLabel}
+                    accessibilityRole="image"
+                    contentFit="cover"
+                    contentPosition="center"
+                    source={STOREFRONT_HERO_IMAGE.image}
+                    style={{ height: "100%", width: "100%" }}
+                  />
+                </View>
+                <Text
+                  className="absolute font-montserrat-semibold text-neutral-0/90"
+                  style={{
+                    bottom: 28,
+                    fontSize: isDesktop
+                      ? clamp(24, heroWidth * (30 / 1440), 30)
+                      : 24,
+                    lineHeight: 36,
+                    right: 28,
+                    textAlign: "right",
+                    textShadowColor: "rgba(53, 32, 42, 0.28)",
+                    textShadowOffset: { height: 1, width: 0 },
+                    textShadowRadius: 8,
+                    width: 180,
+                  }}
+                >
+                  the rose edit
+                </Text>
+              </View>
             </View>
           </ScrollReveal>
 
@@ -631,6 +712,15 @@ export function StorefrontHome() {
                 />
               </ScrollReveal>
 
+              {activeFilterChips.length > 0 ? (
+                <View className="mt-lg">
+                  <CatalogFilterChips
+                    chips={activeFilterChips}
+                    onRemove={removeActiveFilter}
+                  />
+                </View>
+              ) : null}
+
               <View
                 className="mt-xl flex-row flex-wrap"
                 style={{ gap: gridGap }}
@@ -642,7 +732,9 @@ export function StorefrontHome() {
                     style={{ width: gridCardWidth }}
                   >
                     <StorefrontProductCard
+                      isSaved={savedProductIds.has(product.id)}
                       onPress={() => openProduct(product.id)}
+                      onToggleSaved={() => toggleSavedProduct(product.id)}
                       product={product}
                       width={gridCardWidth}
                     />
@@ -653,7 +745,7 @@ export function StorefrontHome() {
               {visibleTrendingProducts.length === 0 ? (
                 <View className="mt-xl min-h-[120px] items-center justify-center bg-neutral-50 px-lg">
                   <Text className="text-center font-montserrat-medium text-sm text-neutral-600">
-                    No trending pieces match this price filter.
+                    No trending pieces match the selected filters.
                   </Text>
                 </View>
               ) : null}
@@ -710,18 +802,18 @@ export function StorefrontHome() {
                 </Text>
                 <Text
                   accessibilityRole="header"
-                  className="mt-md font-serif text-neutral-0"
+                  className="mt-md font-montserrat-bold tracking-[-0.45px] text-neutral-0"
                   style={{
-                    fontSize: clamp(34, layoutWidth * 0.035, 50),
-                    lineHeight: clamp(41, layoutWidth * 0.041, 58),
+                    fontSize: clamp(32, layoutWidth * 0.032, 44),
+                    lineHeight: clamp(40, layoutWidth * 0.039, 52),
                     maxWidth: 480,
                   }}
                 >
                   Made for your main-character moments.
                 </Text>
                 <Text
-                  className="mt-lg font-montserrat-regular text-sm text-neutral-0"
-                  style={{ lineHeight: 26, maxWidth: 410 }}
+                  className="mt-lg font-montserrat-regular text-bodyLarge text-neutral-0"
+                  style={{ maxWidth: 410 }}
                 >
                   Small-batch collections, considered silhouettes, and details
                   designed to stay with you.
@@ -769,7 +861,9 @@ export function StorefrontHome() {
                     style={{ width: gridCardWidth }}
                   >
                     <StorefrontProductCard
+                      isSaved={savedProductIds.has(product.id)}
                       onPress={() => openProduct(product.id)}
+                      onToggleSaved={() => toggleSavedProduct(product.id)}
                       product={product}
                       width={gridCardWidth}
                     />
@@ -780,7 +874,7 @@ export function StorefrontHome() {
               {visibleNewArrivals.length === 0 ? (
                 <View className="mt-xl min-h-[120px] items-center justify-center bg-neutral-0 px-lg">
                   <Text className="text-center font-montserrat-medium text-sm text-neutral-600">
-                    No new arrivals match this price filter.
+                    No new arrivals match the selected filters.
                   </Text>
                 </View>
               ) : null}
@@ -802,27 +896,27 @@ export function StorefrontHome() {
               </Text>
               <Text
                 accessibilityRole="header"
-                className="mt-sm text-center font-serif text-neutral-900"
+                className="mt-sm text-center font-montserrat-bold tracking-[-0.45px] text-neutral-900"
                 style={{
-                  fontSize: clamp(32, layoutWidth * 0.034, 48),
-                  lineHeight: clamp(40, layoutWidth * 0.042, 60),
+                  fontSize: clamp(30, layoutWidth * 0.032, 44),
+                  lineHeight: clamp(38, layoutWidth * 0.039, 52),
                 }}
               >
                 A little note from Stylish
               </Text>
               <Text
-                className="mt-md text-center font-montserrat-regular text-sm text-neutral-600"
-                style={{ lineHeight: 26, maxWidth: 480 }}
+                className="mt-md text-center font-montserrat-regular text-bodyMedium text-neutral-600"
+                style={{ maxWidth: 480 }}
               >
                 New drops, private promotions, and things we think you’ll love.
                 No clutter, just the good bits.
               </Text>
 
               <View
-                className="mt-xl flex-row items-center border-b border-brand-primary"
+                className="mt-xl flex-row items-center overflow-hidden border-b border-brand-primary"
                 style={{ maxWidth: 510, width: "100%" }}
               >
-                <TextInput
+                <StylishTextInput
                   accessibilityLabel="Newsletter email address"
                   autoCapitalize="none"
                   autoComplete="email"
@@ -888,17 +982,16 @@ export function StorefrontHome() {
       <ProductOptionsSheet
         onClose={() => setActiveOptionsSheet(null)}
         onSelect={setProductSort}
-        options={HOME_PRODUCT_SORT_OPTIONS}
+        options={CATALOG_SORT_OPTIONS}
         selectedValue={productSort}
         title="Sort Products"
         visible={activeOptionsSheet === "sort"}
       />
-      <ProductOptionsSheet
+      <ProductFilterSheet
+        filters={catalogFilters}
+        getMatchingCount={getMatchingProductCount}
+        onApply={setCatalogFilters}
         onClose={() => setActiveOptionsSheet(null)}
-        onSelect={setPriceFilter}
-        options={HOME_PRODUCT_PRICE_FILTER_OPTIONS}
-        selectedValue={priceFilter}
-        title="Filter by Price"
         visible={activeOptionsSheet === "filter"}
       />
     </SafeAreaView>
