@@ -7,6 +7,7 @@ export type StorefrontCategory = {
 };
 
 export type StorefrontProduct = {
+  badge: "Best Seller" | "New";
   description: string;
   id: string;
   image: number;
@@ -14,6 +15,11 @@ export type StorefrontProduct = {
   price: string;
   title: string;
 };
+
+export const STOREFRONT_HERO_IMAGE = {
+  image: require("@/assets/images/storefront/lumiere-summer-model.jpg"),
+  imageLabel: "Model wearing a vivid rose dress and patterned orange headscarf",
+} as const;
 
 export const STOREFRONT_CATEGORIES = [
   {
@@ -48,6 +54,7 @@ export const STOREFRONT_CATEGORIES = [
 
 export const STOREFRONT_TRENDING_PRODUCTS = [
   {
+    badge: "Best Seller",
     description: "A fluid occasion dress with a softly gathered silhouette.",
     id: "rosette-bias-dress",
     image: require("@/assets/images/storefront/rosette-bias-dress.jpg"),
@@ -56,6 +63,7 @@ export const STOREFRONT_TRENDING_PRODUCTS = [
     title: "Rosette Bias Dress",
   },
   {
+    badge: "Best Seller",
     description: "A polished neutral blazer shaped for everyday layering.",
     id: "mila-tailored-blazer",
     image: require("@/assets/images/storefront/mila-tailored-blazer.jpg"),
@@ -64,6 +72,7 @@ export const STOREFRONT_TRENDING_PRODUCTS = [
     title: "Mila Tailored Blazer",
   },
   {
+    badge: "Best Seller",
     description: "A playful floral knit with a relaxed, comfortable fit.",
     id: "lena-flower-knit",
     image: require("@/assets/images/storefront/lena-flower-knit.jpg"),
@@ -72,6 +81,7 @@ export const STOREFRONT_TRENDING_PRODUCTS = [
     title: "Lena Flower Knit",
   },
   {
+    badge: "Best Seller",
     description: "A versatile slip skirt designed for effortless movement.",
     id: "amour-slip-skirt",
     image: require("@/assets/images/storefront/amour-slip-skirt.jpg"),
@@ -83,6 +93,7 @@ export const STOREFRONT_TRENDING_PRODUCTS = [
 
 export const STOREFRONT_NEW_ARRIVALS = [
   {
+    badge: "New",
     description: "A softly structured top finished with sculptural ruffles.",
     id: "dahlia-ruffle-top",
     image: require("@/assets/images/storefront/dahlia-ruffle-top.jpg"),
@@ -91,6 +102,7 @@ export const STOREFRONT_NEW_ARRIVALS = [
     title: "Dahlia Ruffle Top",
   },
   {
+    badge: "New",
     description: "A romantic midi dress with dimensional rosebud details.",
     id: "rosebud-midi-dress",
     image: require("@/assets/images/storefront/rosebud-midi-dress.jpg"),
@@ -99,6 +111,7 @@ export const STOREFRONT_NEW_ARRIVALS = [
     title: "Rosebud Midi Dress",
   },
   {
+    badge: "New",
     description: "A compact shoulder bag for polished everyday styling.",
     id: "petal-shoulder-bag",
     image: require("@/assets/images/storefront/petal-shoulder-bag.jpg"),
@@ -107,6 +120,7 @@ export const STOREFRONT_NEW_ARRIVALS = [
     title: "Petal Shoulder Bag",
   },
   {
+    badge: "New",
     description: "Flowing wide-leg trousers with a clean tailored finish.",
     id: "celine-wide-leg-pant",
     image: require("@/assets/images/storefront/celine-wide-leg-pant.jpg"),
