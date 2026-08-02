@@ -5,6 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import type { ComponentProps, ReactNode } from "react";
 import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Platform,
   Pressable,
@@ -30,6 +31,11 @@ import {
   getResponsiveContentWidth,
   isDesktopWeb,
 } from "@/constants/responsive";
+import {
+  signOutAllSessions,
+  signOutCurrentSession,
+} from "@/services/auth/auth-session";
+import { useAuthSessionStore } from "@/stores/auth-session-store";
 
 const MAX_CONTENT_WIDTH = 343;
 
@@ -159,6 +165,10 @@ export default function SettingsScreen() {
   const entranceProgress = useSharedValue(reduceMotion ? 1 : 0);
   const [orderUpdatesEnabled, setOrderUpdatesEnabled] = useState(true);
   const [offersEnabled, setOffersEnabled] = useState(false);
+  const [signOutMode, setSignOutMode] = useState<"all" | "current" | null>(
+    null,
+  );
+  const authUser = useAuthSessionStore((state) => state.user);
   const desktopWeb = isDesktopWeb(width);
   const contentWidth = getResponsiveContentWidth({
     desktopMax: 960,
@@ -188,8 +198,29 @@ export default function SettingsScreen() {
     Alert.alert(title, message);
   };
 
-  const signOut = () => {
-    const continueToSignIn = () => router.replace("/sign-in");
+  const profileName =
+    authUser?.profile?.displayName ?? MOCK_PROFILE.accountHolderName;
+  const profileEmail = authUser?.email ?? MOCK_PROFILE.email;
+
+  const completeSignOut = async (allSessions: boolean) => {
+    if (signOutMode) {
+      return;
+    }
+
+    setSignOutMode(allSessions ? "all" : "current");
+    try {
+      if (allSessions) {
+        await signOutAllSessions();
+      } else {
+        await signOutCurrentSession();
+      }
+    } finally {
+      router.replace("/sign-in");
+    }
+  };
+
+  const confirmSignOut = (allSessions = false) => {
+    const continueToSignIn = () => void completeSignOut(allSessions);
 
     if (Platform.OS === "web") {
       continueToSignIn();
@@ -198,7 +229,9 @@ export default function SettingsScreen() {
 
     Alert.alert(
       "Sign out?",
-      "This frontend demo does not store an authenticated session.",
+      allSessions
+        ? "This signs you out from every active Stylish session."
+        : "This signs you out from this device.",
       [
         { style: "cancel", text: "Cancel" },
         {
@@ -251,7 +284,7 @@ export default function SettingsScreen() {
 
             <Pressable
               accessibilityHint="Opens your profile and account details"
-              accessibilityLabel={`Profile for ${MOCK_PROFILE.accountHolderName}`}
+              accessibilityLabel={`Profile for ${profileName}`}
               accessibilityRole="button"
               className="flex-row items-center rounded-lg border border-neutral-200 bg-neutral-0 p-md shadow-sm active:opacity-70"
               onPress={() => router.push("/profile")}
@@ -271,13 +304,13 @@ export default function SettingsScreen() {
                   className="font-montserrat-semibold text-md text-neutral-900"
                   numberOfLines={1}
                 >
-                  {MOCK_PROFILE.accountHolderName}
+                  {profileName}
                 </Text>
                 <Text
                   className="mt-[2px] font-montserrat-regular text-xs text-neutral-500"
                   numberOfLines={1}
                 >
-                  {MOCK_PROFILE.email}
+                  {profileEmail}
                 </Text>
                 <Text className="mt-xxs font-montserrat-medium text-xs text-brand-primary">
                   View profile
@@ -387,20 +420,40 @@ export default function SettingsScreen() {
               accessibilityLabel="Sign out"
               accessibilityRole="button"
               className="mt-lg min-h-[50px] flex-row items-center justify-center rounded-md border border-brand-primary bg-neutral-0 px-md active:opacity-60"
-              onPress={signOut}
+              disabled={signOutMode !== null}
+              onPress={() => confirmSignOut(false)}
             >
-              <MaterialIcons
-                color={colors.brand.primary}
-                name="logout"
-                size={20}
-              />
+              {signOutMode === "current" ? (
+                <ActivityIndicator color={colors.brand.primary} size="small" />
+              ) : (
+                <MaterialIcons
+                  color={colors.brand.primary}
+                  name="logout"
+                  size={20}
+                />
+              )}
               <Text className="ml-xs font-montserrat-semibold text-sm text-brand-primary">
-                Sign out
+                {signOutMode === "current" ? "Signing out…" : "Sign out"}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              accessibilityHint="Signs this account out from every active device"
+              accessibilityLabel="Sign out all devices"
+              accessibilityRole="button"
+              className="mt-sm min-h-[46px] items-center justify-center rounded-md px-md active:opacity-60"
+              disabled={signOutMode !== null}
+              onPress={() => confirmSignOut(true)}
+            >
+              <Text className="font-montserrat-medium text-xs text-neutral-600">
+                {signOutMode === "all"
+                  ? "Signing out all devices…"
+                  : "Sign out all devices"}
               </Text>
             </Pressable>
 
             <Text className="mb-sm mt-md text-center font-montserrat-regular text-micro text-neutral-400">
-              Preferences are temporary until account services are connected.
+              Your authentication session is protected by secure token storage.
             </Text>
           </View>
         </ScrollView>
