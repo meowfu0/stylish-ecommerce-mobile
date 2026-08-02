@@ -1,0 +1,1834 @@
+{
+  "info": {
+    "_postman_id": "b13eb8c5-f960-44a9-a941-0271332c944c",
+    "name": "Stylish API",
+    "description": "Backend API checks for the Stylish multi-vendor marketplace. Authentication requests store returned access and refresh tokens in secret environment variables.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET Health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 or 503', function () {",
+                  "  pm.expect([200, 503]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test('Response uses the Stylish API envelope', function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('success');",
+                  "  pm.expect(body).to.have.property('message');",
+                  "  if (pm.response.code === 200) {",
+                  "    pm.expect(body.success).to.eql(true);",
+                  "    pm.expect(body.message).to.eql('Stylish API is running');",
+                  "    pm.expect(body.data.status).to.eql('healthy');",
+                  "    pm.expect(body.data.database).to.eql('connected');",
+                  "    pm.expect(new Date(body.data.timestamp).toString()).not.to.eql('Invalid Date');",
+                  "  } else {",
+                  "    pm.expect(body.success).to.eql(false);",
+                  "    pm.expect(body.message).to.eql('Stylish API is temporarily unavailable');",
+                  "    pm.expect(body.errors[0]).to.eql({",
+                  "      field: 'database',",
+                  "      message: 'Database connection is unavailable'",
+                  "    });",
+                  "  }",
+                  "});",
+                  "",
+                  "pm.test('Response includes a correlation ID', function () {",
+                  "  pm.expect(pm.response.headers.get('x-request-id')).to.be.a('string').and.not.empty;",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "health"]
+            },
+            "description": "Confirms that the NestJS API is running and PostgreSQL is reachable. No authentication is required."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "POST Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\",\n  \"displayName\": \"Postman Customer\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            },
+            "description": "Creates a pending customer. In development, copy the token from the new .email-previews file into verificationToken."
+          },
+          "response": []
+        },
+        {
+          "name": "POST Verify Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{verificationToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/verify-email",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "verify-email"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST Resend Verification",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/resend-verification",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "resend-verification"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Login succeeded', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "if (body.success && body.data && body.data.tokens) {",
+                  "  pm.environment.set('accessToken', body.data.tokens.accessToken);",
+                  "  pm.environment.set('refreshToken', body.data.tokens.refreshToken);",
+                  "  pm.environment.set('customerAccessToken', body.data.tokens.accessToken);",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\",\n  \"deviceName\": \"Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST Refresh",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Refresh succeeded', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "if (body.success && body.data && body.data.tokens) {",
+                  "  pm.environment.set('accessToken', body.data.tokens.accessToken);",
+                  "  pm.environment.set('refreshToken', body.data.tokens.refreshToken);",
+                  "  pm.environment.set('customerAccessToken', body.data.tokens.accessToken);",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "refresh"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Me",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "me"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST Logout",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "logout"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST Logout All",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout-all",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "logout-all"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/forgot-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "forgot-password"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{passwordResetToken}}\",\n  \"newPassword\": \"{{newCustomerPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/reset-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "reset-password"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Merchant Onboarding - Customer",
+      "item": [
+        {
+          "name": "POST Create Application Draft",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('createApplicationIdempotencyKey')) {",
+                  "  pm.environment.set('createApplicationIdempotencyKey', pm.variables.replaceIn('{{$guid}}'));",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Draft is created', function () {",
+                  "  pm.expect(pm.response.code).to.eql(201);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.data.applicationStatus).to.eql('DRAFT');",
+                  "  pm.environment.set('applicationId', body.data.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{createApplicationIdempotencyKey}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slug\": \"postman-fashion\",\n  \"legalName\": \"Postman Fashion Trading\",\n  \"displayName\": \"Postman Fashion\",\n  \"profile\": {\n    \"description\": \"Postman merchant application\",\n    \"supportEmail\": \"support@example.com\",\n    \"supportPhone\": \"+639171234567\",\n    \"websiteUrl\": \"https://example.com\"\n  },\n  \"businessAddress\": {\n    \"contactName\": \"Postman Merchant\",\n    \"phone\": \"+639171234567\",\n    \"addressLine1\": \"123 Rizal Street\",\n    \"barangay\": \"Poblacion\",\n    \"city\": \"Makati\",\n    \"province\": \"Metro Manila\",\n    \"postalCode\": \"1200\",\n    \"countryCode\": \"PH\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/merchants/applications",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "merchants", "applications"]
+            },
+            "description": "Creates one owned draft. Clear createApplicationIdempotencyKey before intentionally creating a later application."
+          },
+          "response": []
+        },
+        {
+          "name": "GET My Application",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/merchants/applications/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "merchants", "applications", "me"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH Application Draft",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"Postman Fashion Store\",\n  \"profile\": {\n    \"supportEmail\": \"support@example.com\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/merchants/applications/{{applicationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "merchants", "applications", "{{applicationId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST Submit Application",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('submitApplicationIdempotencyKey')) {",
+                  "  pm.environment.set('submitApplicationIdempotencyKey', pm.variables.replaceIn('{{$guid}}'));",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Application is submitted', function () {",
+                  "  pm.expect(pm.response.code).to.eql(202);",
+                  "  pm.expect(pm.response.json().data.applicationStatus).to.eql('SUBMITTED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{submitApplicationIdempotencyKey}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/merchants/applications/{{applicationId}}/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "merchants", "applications", "{{applicationId}}", "submit"]
+            },
+            "description": "Requires a support email and active default BUSINESS address. Re-send with the same key to test replay safety."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Merchant Onboarding - Platform Review",
+      "item": [
+        {
+          "name": "POST Admin Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  pm.environment.set('adminAccessToken', pm.response.json().data.tokens.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\",\n  \"deviceName\": \"Postman Admin\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Application Queue",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  pm.environment.set('applicationCursor', pm.response.json().data.nextCursor || '');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/merchant-applications?status=SUBMITTED&limit=25",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "merchant-applications"],
+              "query": [
+                { "key": "status", "value": "SUBMITTED" },
+                { "key": "limit", "value": "25" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Application Detail",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/merchant-applications/{{applicationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "merchant-applications", "{{applicationId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST Request Changes",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('reviewApplicationIdempotencyKey')) {",
+                  "  pm.environment.set('reviewApplicationIdempotencyKey', pm.variables.replaceIn('{{$guid}}'));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{reviewApplicationIdempotencyKey}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Please correct the business address.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/merchant-applications/{{applicationId}}/request-changes",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "admin",
+                "merchant-applications",
+                "{{applicationId}}",
+                "request-changes"
+              ]
+            },
+            "description": "After this response, the customer can patch and resubmit the application. Clear reviewApplicationIdempotencyKey before the next decision."
+          },
+          "response": []
+        },
+        {
+          "name": "POST Approve Application",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('reviewApplicationIdempotencyKey')) {",
+                  "  pm.environment.set('reviewApplicationIdempotencyKey', pm.variables.replaceIn('{{$guid}}'));",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Merchant is approved', function () {",
+                  "  pm.expect(pm.response.code).to.eql(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.data.applicationStatus).to.eql('APPROVED');",
+                  "  pm.environment.set('merchantId', body.data.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{reviewApplicationIdempotencyKey}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"commissionRateBasisPoints\": 500\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/merchant-applications/{{applicationId}}/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "merchant-applications", "{{applicationId}}", "approve"]
+            },
+            "description": "Run on a SUBMITTED application. Re-send unchanged with the same key to test idempotent replay."
+          },
+          "response": []
+        },
+        {
+          "name": "POST Reject Application",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminAccessToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Idempotency-Key", "value": "{{$guid}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Business information could not be verified.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/merchant-applications/{{applicationId}}/reject",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "merchant-applications", "{{applicationId}}", "reject"]
+            },
+            "description": "Alternative terminal decision. Use a different SUBMITTED application, not one already approved."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Approved Merchant Profile",
+      "item": [
+        {
+          "name": "GET Merchant Profile",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/merchants/{{merchantId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "merchants", "{{merchantId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH Merchant Profile",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"Postman Fashion Updated\",\n  \"profile\": {\n    \"description\": \"Updated approved merchant profile\",\n    \"supportEmail\": \"support@example.com\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/merchants/{{merchantId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "merchants", "{{merchantId}}"]
+            },
+            "description": "Only non-sensitive approved profile fields are writable."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": []
+    },
+    {
+      "name": "Addresses",
+      "item": []
+    },
+    {
+      "name": "Merchant Catalog Phase 1",
+      "description": "Run after merchant approval and access-control bootstrap. All requests require an active merchant membership.",
+      "item": [
+        {
+          "name": "POST Create Brand",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Brand created', () => pm.expect(pm.response.code).to.eql(201));",
+                  "if (pm.response.code === 201) pm.environment.set('brandId', pm.response.json().data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Brand\",\n  \"slug\": \"postman-brand\",\n  \"description\": \"Created by the Phase 1 Postman flow\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/catalog/brands"
+          },
+          "response": []
+        },
+        {
+          "name": "GET Brands",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/catalog/brands?limit=100&search=Postman"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH Brand",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated brand description\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/catalog/brands/{{brandId}}"
+          },
+          "response": []
+        },
+        {
+          "name": "GET Categories (Platform Taxonomy)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 && pm.response.json().data.items.length) {",
+                  "  pm.environment.set('categoryId', pm.response.json().data.items[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/catalog/categories?activeOnly=true&limit=100"
+          },
+          "response": []
+        },
+        {
+          "name": "GET Brand Details",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/catalog/brands/{{brandId}}"
+          },
+          "response": []
+        },
+        {
+          "name": "GET Category Details",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/catalog/categories/{{categoryId}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST Create Draft Product",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('createProductIdempotencyKey')) {",
+                  "  pm.environment.set('createProductIdempotencyKey', pm.variables.replaceIn('{{$guid}}'));",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Draft product created', () => pm.expect(pm.response.code).to.eql(201));",
+                  "if (pm.response.code === 201) pm.environment.set('productId', pm.response.json().data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{createProductIdempotencyKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Linen Dress\",\n  \"slug\": \"postman-linen-dress\",\n  \"brandId\": \"{{brandId}}\",\n  \"shortDescription\": \"A lightweight linen dress\",\n  \"description\": \"A complete merchant product description for publication.\",\n  \"categoryIds\": [\"{{categoryId}}\"],\n  \"primaryCategoryId\": \"{{categoryId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/catalog/products",
+            "description": "Clear createProductIdempotencyKey before intentionally creating a different product. Reuse it only to replay this exact request."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Products (Filtered Cursor Page)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) pm.environment.set('catalogProductCursor', pm.response.json().data.nextCursor || '');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/catalog/products?limit=25&status=DRAFT&categoryId={{categoryId}}&stockStatus=OUT_OF_STOCK&search=Postman"
+          },
+          "response": []
+        },
+        {
+          "name": "GET Product Details",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/catalog/products/{{productId}}"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH Product Details",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shortDescription\": \"Updated lightweight linen dress\",\n  \"isFeatured\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/catalog/products/{{productId}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST Create Product Option",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const options = pm.response.json().data.options;",
+                  "  pm.environment.set('optionId', options[options.length - 1].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Color\",\n  \"displayOrder\": 0\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/catalog/products/{{productId}}/options"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH Product Option",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayOrder\": 1\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/catalog/products/{{productId}}/options/{{optionId}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST Create Option Value",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const option = pm.response.json().data.options.find(item => item.id === pm.environment.get('optionId'));",
+                  "  pm.environment.set('optionValueId', option.values[option.values.length - 1].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": \"black\",\n  \"displayLabel\": \"Black\",\n  \"swatchHex\": \"#000000\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/catalog/products/{{productId}}/options/{{optionId}}/values"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH Option Value",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayLabel\": \"Jet Black\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/catalog/products/{{productId}}/options/{{optionId}}/values/{{optionValueId}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST Create Variant",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const variants = pm.response.json().data.variants;",
+                  "  pm.environment.set('productVariantId', variants[variants.length - 1].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Black\",\n  \"sku\": \"POSTMAN-DRESS-BLK\",\n  \"priceCentavos\": 129900,\n  \"isDefault\": true,\n  \"optionValueIds\": [\"{{optionValueId}}\"]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/catalog/products/{{productId}}/variants"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH Variant",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"priceCentavos\": 139900,\n  \"compareAtPriceCentavos\": 159900\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/catalog/products/{{productId}}/variants/{{productVariantId}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST Publish Product",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('productLifecycleIdempotencyKey')) {",
+                  "  pm.environment.set('productLifecycleIdempotencyKey', pm.variables.replaceIn('{{$guid}}'));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Idempotency-Key", "value": "{{productLifecycleIdempotencyKey}}" }],
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/catalog/products/{{productId}}/publish"
+          },
+          "response": []
+        },
+        {
+          "name": "POST Deactivate Product",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Idempotency-Key", "value": "{{productLifecycleIdempotencyKey}}" }],
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/catalog/products/{{productId}}/deactivate"
+          },
+          "response": []
+        },
+        {
+          "name": "POST Archive Product",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Idempotency-Key", "value": "{{productLifecycleIdempotencyKey}}" }],
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/catalog/products/{{productId}}/archive"
+          },
+          "response": []
+        },
+        {
+          "name": "POST Create Collection",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) pm.environment.set('collectionId', pm.response.json().data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Summer Edit\",\n  \"slug\": \"postman-summer-edit\",\n  \"productIds\": [\"{{productId}}\"]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/catalog/collections"
+          },
+          "response": []
+        },
+        {
+          "name": "GET Collections",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/catalog/collections?limit=100&search=Postman"
+          },
+          "response": []
+        },
+        {
+          "name": "GET Collection Details",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/catalog/collections/{{collectionId}}"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH Collection",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated collection\",\n  \"sortOrder\": 1\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/catalog/collections/{{collectionId}}"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Merchant Inventory Phase 1",
+      "description": "Run after merchant approval, access-control bootstrap, and catalog variant creation. PostgreSQL is authoritative; reuse an adjustment idempotency key only with the identical body.",
+      "item": [
+        {
+          "name": "GET Inventory Locations",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Locations retrieved', () => pm.expect(pm.response.code).to.eql(200));",
+                  "if (pm.response.code === 200 && pm.response.json().data.items.length) {",
+                  "  const location = pm.response.json().data.items.find(item => item.isDefault) || pm.response.json().data.items[0];",
+                  "  pm.environment.set('inventoryLocationId', location.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/inventory/locations?activeOnly=true"
+          },
+          "response": []
+        },
+        {
+          "name": "POST Create Inventory Location",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Location created', () => pm.expect(pm.response.code).to.eql(201));",
+                  "if (pm.response.code === 201) pm.environment.set('inventoryLocationId', pm.response.json().data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"POSTMAN-WH\",\n  \"name\": \"Postman Warehouse\",\n  \"addressSnapshot\": \"Quezon City, Philippines\",\n  \"isActive\": true,\n  \"isDefault\": false\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/inventory/locations"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH Inventory Location",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Warehouse Updated\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/inventory/locations/{{inventoryLocationId}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST Set Default Inventory Location",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/inventory/locations/{{inventoryLocationId}}/set-default"
+          },
+          "response": []
+        },
+        {
+          "name": "GET Inventory Levels",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Inventory levels retrieved', () => pm.expect(pm.response.code).to.eql(200));",
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json().data;",
+                  "  pm.environment.set('inventoryLevelCursor', body.nextCursor || '');",
+                  "  const level = body.items.find(item => item.variantId === pm.environment.get('productVariantId'));",
+                  "  if (level) pm.environment.set('inventoryExpectedVersion', String(level.version));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/inventory/levels?locationId={{inventoryLocationId}}&variantId={{productVariantId}}&limit=25"
+          },
+          "response": []
+        },
+        {
+          "name": "GET Variant Inventory",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const location = pm.response.json().data.locations.find(item => item.locationId === pm.environment.get('inventoryLocationId'));",
+                  "  if (location) pm.environment.set('inventoryExpectedVersion', String(location.version));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/inventory/variants/{{productVariantId}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST Inventory Adjustment",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('inventoryAdjustmentIdempotencyKey')) {",
+                  "  pm.environment.set('inventoryAdjustmentIdempotencyKey', pm.variables.replaceIn('{{$guid}}'));",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Inventory adjusted', () => pm.expect(pm.response.code).to.eql(201));",
+                  "if (pm.response.code === 201) pm.environment.set('inventoryExpectedVersion', String(pm.response.json().data.balance.version));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{inventoryAdjustmentIdempotencyKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"locationId\": \"{{inventoryLocationId}}\",\n  \"variantId\": \"{{productVariantId}}\",\n  \"operation\": \"STOCK_IN\",\n  \"quantity\": 10,\n  \"expectedVersion\": {{inventoryExpectedVersion}},\n  \"reason\": \"Initial stock received through Postman\",\n  \"reorderThreshold\": 3\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/inventory/adjustments",
+            "description": "Reuse the key only to replay this exact request. Clear inventoryAdjustmentIdempotencyKey and refresh the expected version before a different adjustment. STOCK_OUT uses a positive quantity; ADJUSTMENT uses a signed non-zero delta."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Inventory Movements",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) pm.environment.set('inventoryMovementCursor', pm.response.json().data.nextCursor || '');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/inventory/movements?locationId={{inventoryLocationId}}&variantId={{productVariantId}}&limit=25"
+          },
+          "response": []
+        },
+        {
+          "name": "GET Low Stock",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/inventory/low-stock?locationId={{inventoryLocationId}}&limit=25"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Product Images and Storage Phase 1",
+      "description": "Run after creating a merchant-owned product. Initialize, select an exact matching JPEG/PNG/WebP file for the signed upload, then confirm. Never add the Supabase service-role key to Postman.",
+      "item": [
+        {
+          "name": "GET Product Images",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/catalog/products/{{productId}}/images"
+          },
+          "response": []
+        },
+        {
+          "name": "POST Initialize Product Image Upload",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('productImageUploadIdempotencyKey')) {",
+                  "  pm.environment.set('productImageUploadIdempotencyKey', pm.variables.replaceIn('{{$guid}}'));",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Signed upload initialized', () => pm.expect(pm.response.code).to.eql(201));",
+                  "if (pm.response.code === 201) {",
+                  "  const data = pm.response.json().data;",
+                  "  pm.environment.set('productImageId', data.imageId);",
+                  "  pm.environment.set('productImageUploadPath', data.storagePath);",
+                  "  pm.environment.set('productImageUploadToken', data.uploadToken);",
+                  "  pm.environment.set('productImageUploadUrl', data.uploadUrl);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{productImageUploadIdempotencyKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contentType\": \"image/jpeg\",\n  \"fileSizeBytes\": {{productImageSizeBytes}},\n  \"altText\": \"Postman product image\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/catalog/products/{{productId}}/images/upload-requests",
+            "description": "Set productImageSizeBytes to the exact selected file byte size. Clear the idempotency variable before initializing a different upload."
+          },
+          "response": []
+        },
+        {
+          "name": "PUT Supabase Signed Upload",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "image/jpeg" },
+              { "key": "x-upsert", "value": "false" }
+            ],
+            "body": { "mode": "file", "file": { "src": "" } },
+            "url": "{{productImageUploadUrl}}",
+            "description": "In Body > binary/file, select the same JPEG whose exact size was declared during initialization. Change Content-Type for PNG or WebP. This short-lived request goes directly to Supabase Storage and uses no service-role key."
+          },
+          "response": []
+        },
+        {
+          "name": "POST Confirm Product Image Upload",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Product image confirmed', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/catalog/products/{{productId}}/images/{{productImageId}}/confirm"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH Product Image",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"altText\": \"Updated accessible product description\",\n  \"displayOrder\": 0\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/catalog/products/{{productId}}/images/{{productImageId}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST Set Primary Product Image",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/catalog/products/{{productId}}/images/{{productImageId}}/set-primary"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH Reorder Product Images",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"imageIds\": [\"{{productImageId}}\"]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/catalog/products/{{productId}}/images/reorder",
+            "description": "Send every confirmed image ID exactly once, in the desired order."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Product Image Signed Read URL",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/catalog/products/{{productId}}/images/{{productImageId}}/signed-url"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE Product Image",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('productImageDeleteIdempotencyKey')) {",
+                  "  pm.environment.set('productImageDeleteIdempotencyKey', pm.variables.replaceIn('{{$guid}}'));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "DELETE",
+            "header": [
+              { "key": "Idempotency-Key", "value": "{{productImageDeleteIdempotencyKey}}" }
+            ],
+            "url": "{{baseUrl}}/api/merchants/{{merchantId}}/catalog/products/{{productId}}/images/{{productImageId}}",
+            "description": "Replay with the same key only for this same image deletion."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Customer Storefront Phase 1",
+      "description": "Public read-only storefront requests. No Bearer token is required.",
+      "item": [
+        {
+          "name": "GET Storefront Products",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Published product page returned', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "if (body.success && body.data) {",
+                  "  pm.environment.set('storefrontCursor', body.data.nextCursor || '');",
+                  "  if (body.data.items && body.data.items[0]) { pm.environment.set('storefrontProductSlug', body.data.items[0].slug); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/storefront/products?limit=20&sort=recommended&inStockOnly=false",
+            "description": "Optional filters: search, categorySlug, collectionSlug, brandId, merchantSlug, minPriceCentavos, maxPriceCentavos, inStockOnly, featured, sort, and opaque cursor. Empty optional variables should be omitted."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Storefront Product",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/storefront/products/{{storefrontProductSlug}}",
+            "description": "Returns public details, active variants, confirmed primary image signed URL, and no private SKU, barcode, exact stock, or storage path."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Storefront Categories",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/storefront/categories?limit=100"
+          },
+          "response": []
+        },
+        {
+          "name": "GET Storefront Category Products",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/storefront/categories/{{storefrontCategorySlug}}/products?limit=20&sort=recommended"
+          },
+          "response": []
+        },
+        {
+          "name": "GET Storefront Collections",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/storefront/collections?limit=100&merchantSlug={{storefrontMerchantSlug}}"
+          },
+          "response": []
+        },
+        {
+          "name": "GET Storefront Collection",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/storefront/collections/{{storefrontCollectionSlug}}?limit=20&sort=recommended"
+          },
+          "response": []
+        },
+        {
+          "name": "GET Storefront Brands",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/storefront/brands?limit=100&merchantSlug={{storefrontMerchantSlug}}"
+          },
+          "response": []
+        },
+        {
+          "name": "GET Storefront Merchant",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/storefront/merchants/{{storefrontMerchantSlug}}"
+          },
+          "response": []
+        },
+        {
+          "name": "GET Storefront Merchant Products",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/storefront/merchants/{{storefrontMerchantSlug}}/products?limit=20&sort=latest"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Cart",
+      "item": []
+    },
+    {
+      "name": "Orders",
+      "item": []
+    },
+    {
+      "name": "Discounts",
+      "item": []
+    }
+  ]
+}
