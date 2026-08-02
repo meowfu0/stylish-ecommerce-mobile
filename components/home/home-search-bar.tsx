@@ -1,6 +1,7 @@
 import { Image } from "expo-image";
-import { TextInput, View } from "react-native";
+import { View } from "react-native";
 
+import { StylishTextInput } from "@/components/forms/stylish-text-input";
 import { colors } from "@/constants/design-tokens";
 
 type HomeSearchBarProps = {
@@ -22,7 +23,7 @@ export function HomeSearchBar({
     <View
       accessibilityLabel="Search any product"
       accessibilityRole="search"
-      className="h-[40px] flex-row items-center rounded-[6px] bg-neutral-0 px-md shadow-sm"
+      className="h-[40px] flex-row items-center overflow-hidden rounded-[6px] bg-neutral-0 px-md shadow-sm"
       style={{ width }}
     >
       <Image
@@ -31,7 +32,7 @@ export function HomeSearchBar({
         source={require("@/assets/icons/home/search-1.svg")}
         style={{ height: 20, width: 20 }}
       />
-      <TextInput
+      <StylishTextInput
         accessibilityLabel="Product search"
         autoCapitalize="none"
         autoCorrect={false}
