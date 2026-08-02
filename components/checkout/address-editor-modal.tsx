@@ -6,11 +6,11 @@ import {
   Pressable,
   ScrollView,
   Text,
-  TextInput,
   useWindowDimensions,
   View,
 } from "react-native";
 
+import { StylishTextInput } from "@/components/forms/stylish-text-input";
 import type { CheckoutAddress } from "@/constants/checkout-data";
 import { colors } from "@/constants/design-tokens";
 import { isDesktopWeb } from "@/constants/responsive";
@@ -53,29 +53,37 @@ function AddressField({
   placeholder: string;
   value: string;
 }) {
+  const [isFocused, setIsFocused] = useState(false);
+
   return (
     <View className="mt-md">
       <Text className="font-montserrat-medium text-xs text-neutral-1000">
         {label}
       </Text>
-      <TextInput
-        accessibilityHint={error}
-        accessibilityLabel={accessibilityLabel}
-        className={`mt-[7px] min-h-[48px] rounded-sm border bg-neutral-0 px-[12px] font-montserrat-regular text-xs text-neutral-1000 ${
-          multiline ? "py-[12px]" : "py-0"
-        }`}
-        keyboardType={keyboardType}
-        multiline={multiline}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={colors.neutral[475]}
-        selectionColor={colors.brand.primary}
+      <View
+        className="mt-[7px] min-h-[48px] overflow-hidden rounded-sm border bg-neutral-0 px-[12px]"
         style={{
-          borderColor: error ? colors.brand.primary : colors.neutral[300],
-          textAlignVertical: multiline ? "top" : "center",
+          borderColor:
+            error || isFocused ? colors.brand.primary : colors.neutral[300],
         }}
-        value={value}
-      />
+      >
+        <StylishTextInput
+          accessibilityHint={error}
+          accessibilityLabel={accessibilityLabel}
+          className={`min-h-[46px] flex-1 font-montserrat-regular text-xs text-neutral-1000 ${
+            multiline ? "py-[12px]" : "py-0"
+          }`}
+          keyboardType={keyboardType}
+          multiline={multiline}
+          onBlur={() => setIsFocused(false)}
+          onChangeText={onChangeText}
+          onFocus={() => setIsFocused(true)}
+          placeholder={placeholder}
+          placeholderTextColor={colors.neutral[475]}
+          style={{ textAlignVertical: multiline ? "top" : "center" }}
+          value={value}
+        />
+      </View>
       {error ? (
         <Text
           accessibilityLiveRegion="polite"
