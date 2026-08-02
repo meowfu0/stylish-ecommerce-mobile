@@ -1,10 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  type StyleProp,
-  Text,
-  type TextStyle,
-  View,
-} from "react-native";
+import { type StyleProp, Text, type TextStyle, View } from "react-native";
 import Animated, {
   cancelAnimation,
   Easing,
@@ -15,24 +10,23 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-import { colors } from "@/constants/design-tokens";
+import { colors, typography } from "@/constants/design-tokens";
 
 const FIRST_LINE = "A little more";
 const ACCENT_TEXT = "lovely";
 const SECOND_LINE_END = " every day.";
 const FULL_TEXT = `${FIRST_LINE}\n${ACCENT_TEXT}${SECOND_LINE_END}`;
-const CHARACTER_INTERVAL = 34;
-const START_DELAY = 180;
-const REPLAY_INTERVAL = 10_000;
-const REPLAY_FADE_DURATION = 180;
+const CHARACTER_INTERVAL = 74;
+const LINE_BREAK_DELAY = 240;
+const START_DELAY = 400;
+const REPLAY_INTERVAL = 15_000;
+const REPLAY_FADE_DURATION = 240;
 
 type HeroWritingHeadlineProps = {
   style: StyleProp<TextStyle>;
 };
 
-export function HeroWritingHeadline({
-  style,
-}: HeroWritingHeadlineProps) {
+export function HeroWritingHeadline({ style }: HeroWritingHeadlineProps) {
   const reduceMotion = useReducedMotion();
   const caretOpacity = useSharedValue(1);
   const writingOpacity = useSharedValue(1);
@@ -56,7 +50,7 @@ export function HeroWritingHeadline({
       visibleCharacters === 0
         ? START_DELAY
         : nextCharacter === "\n"
-          ? 130
+          ? LINE_BREAK_DELAY
           : CHARACTER_INTERVAL;
     const timer = setTimeout(
       () => setVisibleCharacters((current) => current + 1),
@@ -76,7 +70,7 @@ export function HeroWritingHeadline({
     caretOpacity.value = 1;
     caretOpacity.value = withRepeat(
       withTiming(0.16, {
-        duration: 360,
+        duration: 480,
         easing: Easing.inOut(Easing.quad),
       }),
       -1,
@@ -149,13 +143,24 @@ export function HeroWritingHeadline({
       <Text
         accessibilityElementsHidden
         accessible={false}
-        className="font-serif text-neutral-900"
+        className="text-ink-editorial"
         importantForAccessibility="no-hide-descendants"
-        style={[style, { opacity: 0 }]}
+        style={[
+          style,
+          {
+            fontFamily: typography.fontFamily.montserratBold,
+            opacity: 0,
+          },
+        ]}
       >
         {FIRST_LINE}
         {"\n"}
-        <Text className="text-brand-primary" style={{ fontStyle: "italic" }}>
+        <Text
+          className="text-brand-editorialAccent"
+          style={{
+            fontFamily: typography.fontFamily.montserratSemibold,
+          }}
+        >
           {ACCENT_TEXT}
         </Text>
         {SECOND_LINE_END}
@@ -164,15 +169,17 @@ export function HeroWritingHeadline({
       <Animated.View className="absolute inset-0" style={writingStyle}>
         <Text
           accessible={false}
-          className="font-serif text-neutral-900"
-          style={style}
+          className="text-ink-editorial"
+          style={[style, { fontFamily: typography.fontFamily.montserratBold }]}
         >
           {visibleFirstLine}
           {secondLineStarted ? "\n" : null}
           {secondLineStarted ? (
             <Text
-              className="text-brand-primary"
-              style={{ fontStyle: "italic" }}
+              className="text-brand-editorialAccent"
+              style={{
+                fontFamily: typography.fontFamily.montserratSemibold,
+              }}
             >
               {visibleAccent}
             </Text>
@@ -180,7 +187,13 @@ export function HeroWritingHeadline({
           {visibleSecondLineEnd}
           {!typingComplete && !reduceMotion ? (
             <Animated.Text
-              style={[caretStyle, { color: colors.brand.primary }]}
+              style={[
+                caretStyle,
+                {
+                  color: colors.brand.editorialAccent,
+                  fontFamily: typography.fontFamily.montserratBold,
+                },
+              ]}
             >
               |
             </Animated.Text>
