@@ -142,7 +142,7 @@ export function PaymentMethodScreen({
               {desktopWeb ? (
                 <Text
                   accessibilityRole="header"
-                  className="mb-lg font-serif text-[30px] leading-[36px] text-neutral-1000"
+                  className="mb-lg font-montserrat-bold text-headingLarge tracking-[-0.45px] text-neutral-1000"
                 >
                   Order summary
                 </Text>
@@ -184,7 +184,7 @@ export function PaymentMethodScreen({
                 accessibilityRole="header"
                 className={`font-montserrat-medium text-neutral-900 ${
                   desktopWeb
-                    ? "font-serif text-[30px] leading-[36px]"
+                    ? "font-montserrat-bold text-headingLarge tracking-[-0.45px]"
                     : "mt-[26px] text-action leading-[27px]"
                 }`}
               >
