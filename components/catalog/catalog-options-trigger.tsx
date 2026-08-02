@@ -11,6 +11,7 @@ const CONTROL_ICONS = {
 type CatalogOptionsTriggerProps = {
   accessibilityHint: string;
   active: boolean;
+  badgeCount?: number;
   kind: keyof typeof CONTROL_ICONS;
   label: string;
   onPress: () => void;
@@ -19,6 +20,7 @@ type CatalogOptionsTriggerProps = {
 export function CatalogOptionsTrigger({
   accessibilityHint,
   active,
+  badgeCount = 0,
   kind,
   label,
   onPress,
@@ -71,6 +73,17 @@ export function CatalogOptionsTrigger({
       >
         {label}
       </Text>
+
+      {badgeCount > 0 ? (
+        <View
+          accessibilityLabel={`${badgeCount} active filters`}
+          className="ml-xs min-w-[18px] items-center justify-center rounded-pill bg-brand-primary px-[5px] py-[2px]"
+        >
+          <Text className="font-montserrat-bold text-micro leading-[12px] text-neutral-0">
+            {badgeCount > 99 ? "99+" : badgeCount}
+          </Text>
+        </View>
+      ) : null}
     </Pressable>
   );
 }
