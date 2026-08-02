@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "exclude": [
+    "node_modules",
+    "test",
+    "dist",
+    "coverage",
+    "drizzle",
+    "**/*.spec.ts",
+    "**/*.e2e-spec.ts"
+  ]
+}
