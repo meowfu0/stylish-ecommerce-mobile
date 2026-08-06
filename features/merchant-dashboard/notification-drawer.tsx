@@ -83,6 +83,7 @@ export function NotificationDrawer({
           <QuickDetail
             icon="wallet-outline"
             label="Next payout"
+            numeric
             value="₱286,400 · Aug 5"
           />
           <QuickDetail
@@ -133,10 +134,12 @@ function DrawerSection({
 function QuickDetail({
   icon,
   label,
+  numeric = false,
   value,
 }: {
   icon: "clock-outline" | "map-marker-outline" | "wallet-outline";
   label: string;
+  numeric?: boolean;
   value: string;
 }) {
   return (
@@ -146,7 +149,12 @@ function QuickDetail({
         <StylishText style={styles.quickLabel} unstyled variant="caption">
           {label}
         </StylishText>
-        <StylishText style={styles.quickValue} unstyled variant="label">
+        <StylishText
+          numberOfLines={numeric ? 1 : 2}
+          style={[styles.quickValue, numeric && styles.numericValue]}
+          unstyled
+          variant="label"
+        >
           {value}
         </StylishText>
       </View>
@@ -212,6 +220,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.feedback.dangerSoft,
     borderColor: colors.brand.pinkSoft,
   },
+  numericValue: { flexShrink: 0, fontVariant: ["tabular-nums"] },
   overlayDrawer: {
     bottom: 0,
     elevation: 24,
