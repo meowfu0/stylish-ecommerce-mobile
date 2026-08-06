@@ -3,11 +3,25 @@ import type {
   ActivityEvent,
   DashboardNotification,
   InventoryAlert,
+  MerchantSession,
   Metric,
   PipelineStage,
   ProductRow,
   RecentOrder,
 } from "@/features/merchant-dashboard/dashboard-types";
+import { rolePermissions } from "@/features/merchant-dashboard/dashboard-access";
+
+export const documentationMerchantSession: MerchantSession = {
+  defaultLocation: "Lumière Makati Warehouse",
+  displayName: "Althea",
+  email: "owner@example.com",
+  merchantHandle: "documentation-only",
+  merchantName: "Lumière",
+  permissions: rolePermissions["Merchant Owner"],
+  role: "Merchant Owner",
+  storeStatus: "active",
+  verified: true,
+};
 
 const productImages = {
   blouse: require("@/assets/images/storefront/dahlia-ruffle-top.jpg"),
@@ -25,6 +39,7 @@ export const dashboardMetrics: Metric[] = [
     label: "Gross sales",
     sparkline: [42, 48, 39, 55, 51, 67, 72],
     value: "₱486,275",
+    valueCentavos: 48627500,
   },
   {
     changePercent: 8.1,
@@ -41,6 +56,7 @@ export const dashboardMetrics: Metric[] = [
     label: "Net earnings",
     sparkline: [35, 46, 40, 59, 54, 68, 74],
     value: "₱413,334",
+    valueCentavos: 41333400,
   },
   {
     changePercent: -2.3,
@@ -49,6 +65,7 @@ export const dashboardMetrics: Metric[] = [
     label: "Average order value",
     sparkline: [68, 56, 74, 52, 45, 40, 32],
     value: "₱1,529",
+    valueCentavos: 152900,
   },
 ];
 
