@@ -4,7 +4,7 @@ import type {
   Permission,
 } from "@/features/merchant-dashboard/dashboard-types";
 
-const ALL_PERMISSIONS: Permission[] = [
+export const merchantPermissions: Permission[] = [
   "products.read",
   "products.write",
   "products.publish",
@@ -22,9 +22,9 @@ const ALL_PERMISSIONS: Permission[] = [
 ];
 
 export const rolePermissions: Record<MerchantRole, Permission[]> = {
-  "Merchant Owner": ALL_PERMISSIONS,
-  "Merchant Administrator": ALL_PERMISSIONS,
-  Manager: ALL_PERMISSIONS.filter(
+  "Merchant Owner": merchantPermissions,
+  "Merchant Administrator": merchantPermissions,
+  Manager: merchantPermissions.filter(
     (permission) =>
       permission !== "staff.manage" && permission !== "settings.manage",
   ),

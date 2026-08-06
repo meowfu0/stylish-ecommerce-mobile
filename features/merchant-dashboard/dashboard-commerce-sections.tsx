@@ -166,6 +166,7 @@ export function TopProducts() {
               <NumberDatum label="Units" value={String(product.units)} />
               <NumberDatum
                 label="Revenue"
+                numeric
                 value={formatPeso(product.revenueCentavos, { decimals: false })}
               />
               <NumberDatum
@@ -183,10 +184,12 @@ export function TopProducts() {
 
 function NumberDatum({
   label,
+  numeric = false,
   tone,
   value,
 }: {
   label: string;
+  numeric?: boolean;
   tone?: "negative" | "positive";
   value: string;
 }) {
@@ -196,8 +199,10 @@ function NumberDatum({
         {label.toUpperCase()}
       </StylishText>
       <StylishText
+        numberOfLines={numeric ? 1 : undefined}
         style={[
           styles.numberValue,
+          numeric && styles.numericValue,
           tone === "positive" && styles.numberPositive,
           tone === "negative" && styles.numberNegative,
         ]}
@@ -289,6 +294,7 @@ export function RecentOrders({ compact }: { compact: boolean }) {
               <TableCell label={String(order.items)} width={0.55} />
               <TableCell
                 label={formatPeso(order.totalCentavos, { decimals: false })}
+                numeric
                 strong
                 width={1}
               />
@@ -342,11 +348,13 @@ function FilterControl({ label }: { label: string }) {
 
 function TableCell({
   label,
+  numeric = false,
   status = false,
   strong = false,
   width,
 }: {
   label: string;
+  numeric?: boolean;
   status?: boolean;
   strong?: boolean;
   width: number;
@@ -370,8 +378,12 @@ function TableCell({
         />
       ) : (
         <StylishText
-          numberOfLines={2}
-          style={[styles.tableText, strong && styles.tableTextStrong]}
+          numberOfLines={numeric ? 1 : 2}
+          style={[
+            styles.tableText,
+            strong && styles.tableTextStrong,
+            numeric && styles.numericValue,
+          ]}
           unstyled
           variant="caption"
         >
@@ -401,7 +413,12 @@ function OrderCard({ order }: { order: RecentOrder }) {
         <StylishText style={styles.orderDate} unstyled variant="caption">
           {order.date}
         </StylishText>
-        <StylishText style={styles.orderTotal} unstyled variant="price">
+        <StylishText
+          numberOfLines={1}
+          style={styles.orderTotal}
+          unstyled
+          variant="price"
+        >
           {formatPeso(order.totalCentavos, { decimals: false })}
         </StylishText>
       </View>
@@ -535,7 +552,12 @@ function StockDatum({ label, value }: { label: string; value: number }) {
       <StylishText style={styles.stockDatumLabel} unstyled variant="caption">
         {label.toUpperCase()}
       </StylishText>
-      <StylishText style={styles.stockDatumValue} unstyled variant="label">
+      <StylishText
+        numberOfLines={1}
+        style={styles.stockDatumValue}
+        unstyled
+        variant="label"
+      >
         {value}
       </StylishText>
     </View>
@@ -759,6 +781,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     lineHeight: 16,
   },
+  numericValue: { flexShrink: 0, fontVariant: ["tabular-nums"] },
   orderCard: {
     backgroundColor: colors.neutral[50],
     borderColor: colors.neutral[200],
@@ -839,8 +862,10 @@ const styles = StyleSheet.create({
   },
   orderTotal: {
     color: colors.ink.primary,
+    flexShrink: 0,
     fontFamily: "Montserrat_700Bold",
     fontSize: 15,
+    fontVariant: ["tabular-nums"],
     lineHeight: 22,
   },
   pageLabel: {
@@ -906,8 +931,10 @@ const styles = StyleSheet.create({
   },
   stockDatumValue: {
     color: colors.ink.primary,
+    flexShrink: 0,
     fontFamily: "Montserrat_700Bold",
     fontSize: 11,
+    fontVariant: ["tabular-nums"],
     lineHeight: 16,
   },
   stockIn: { backgroundColor: colors.feedback.success, flex: 431 },
