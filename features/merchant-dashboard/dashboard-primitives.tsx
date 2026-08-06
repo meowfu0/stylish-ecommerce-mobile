@@ -1,4 +1,5 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useState } from "react";
 import type { ComponentProps, ReactNode } from "react";
 import {
   Pressable,
@@ -51,6 +52,10 @@ export function DashboardCard({
   );
 }
 
+export function DashboardSkeleton({ style }: { style?: StyleProp<ViewStyle> }) {
+  return <View className="st-shimmer" style={[styles.skeleton, style]} />;
+}
+
 export function SectionHeading({
   action,
   description,
@@ -101,16 +106,25 @@ export function DashboardButton({
   title?: string;
   tone?: "primary" | "secondary" | "quiet";
 }) {
+  const [hovered, setHovered] = useState(false);
+  const [pressed, setPressed] = useState(false);
+
   return (
     <Pressable
       accessibilityHint={disabled ? title : undefined}
       accessibilityRole="button"
       accessibilityState={{ disabled }}
+      className="focus-visible:ring-[3px] focus-visible:ring-brand-blue/55 focus-visible:ring-offset-2"
       disabled={disabled}
+      onHoverIn={() => setHovered(true)}
+      onHoverOut={() => setHovered(false)}
       onPress={onPress}
-      style={({ pressed }) => [
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      style={[
         styles.button,
         tone === "primary" && styles.buttonPrimary,
+        tone === "primary" && hovered && !disabled && styles.buttonPrimaryHover,
         tone === "secondary" && styles.buttonSecondary,
         tone === "quiet" && styles.buttonQuiet,
         pressed && !disabled && styles.buttonPressed,
@@ -212,10 +226,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 10,
   },
+  buttonPrimaryHover: {
+    backgroundColor: colors.brand.primaryHover,
+    borderColor: colors.brand.primaryHover,
+  },
   buttonQuiet: { backgroundColor: "transparent" },
   buttonSecondary: {
     backgroundColor: colors.neutral[0],
-    borderColor: colors.neutral[400],
+    borderColor: colors.neutral[200],
     borderWidth: 1,
   },
   card: {
@@ -295,5 +313,10 @@ const styles = StyleSheet.create({
     fontFamily: "Montserrat_700Bold",
     fontSize: 18,
     lineHeight: 24,
+  },
+  skeleton: {
+    backgroundColor: colors.neutral[200],
+    borderRadius: borderRadius.lg,
+    opacity: 0.7,
   },
 });

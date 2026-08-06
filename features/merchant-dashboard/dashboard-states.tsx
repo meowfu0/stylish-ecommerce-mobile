@@ -8,6 +8,7 @@ import {
   DashboardCard,
   DashboardIcon,
   type DashboardIconName,
+  DashboardSkeleton,
 } from "@/features/merchant-dashboard/dashboard-primitives";
 import type { DashboardState } from "@/features/merchant-dashboard/dashboard-types";
 import { signOutCurrentSession } from "@/services/auth/auth-session";
@@ -45,9 +46,11 @@ export function DashboardStateBanner({ state }: { state: DashboardState }) {
 }
 
 export function DashboardBlockingState({
+  onSignInAgain,
   onRetry,
   state,
 }: {
+  onSignInAgain?: () => void | Promise<void>;
   onRetry?: () => void;
   state: DashboardState;
 }) {
@@ -89,6 +92,10 @@ export function DashboardBlockingState({
   if (!config) return null;
 
   const signInAgain = async () => {
+    if (onSignInAgain) {
+      await onSignInAgain();
+      return;
+    }
     await signOutCurrentSession();
     router.replace("/sign-in");
   };
@@ -180,7 +187,14 @@ export function DashboardBlockingState({
             </>
           ) : null}
           {state === "suspended" ? (
-            <DashboardButton icon="lifebuoy" label="Contact Support" />
+            <>
+              <DashboardButton
+                icon="lifebuoy"
+                label="Contact Support"
+                tone="primary"
+              />
+              <DashboardButton label="Review Merchant Profile" />
+            </>
           ) : null}
         </View>
       </DashboardCard>
@@ -213,25 +227,29 @@ function SetupStep({
   );
 }
 
-function DashboardLoadingState() {
+export function DashboardLoadingState() {
   return (
     <View
       accessibilityLabel="Loading your merchant dashboard."
       accessibilityLiveRegion="polite"
+      accessibilityState={{ busy: true }}
       style={styles.loadingLayout}
       testID="dashboard-state-loading"
     >
-      <View style={[styles.skeleton, styles.skeletonHero]} />
+      <StylishText style={styles.srOnly} unstyled variant="caption">
+        Loading your merchant dashboard.
+      </StylishText>
+      <DashboardSkeleton style={styles.skeletonHero} />
       <View style={styles.skeletonRow}>
         {[0, 1, 2, 3].map((item) => (
-          <View key={item} style={[styles.skeleton, styles.skeletonMetric]} />
+          <DashboardSkeleton key={item} style={styles.skeletonMetric} />
         ))}
       </View>
       <View style={styles.skeletonPair}>
-        <View style={[styles.skeleton, styles.skeletonLarge]} />
-        <View style={[styles.skeleton, styles.skeletonLarge]} />
+        <DashboardSkeleton style={styles.skeletonLarge} />
+        <DashboardSkeleton style={styles.skeletonLarge} />
       </View>
-      <View style={[styles.skeleton, styles.skeletonTable]} />
+      <DashboardSkeleton style={styles.skeletonTable} />
     </View>
   );
 }
@@ -336,17 +354,19 @@ const styles = StyleSheet.create({
     minHeight: 56,
     paddingHorizontal: spacing.sm,
   },
-  skeleton: {
-    backgroundColor: colors.neutral[200],
-    borderRadius: borderRadius.lg,
-    opacity: 0.7,
-  },
   skeletonHero: { height: 166 },
   skeletonLarge: { flex: 1, height: 420, minWidth: 260 },
   skeletonMetric: { flex: 1, height: 150, minWidth: 180 },
   skeletonPair: { flexDirection: "row", flexWrap: "wrap", gap: spacing.lg },
   skeletonRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   skeletonTable: { height: 480 },
+  srOnly: {
+    height: 1,
+    left: -10000,
+    overflow: "hidden",
+    position: "absolute",
+    width: 1,
+  },
   stateIcon: {
     alignItems: "center",
     backgroundColor: colors.feedback.dangerSoft,

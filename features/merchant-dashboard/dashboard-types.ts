@@ -70,6 +70,7 @@ export type Metric = {
   label: string;
   sparkline: number[];
   value: string;
+  valueCentavos?: number;
 };
 
 export type PipelineStage = {

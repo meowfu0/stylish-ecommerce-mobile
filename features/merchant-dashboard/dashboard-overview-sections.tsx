@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { StylishText } from "@/components/typography/stylish-text";
@@ -22,7 +22,10 @@ import type {
   MerchantSession,
   Metric,
 } from "@/features/merchant-dashboard/dashboard-types";
-import { greetingFor } from "@/features/merchant-dashboard/dashboard-format";
+import {
+  formatPeso,
+  greetingFor,
+} from "@/features/merchant-dashboard/dashboard-format";
 
 export function WelcomeBanner({
   mobile,
@@ -38,7 +41,9 @@ export function WelcomeBanner({
     >
       <View pointerEvents="none" style={styles.welcomeBlueGlow} />
       <View pointerEvents="none" style={styles.welcomePinkGlow} />
-      <View style={styles.welcomeContent}>
+      <View
+        style={[styles.welcomeContent, mobile && styles.welcomeContentMobile]}
+      >
         <View style={styles.welcomeBadges}>
           {session.verified ? (
             <StatusChip
@@ -117,6 +122,11 @@ export function MetricsSection({ mobile }: { mobile: boolean }) {
 
 function MetricCard({ metric, style }: { metric: Metric; style?: object }) {
   const positive = metric.changePercent >= 0;
+  const [comparisonValue, ...comparisonWords] = metric.comparison.split(" ");
+  const displayValue =
+    metric.valueCentavos === undefined
+      ? metric.value
+      : formatPeso(metric.valueCentavos, { compact: true });
 
   return (
     <DashboardCard style={[styles.metricCard, style]}>
@@ -125,8 +135,13 @@ function MetricCard({ metric, style }: { metric: Metric; style?: object }) {
       </StylishText>
       <View style={styles.metricBody}>
         <View style={styles.metricCopy}>
-          <StylishText style={styles.metricValue} unstyled variant="priceLarge">
-            {metric.value}
+          <StylishText
+            numberOfLines={1}
+            style={styles.metricValue}
+            unstyled
+            variant="priceLarge"
+          >
+            {displayValue}
           </StylishText>
           <View style={styles.metricChangeRow}>
             <DashboardIcon
@@ -147,13 +162,23 @@ function MetricCard({ metric, style }: { metric: Metric; style?: object }) {
               {positive ? "Up" : "Down"} {Math.abs(metric.changePercent)}%
             </StylishText>
           </View>
-          <StylishText
-            style={styles.metricComparison}
-            unstyled
-            variant="caption"
-          >
-            {metric.comparison}
-          </StylishText>
+          <View style={styles.metricComparisonRow}>
+            <StylishText
+              numberOfLines={1}
+              style={styles.metricComparisonValue}
+              unstyled
+              variant="caption"
+            >
+              {comparisonValue}
+            </StylishText>
+            <StylishText
+              style={styles.metricComparison}
+              unstyled
+              variant="caption"
+            >
+              {comparisonWords.join(" ")}
+            </StylishText>
+          </View>
         </View>
         <Sparkline data={metric.sparkline} positive={positive} />
       </View>
@@ -191,6 +216,188 @@ function Sparkline({ data, positive }: { data: number[]; positive: boolean }) {
               },
             ]}
           />
+        );
+      })}
+    </View>
+  );
+}
+
+type SalesChartDataKey = "orders" | "refunds" | "revenue";
+
+const chartPlotBottom = 150;
+const chartPlotHeight = 140;
+const chartCurveSamplesPerSegment = 12;
+
+function chartPointY(value: number, maximum: number) {
+  return chartPlotBottom - (value / maximum) * chartPlotHeight;
+}
+
+type ChartPoint = { x: number; y: number };
+
+function monotoneTangents(values: number[]) {
+  const slopes = values.slice(0, -1).map((value, index) => {
+    return values[index + 1] - value;
+  });
+  const tangents = new Array<number>(values.length).fill(0);
+
+  tangents[0] = slopes[0];
+  tangents[tangents.length - 1] = slopes[slopes.length - 1];
+
+  for (let index = 1; index < values.length - 1; index += 1) {
+    const previous = slopes[index - 1];
+    const next = slopes[index];
+
+    tangents[index] =
+      previous * next <= 0 ? 0 : (2 * previous * next) / (previous + next);
+  }
+
+  return tangents;
+}
+
+function buildMonotoneChartPoints({
+  chartWidth,
+  dataKey,
+  maximum,
+  samplesPerSegment = chartCurveSamplesPerSegment,
+}: {
+  chartWidth: number;
+  dataKey: SalesChartDataKey;
+  maximum: number;
+  samplesPerSegment?: number;
+}): ChartPoint[] {
+  if (chartWidth <= 0) return [];
+
+  const values = chartSeries.map((point) => point[dataKey]);
+  const tangents = monotoneTangents(values);
+  const sourceStep = chartWidth / (values.length - 1);
+  const points: ChartPoint[] = [];
+
+  for (let index = 0; index < values.length - 1; index += 1) {
+    const start = values[index];
+    const end = values[index + 1];
+    const minimum = Math.min(start, end);
+    const maximumForSegment = Math.max(start, end);
+
+    for (let sample = 0; sample < samplesPerSegment; sample += 1) {
+      const progress = sample / samplesPerSegment;
+      const progressSquared = progress * progress;
+      const progressCubed = progressSquared * progress;
+      const interpolated =
+        (2 * progressCubed - 3 * progressSquared + 1) * start +
+        (progressCubed - 2 * progressSquared + progress) * tangents[index] +
+        (-2 * progressCubed + 3 * progressSquared) * end +
+        (progressCubed - progressSquared) * tangents[index + 1];
+      const value = Math.min(
+        maximumForSegment,
+        Math.max(minimum, interpolated),
+      );
+
+      points.push({
+        x: (index + progress) * sourceStep,
+        y: chartPointY(value, maximum),
+      });
+    }
+  }
+
+  points.push({
+    x: chartWidth,
+    y: chartPointY(values[values.length - 1], maximum),
+  });
+
+  return points;
+}
+
+function ChartSeriesLine({
+  chartWidth,
+  color,
+  dashed = false,
+  dataKey,
+  maximum,
+}: {
+  chartWidth: number;
+  color: string;
+  dashed?: boolean;
+  dataKey: SalesChartDataKey;
+  maximum: number;
+}) {
+  if (chartWidth <= 0) return null;
+  const points = buildMonotoneChartPoints({
+    chartWidth,
+    dataKey,
+    maximum,
+    samplesPerSegment: dashed ? 1 : chartCurveSamplesPerSegment,
+  });
+
+  return (
+    <View
+      pointerEvents="none"
+      style={styles.chartSeriesLayer}
+      testID={`chart-series-${dataKey}`}
+    >
+      {points.slice(0, -1).map((point, index) => {
+        const next = points[index + 1];
+        const deltaX = next.x - point.x;
+        const deltaY = next.y - point.y;
+        const length = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
+
+        return (
+          <View
+            key={`${dataKey}-${index}`}
+            style={[
+              styles.chartSeriesSegment,
+              dashed
+                ? styles.chartSeriesSegmentDashed
+                : { backgroundColor: color },
+              dashed && { borderTopColor: color },
+              {
+                left: point.x,
+                top: point.y,
+                transform: [{ rotate: `${angle}deg` }],
+                width: length,
+              },
+            ]}
+          />
+        );
+      })}
+    </View>
+  );
+}
+
+function RevenueArea({ chartWidth }: { chartWidth: number }) {
+  if (chartWidth <= 0) return null;
+  const points = buildMonotoneChartPoints({
+    chartWidth,
+    dataKey: "revenue",
+    maximum: 100000,
+  });
+
+  return (
+    <View
+      pointerEvents="none"
+      style={styles.chartSeriesLayer}
+      testID="chart-series-revenue-area"
+    >
+      {points.slice(0, -1).map((point, index) => {
+        const next = points[index + 1];
+        const top = Math.min(point.y, next.y);
+        return (
+          <View
+            key={`revenue-area-${index}`}
+            style={[
+              styles.chartRevenueAreaSlice,
+              {
+                height: chartPlotBottom - top,
+                left: point.x,
+                top,
+                width: Math.max(next.x - point.x + 1, 1),
+              },
+            ]}
+          >
+            <View style={styles.chartRevenueAreaBase} />
+            <View style={styles.chartRevenueAreaMiddle} />
+            <View style={styles.chartRevenueAreaTop} />
+          </View>
         );
       })}
     </View>
@@ -248,79 +455,83 @@ export function SalesPerformance({ empty = false }: { empty?: boolean }) {
             color={colors.neutral[400]}
             label="Refunds"
             note="Refunded value in pesos"
+            variant="dashed"
           />
         </View>
 
-        {empty ? (
-          <View style={styles.chartEmpty}>
-            <DashboardIcon name="chart-line-variant" size={30} />
-            <StylishText
-              style={styles.chartEmptyTitle}
-              unstyled
-              variant="label"
-            >
-              No sales in this range yet
-            </StylishText>
-            <StylishText
-              style={styles.chartEmptyBody}
-              unstyled
-              variant="caption"
-            >
-              Try another date range as your first orders arrive.
-            </StylishText>
-          </View>
-        ) : (
-          <View
-            accessibilityLabel="Revenue rose from 58,100 pesos to 83,975 pesos while orders rose from 32 to 53. Refunds remained below 2,000 pesos."
-            accessibilityRole="image"
-            onLayout={(event) => setChartWidth(event.nativeEvent.layout.width)}
-            style={styles.chart}
-          >
-            {[0, 1, 2, 3].map((line) => (
-              <View
-                key={line}
-                style={[styles.chartGridLine, { top: line * 52 }]}
+        <View
+          accessibilityLabel={
+            empty
+              ? "Sales chart has no data for this range."
+              : "Revenue rose from 58,100 pesos to 83,975 pesos while orders rose from 32 to 53. Refunds remained below 2,000 pesos."
+          }
+          accessibilityRole="image"
+          onLayout={(event) => setChartWidth(event.nativeEvent.layout.width)}
+          style={styles.chart}
+          testID="dashboard-sales-chart"
+        >
+          {[0, 1, 2, 3].map((line) => (
+            <View
+              key={line}
+              style={[styles.chartGridLine, { top: line * 52 }]}
+            />
+          ))}
+          {!empty ? (
+            <>
+              <RevenueArea chartWidth={chartWidth} />
+              <ChartSeriesLine
+                chartWidth={chartWidth}
+                color={colors.brand.primary}
+                dataKey="revenue"
+                maximum={100000}
               />
+              <ChartSeriesLine
+                chartWidth={chartWidth}
+                color={colors.brand.blue}
+                dataKey="orders"
+                maximum={60}
+              />
+              <ChartSeriesLine
+                chartWidth={chartWidth}
+                color={colors.neutral[400]}
+                dashed
+                dataKey="refunds"
+                maximum={100000}
+              />
+            </>
+          ) : null}
+          <View style={styles.chartLabels}>
+            {chartSeries.map((point) => (
+              <StylishText
+                key={point.label}
+                style={styles.chartLabel}
+                unstyled
+                variant="caption"
+              >
+                {point.label}
+              </StylishText>
             ))}
-            {chartWidth > 0
-              ? chartSeries.slice(0, -1).map((point, index) => {
-                  const next = chartSeries[index + 1];
-                  const step = chartWidth / (chartSeries.length - 1);
-                  const y = 150 - (point.revenue / 100000) * 140;
-                  const nextY = 150 - (next.revenue / 100000) * 140;
-                  const delta = nextY - y;
-                  const length = Math.sqrt(step * step + delta * delta);
-                  const angle = Math.atan2(delta, step) * (180 / Math.PI);
-                  return (
-                    <View
-                      key={point.label}
-                      style={[
-                        styles.chartSegment,
-                        {
-                          left: index * step,
-                          top: y,
-                          transform: [{ rotate: `${angle}deg` }],
-                          width: length,
-                        },
-                      ]}
-                    />
-                  );
-                })
-              : null}
-            <View style={styles.chartLabels}>
-              {chartSeries.map((point) => (
-                <StylishText
-                  key={point.label}
-                  style={styles.chartLabel}
-                  unstyled
-                  variant="caption"
-                >
-                  {point.label}
-                </StylishText>
-              ))}
-            </View>
           </View>
-        )}
+          {empty ? (
+            <View style={styles.chartEmpty}>
+              <DashboardIcon name="chart-line-variant" size={30} />
+              <StylishText
+                style={styles.chartEmptyTitle}
+                unstyled
+                variant="label"
+              >
+                No sales in this range yet
+              </StylishText>
+              <StylishText
+                style={styles.chartEmptyBody}
+                unstyled
+                variant="caption"
+              >
+                Try another date range as your first orders arrive.
+              </StylishText>
+            </View>
+          ) : null}
+        </View>
 
         <View style={styles.chartTotals}>
           <ChartTotal label="Revenue" value="₱486,275" />
@@ -336,14 +547,24 @@ function LegendItem({
   color,
   label,
   note,
+  variant = "line",
 }: {
   color: string;
   label: string;
   note: string;
+  variant?: "dashed" | "line";
 }) {
   return (
     <View style={styles.legendItem}>
-      <View style={[styles.legendDot, { backgroundColor: color }]} />
+      <View
+        style={[
+          styles.legendSwatch,
+          variant === "dashed" && styles.legendSwatchDashed,
+          variant === "dashed"
+            ? { borderTopColor: color }
+            : { backgroundColor: color },
+        ]}
+      />
       <StylishText style={styles.legendLabel} unstyled variant="caption">
         {label}
       </StylishText>
@@ -360,7 +581,12 @@ function ChartTotal({ label, value }: { label: string; value: string }) {
       <StylishText style={styles.chartTotalLabel} unstyled variant="caption">
         {label}
       </StylishText>
-      <StylishText style={styles.chartTotalValue} unstyled variant="label">
+      <StylishText
+        numberOfLines={1}
+        style={styles.chartTotalValue}
+        unstyled
+        variant="label"
+      >
         {value}
       </StylishText>
     </View>
@@ -559,9 +785,14 @@ const styles = StyleSheet.create({
   chartContent: { flex: 1, padding: spacing.lg },
   chartEmpty: {
     alignItems: "center",
-    height: 190,
+    backgroundColor: "transparent",
+    bottom: spacing.lg,
     justifyContent: "center",
+    left: spacing.lg,
     padding: spacing.lg,
+    position: "absolute",
+    right: spacing.lg,
+    top: spacing.lg,
   },
   chartEmptyBody: {
     color: colors.neutral[550],
@@ -599,11 +830,54 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 0,
   },
-  chartSegment: {
-    backgroundColor: colors.brand.blue,
-    height: 3,
+  chartRevenueAreaBase: {
+    backgroundColor: colors.brand.primary,
+    bottom: 0,
+    left: 0,
+    opacity: 0.025,
+    position: "absolute",
+    right: 0,
+    top: 0,
+  },
+  chartRevenueAreaMiddle: {
+    backgroundColor: colors.brand.primary,
+    height: "62%",
+    left: 0,
+    opacity: 0.04,
+    position: "absolute",
+    right: 0,
+    top: 0,
+  },
+  chartRevenueAreaSlice: {
+    overflow: "hidden",
+    position: "absolute",
+  },
+  chartRevenueAreaTop: {
+    backgroundColor: colors.brand.primary,
+    height: "30%",
+    left: 0,
+    opacity: 0.05,
+    position: "absolute",
+    right: 0,
+    top: 0,
+  },
+  chartSeriesLayer: {
+    bottom: 0,
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
+  },
+  chartSeriesSegment: {
+    height: 2,
     position: "absolute",
     transformOrigin: "left center",
+  },
+  chartSeriesSegmentDashed: {
+    backgroundColor: "transparent",
+    borderStyle: "dashed",
+    borderTopWidth: 2,
+    height: 0,
   },
   chartTotal: { flex: 1, gap: spacing.xxs },
   chartTotalLabel: {
@@ -614,8 +888,10 @@ const styles = StyleSheet.create({
   },
   chartTotalValue: {
     color: colors.ink.primary,
+    flexShrink: 0,
     fontFamily: "Montserrat_700Bold",
     fontSize: 13,
+    fontVariant: ["tabular-nums"],
     lineHeight: 20,
   },
   chartTotals: {
@@ -657,7 +933,6 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     marginTop: spacing.md,
   },
-  legendDot: { borderRadius: borderRadius.pill, height: 10, width: 10 },
   legendItem: { alignItems: "center", flexDirection: "row", gap: spacing.xs },
   legendLabel: {
     color: colors.ink.primary,
@@ -670,6 +945,18 @@ const styles = StyleSheet.create({
     fontFamily: "Montserrat_400Regular",
     fontSize: 10,
     lineHeight: 16,
+  },
+  legendSwatch: {
+    borderRadius: borderRadius.pill,
+    flexShrink: 0,
+    height: 2,
+    width: 12,
+  },
+  legendSwatchDashed: {
+    backgroundColor: "transparent",
+    borderStyle: "dashed",
+    borderTopWidth: 2,
+    height: 0,
   },
   metricBody: {
     alignItems: "flex-end",
@@ -693,11 +980,25 @@ const styles = StyleSheet.create({
   },
   metricComparison: {
     color: colors.neutral[550],
+    flex: 1,
     fontFamily: "Montserrat_400Regular",
     fontSize: 10,
     lineHeight: 16,
   },
-  metricCopy: { flex: 1, gap: spacing.xs },
+  metricComparisonRow: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: spacing.xs,
+  },
+  metricComparisonValue: {
+    color: colors.neutral[550],
+    flexShrink: 0,
+    fontFamily: "Montserrat_400Regular",
+    fontSize: 10,
+    fontVariant: ["tabular-nums"],
+    lineHeight: 16,
+  },
+  metricCopy: { flex: 1, gap: spacing.xs, minWidth: 0 },
   metricLabel: {
     color: colors.neutral[550],
     fontFamily: "Montserrat_500Medium",
@@ -709,8 +1010,10 @@ const styles = StyleSheet.create({
   metricsGrid: { flexDirection: "row", gap: spacing.sm },
   metricValue: {
     color: colors.ink.primary,
+    flexShrink: 0,
     fontFamily: "Montserrat_700Bold",
     fontSize: 28,
+    fontVariant: ["tabular-nums"],
     letterSpacing: -0.45,
     lineHeight: 34,
   },
@@ -785,12 +1088,19 @@ const styles = StyleSheet.create({
     transformOrigin: "left center",
   },
   welcomeActions: {
+    alignItems: "center",
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.sm,
+    justifyContent: "flex-end",
+    position: "relative",
     zIndex: 2,
   },
-  welcomeActionsMobile: { width: "100%" },
+  welcomeActionsMobile: {
+    alignItems: "stretch",
+    flexDirection: "column",
+    width: "100%",
+  },
   welcomeBadges: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
   welcomeBlueGlow: {
     backgroundColor: colors.feedback.infoSoft,
@@ -801,6 +1111,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 180,
     width: 210,
+    zIndex: 0,
   },
   welcomeCard: {
     alignItems: "center",
@@ -809,13 +1120,22 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     minHeight: 166,
     padding: spacing.xl,
+    position: "relative",
   },
   welcomeCardMobile: {
     alignItems: "flex-start",
     flexDirection: "column",
     padding: spacing.md,
   },
-  welcomeContent: { flex: 1, gap: spacing.xs, minWidth: 240, zIndex: 2 },
+  welcomeContent: {
+    flex: 1,
+    gap: spacing.xs,
+    minWidth: 240,
+    paddingRight: spacing.lg,
+    position: "relative",
+    zIndex: 2,
+  },
+  welcomeContentMobile: { minWidth: 0, paddingRight: 0, width: "100%" },
   welcomeDescription: {
     color: colors.neutral[550],
     fontFamily: "Montserrat_400Regular",
@@ -831,6 +1151,7 @@ const styles = StyleSheet.create({
     right: -70,
     top: -100,
     width: 230,
+    zIndex: 0,
   },
   welcomeTitle: {
     color: colors.ink.primary,
