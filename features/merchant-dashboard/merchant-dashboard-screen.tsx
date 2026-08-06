@@ -15,25 +15,7 @@ import {
   normalizeMerchantRole,
   rolePermissions,
 } from "@/features/merchant-dashboard/dashboard-access";
-import {
-  CatalogSummary,
-  InventoryOverview,
-  LowStockAlerts,
-  RecentActivity,
-  RecentOrders,
-  TopProducts,
-} from "@/features/merchant-dashboard/dashboard-commerce-sections";
-import {
-  ActionRequired,
-  MetricsSection,
-  OrderPipeline,
-  SalesPerformance,
-  WelcomeBanner,
-} from "@/features/merchant-dashboard/dashboard-overview-sections";
-import {
-  DashboardBlockingState,
-  DashboardStateBanner,
-} from "@/features/merchant-dashboard/dashboard-states";
+import { DashboardOverviewContent } from "@/features/merchant-dashboard/dashboard-overview-content";
 import type {
   DashboardState,
   DateRange,
@@ -63,18 +45,17 @@ export function MerchantDashboardScreen() {
   const workspace = useAuthWorkspaceStore((state) => state.selectedWorkspace);
   const previewState = parsePreviewState(params.previewState);
   const mobileNavigation = width < 1024;
-  const mobileContent = width < 768;
+  const mobileContent = width <= 768;
   const dockNotifications = Platform.OS === "web" && width >= 1536;
   const [dateRange, setDateRange] = useState<DateRange>("7d");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
-  const [rail, setRail] = useState(width < 1400);
+  const [rail, setRail] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     if (mobileNavigation) setRail(false);
-    else if (width < 1400) setRail(true);
-  }, [mobileNavigation, width]);
+  }, [mobileNavigation]);
 
   useEffect(() => {
     if (!workspace || workspace.kind !== "merchant") {
@@ -107,12 +88,12 @@ export function MerchantDashboardScreen() {
 
   const state =
     session.storeStatus === "suspended" ? "suspended" : previewState;
-  const renderOverview = ["ready", "partial", "degraded"].includes(state);
   const contentPadding = mobileContent ? spacing.md : spacing.lg;
   const mainAvailableWidth =
     width -
     (mobileNavigation ? 0 : rail ? 84 : 272) -
     (dockNotifications ? 320 : 0);
+  const compactMetrics = mainAvailableWidth - contentPadding * 2 < 1100;
   const paired = mainAvailableWidth >= 820;
   const unreadCount = 3;
 
@@ -152,48 +133,15 @@ export function MerchantDashboardScreen() {
             style={styles.mainScroll}
           >
             <View style={styles.contentColumn}>
-              <DashboardStateBanner state={state} />
-              <DashboardBlockingState
+              <DashboardOverviewContent
+                compactOrders={mobileNavigation}
+                compactMetrics={compactMetrics}
+                mobile={mobileContent}
                 onRetry={() => setRetryKey((current) => current + 1)}
+                paired={paired}
+                session={session}
                 state={state}
               />
-
-              {renderOverview ? (
-                <>
-                  <WelcomeBanner mobile={mobileContent} session={session} />
-                  <MetricsSection mobile={mobileContent} />
-                  <View
-                    style={[
-                      styles.pairedGrid,
-                      !paired && styles.pairedGridStacked,
-                    ]}
-                  >
-                    <SalesPerformance empty={state === "partial"} />
-                    <ActionRequired session={session} />
-                  </View>
-                  <OrderPipeline />
-                  <View
-                    style={[
-                      styles.pairedGrid,
-                      !paired && styles.pairedGridStacked,
-                    ]}
-                  >
-                    <InventoryOverview session={session} />
-                    <TopProducts />
-                  </View>
-                  <RecentOrders compact={mobileNavigation} />
-                  <View
-                    style={[
-                      styles.pairedGrid,
-                      !paired && styles.pairedGridStacked,
-                    ]}
-                  >
-                    <CatalogSummary session={session} />
-                    <LowStockAlerts session={session} />
-                  </View>
-                  <RecentActivity />
-                </>
-              ) : null}
             </View>
           </ScrollView>
         </View>
@@ -270,7 +218,5 @@ const styles = StyleSheet.create({
     zIndex: 100,
   },
   page: { backgroundColor: colors.neutral[50], flex: 1 },
-  pairedGrid: { flexDirection: "row", gap: 20 },
-  pairedGridStacked: { flexDirection: "column" },
   shell: { flex: 1, flexDirection: "row", minWidth: 0, overflow: "hidden" },
 });
