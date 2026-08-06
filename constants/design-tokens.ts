@@ -10,6 +10,8 @@ export const colors = {
     editorialEyebrow: "#A74767",
     editorialSurface: "#F7E6EB",
     pinkSoft: "#F8BCC6",
+    primaryActive: "#E62F50",
+    primaryHover: "#E02749",
     socialSurface: "#FCF3F6",
     storefrontBorder: "#EADCE1",
     storefrontSurface: "#FFFAFB",
