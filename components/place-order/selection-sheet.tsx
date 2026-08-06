@@ -1,5 +1,13 @@
-import { Modal, Pressable, Text, View } from "react-native";
+import {
+  Modal,
+  Pressable,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+import { isDesktopWeb } from "@/constants/responsive";
 
 export type SelectionSheetOption = {
   description?: string;
@@ -24,6 +32,9 @@ export function SelectionSheet({
   title,
   visible,
 }: SelectionSheetProps) {
+  const { width } = useWindowDimensions();
+  const desktopWeb = isDesktopWeb(width);
+
   return (
     <Modal
       animationType="fade"
@@ -32,7 +43,11 @@ export function SelectionSheet({
       transparent
       visible={visible}
     >
-      <View className="flex-1 justify-end">
+      <View
+        className={`flex-1 ${
+          desktopWeb ? "items-center justify-center px-lg" : "justify-end"
+        }`}
+      >
         <Pressable
           accessibilityLabel={`Close ${title}`}
           accessibilityRole="button"
@@ -40,8 +55,11 @@ export function SelectionSheet({
           onPress={onClose}
         />
         <SafeAreaView
-          className="rounded-t-lg bg-neutral-0 px-lg pb-lg pt-lg"
-          edges={["bottom"]}
+          className={`bg-neutral-0 px-lg pb-lg pt-lg ${
+            desktopWeb ? "rounded-lg shadow-lg" : "rounded-t-lg"
+          }`}
+          edges={desktopWeb ? [] : ["bottom"]}
+          style={{ width: desktopWeb ? 480 : width }}
         >
           <Text
             accessibilityRole="header"
@@ -77,9 +95,7 @@ export function SelectionSheet({
                   <View className="flex-row items-center">
                     <View
                       className={`h-[18px] w-[18px] items-center justify-center rounded-pill border ${
-                        selected
-                          ? "border-brand-primary"
-                          : "border-neutral-300"
+                        selected ? "border-brand-primary" : "border-neutral-300"
                       }`}
                     >
                       {selected ? (

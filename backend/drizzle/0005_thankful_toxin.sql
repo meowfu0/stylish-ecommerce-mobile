@@ -1,0 +1,5 @@
+CREATE UNIQUE INDEX "collections_storefront_active_slug_unique" ON "collections" USING btree ("slug") WHERE "collections"."is_active" and "collections"."deleted_at" is null;--> statement-breakpoint
+CREATE INDEX "product_variants_storefront_active_price_idx" ON "product_variants" USING btree ("price_centavos","product_id","merchant_id") WHERE "product_variants"."is_active" and "product_variants"."deleted_at" is null;--> statement-breakpoint
+CREATE UNIQUE INDEX "products_storefront_active_slug_unique" ON "products" USING btree ("slug") WHERE "products"."status" = 'ACTIVE' and "products"."deleted_at" is null;--> statement-breakpoint
+CREATE INDEX "products_storefront_featured_published_idx" ON "products" USING btree ("is_featured" DESC NULLS LAST,"published_at" DESC NULLS LAST,"id" DESC NULLS LAST) WHERE "products"."status" = 'ACTIVE' and "products"."deleted_at" is null;--> statement-breakpoint
+CREATE INDEX "products_storefront_brand_published_idx" ON "products" USING btree ("brand_id","published_at" DESC NULLS LAST,"id" DESC NULLS LAST) WHERE "products"."status" = 'ACTIVE' and "products"."deleted_at" is null and "products"."brand_id" is not null;

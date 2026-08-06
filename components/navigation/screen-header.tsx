@@ -1,6 +1,14 @@
 import { Image } from "expo-image";
 import type { ReactNode } from "react";
-import { Pressable, Text, useWindowDimensions, View } from "react-native";
+import {
+  Platform,
+  Pressable,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
+
+import { DESKTOP_WEB_BREAKPOINT } from "@/constants/responsive";
 
 type ScreenHeaderProps = {
   backHint?: string;
@@ -22,8 +30,12 @@ export function ScreenHeader({
   titleSize = "action",
 }: ScreenHeaderProps) {
   const { width } = useWindowDimensions();
-  const resolvedWidth =
-    contentWidth ?? Math.min(349, Math.max(0, width - 44));
+  const desktopWeb = Platform.OS === "web" && width >= DESKTOP_WEB_BREAKPOINT;
+  const resolvedWidth = contentWidth ?? Math.min(349, Math.max(0, width - 44));
+
+  if (desktopWeb) {
+    return null;
+  }
 
   return (
     <View

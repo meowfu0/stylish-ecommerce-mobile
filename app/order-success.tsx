@@ -5,6 +5,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ScreenHeader } from "@/components/navigation/screen-header";
 import { formatPaymentPrice } from "@/constants/payment-data";
+import {
+  getResponsiveContentWidth,
+  isDesktopWeb,
+} from "@/constants/responsive";
 
 const CONTENT_WIDTH = 309;
 
@@ -15,7 +19,13 @@ export default function OrderSuccessScreen() {
     method?: string | string[];
     total?: string | string[];
   }>();
-  const contentWidth = Math.min(CONTENT_WIDTH, Math.max(0, width - 66));
+  const desktopWeb = isDesktopWeb(width);
+  const contentWidth = getResponsiveContentWidth({
+    desktopMax: 620,
+    mobileGutter: 33,
+    mobileMax: CONTENT_WIDTH,
+    width,
+  });
   const routeMethod = Array.isArray(method) ? method[0] : method;
   const routeTotal = Array.isArray(total) ? total[0] : total;
   const parsedTotal = Number(routeTotal);
@@ -33,7 +43,10 @@ export default function OrderSuccessScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-neutral-25" edges={["top", "bottom"]}>
+    <SafeAreaView
+      className="flex-1 bg-neutral-25"
+      edges={desktopWeb ? [] : ["top", "bottom"]}
+    >
       <StatusBar style="dark" />
 
       <ScreenHeader
@@ -42,9 +55,15 @@ export default function OrderSuccessScreen() {
         title="Order Confirmation"
       />
 
-      <View className="flex-1 items-center justify-center px-[33px] pb-[62px]">
+      <View
+        className={`flex-1 items-center justify-center ${
+          desktopWeb ? "px-xl py-xxl" : "px-[33px] pb-[62px]"
+        }`}
+      >
         <View
-          className="items-center rounded-md bg-neutral-0 p-lg shadow-sm"
+          className={`items-center rounded-lg border border-neutral-200 bg-neutral-0 shadow-sm ${
+            desktopWeb ? "p-[48px]" : "p-lg"
+          }`}
           style={{ width: contentWidth }}
         >
           <Text

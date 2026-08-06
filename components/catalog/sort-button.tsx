@@ -1,29 +1,18 @@
-import { Image } from "expo-image";
-import { Pressable, Text } from "react-native";
+import { CatalogOptionsTrigger } from "@/components/catalog/catalog-options-trigger";
 
 type SortButtonProps = {
+  active?: boolean;
   onPress: () => void;
 };
 
-export function SortButton({ onPress }: SortButtonProps) {
+export function SortButton({ active = false, onPress }: SortButtonProps) {
   return (
-    <Pressable
+    <CatalogOptionsTrigger
       accessibilityHint="Opens product sorting options"
-      accessibilityLabel="Sort products"
-      accessibilityRole="button"
-      className="h-[24px] flex-row items-center rounded-[6px] bg-neutral-0 px-[8px] shadow-sm active:opacity-70"
-      hitSlop={6}
+      active={active}
+      kind="sort"
+      label="Sort"
       onPress={onPress}
-    >
-      <Text className="font-montserrat-regular text-xs text-neutral-1000">
-        Sort
-      </Text>
-      <Image
-        accessible={false}
-        contentFit="contain"
-        source={require("@/assets/icons/home/sort-filter-2.svg")}
-        style={{ height: 16, marginLeft: 4, width: 16 }}
-      />
-    </Pressable>
+    />
   );
 }

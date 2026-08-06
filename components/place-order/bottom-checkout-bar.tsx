@@ -1,6 +1,10 @@
 import { Pressable, Text, useWindowDimensions, View } from "react-native";
 
 import { formatPlaceOrderPrice } from "@/constants/place-order-data";
+import {
+  getResponsiveContentWidth,
+  isDesktopWeb,
+} from "@/constants/responsive";
 
 type BottomCheckoutBarProps = {
   onProceed: () => void;
@@ -15,10 +19,22 @@ export function BottomCheckoutBar({
 }: BottomCheckoutBarProps) {
   const { width } = useWindowDimensions();
   const compact = width < 350;
-  const contentWidth = Math.min(349, Math.max(0, width - 44));
+  const desktopWeb = isDesktopWeb(width);
+  const contentWidth = getResponsiveContentWidth({
+    desktopMax: 900,
+    mobileGutter: 22,
+    mobileMax: 349,
+    width,
+  });
 
   return (
-    <View className="min-h-[112px] items-center rounded-t-[24px] border border-neutral-200 bg-neutral-50 pb-md pt-[20px]">
+    <View
+      className={`items-center border border-neutral-200 bg-neutral-50 ${
+        desktopWeb
+          ? "min-h-[88px] py-md"
+          : "min-h-[112px] rounded-t-[24px] pb-md pt-[20px]"
+      }`}
+    >
       <View
         className="flex-row items-center gap-[14px]"
         style={{ width: contentWidth }}

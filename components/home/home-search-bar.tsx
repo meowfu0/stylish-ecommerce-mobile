@@ -1,19 +1,29 @@
 import { Image } from "expo-image";
-import { Pressable, Text, View } from "react-native";
+import { View } from "react-native";
+
+import { StylishTextInput } from "@/components/forms/stylish-text-input";
+import { colors } from "@/constants/design-tokens";
 
 type HomeSearchBarProps = {
-  onPress: () => void;
+  autoFocus?: boolean;
+  onChangeText: (value: string) => void;
+  onSubmitEditing?: () => void;
+  value: string;
   width: number;
 };
 
-export function HomeSearchBar({ onPress, width }: HomeSearchBarProps) {
+export function HomeSearchBar({
+  autoFocus = false,
+  onChangeText,
+  onSubmitEditing,
+  value,
+  width,
+}: HomeSearchBarProps) {
   return (
-    <Pressable
-      accessibilityHint="Opens product search"
+    <View
       accessibilityLabel="Search any product"
       accessibilityRole="search"
-      className="h-[40px] flex-row items-center rounded-[6px] bg-neutral-0 px-md shadow-sm active:opacity-80"
-      onPress={onPress}
+      className="h-[40px] flex-row items-center overflow-hidden rounded-[6px] bg-neutral-0 px-md shadow-sm"
       style={{ width }}
     >
       <Image
@@ -22,12 +32,20 @@ export function HomeSearchBar({ onPress, width }: HomeSearchBarProps) {
         source={require("@/assets/icons/home/search-1.svg")}
         style={{ height: 20, width: 20 }}
       />
-      <Text
-        className="ml-[10px] flex-1 font-montserrat-regular text-sm text-neutral-350"
-        numberOfLines={1}
-      >
-        Search any Product...
-      </Text>
+      <StylishTextInput
+        accessibilityLabel="Product search"
+        autoCapitalize="none"
+        autoCorrect={false}
+        autoFocus={autoFocus}
+        className="ml-[10px] flex-1 p-0 font-montserrat-regular text-sm text-neutral-1000 focus:outline-none"
+        onChangeText={onChangeText}
+        onSubmitEditing={onSubmitEditing}
+        placeholder="Search any Product..."
+        placeholderTextColor={colors.neutral[350]}
+        returnKeyType="search"
+        selectionColor={colors.brand.primary}
+        value={value}
+      />
       <View className="h-[24px] w-[24px] items-center justify-center">
         <Image
           accessible={false}
@@ -36,6 +54,6 @@ export function HomeSearchBar({ onPress, width }: HomeSearchBarProps) {
           style={{ height: 19, width: 14 }}
         />
       </View>
-    </Pressable>
+    </View>
   );
 }

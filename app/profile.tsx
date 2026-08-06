@@ -1,4 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
@@ -39,6 +40,10 @@ import {
   MOCK_STATE_OPTIONS,
   type ProfileFormValues,
 } from "@/constants/profile-data";
+import {
+  getResponsiveContentWidth,
+  isDesktopWeb,
+} from "@/constants/responsive";
 
 const FIGMA_CONTENT_WIDTH = 327;
 
@@ -105,10 +110,13 @@ export default function ProfileScreen() {
     mode: "onTouched",
     resolver: zodResolver(profileSchema),
   });
-  const contentWidth = Math.min(
-    FIGMA_CONTENT_WIDTH,
-    Math.max(0, width - spacing.xl * 1.5),
-  );
+  const desktopWeb = isDesktopWeb(width);
+  const contentWidth = getResponsiveContentWidth({
+    desktopMax: 960,
+    mobileGutter: spacing.xl * 0.75,
+    mobileMax: FIGMA_CONTENT_WIDTH,
+    width,
+  });
   const horizontalInset = Math.max(spacing.lg, (width - contentWidth) / 2);
 
   const entranceStyle = useAnimatedStyle(() => ({
@@ -192,36 +200,43 @@ export default function ProfileScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.select({ android: "height", ios: "padding" })}
-      className="flex-1 bg-neutral-0"
+      className={`flex-1 ${desktopWeb ? "bg-neutral-50" : "bg-neutral-0"}`}
     >
       <StatusBar style="dark" />
 
-      <SafeAreaView className="flex-1 bg-neutral-0" edges={["top", "bottom"]}>
-        <Animated.View style={[{ flex: 1 }, entranceStyle]}>
-          <View className="h-[56px] items-center justify-center">
-            <Pressable
-              accessibilityHint="Returns to the previous screen"
-              accessibilityLabel="Go back"
-              accessibilityRole="button"
-              className="absolute h-[44px] w-[44px] items-start justify-center active:opacity-60"
-              hitSlop={4}
-              onPress={returnToPreviousScreen}
-              style={{ left: horizontalInset }}
-            >
-              <Image
-                accessible={false}
-                contentFit="contain"
-                source={require("@/assets/icons/profile/back.png")}
-                style={{ height: 21, width: 11 }}
-              />
-            </Pressable>
-            <Text
-              accessibilityRole="header"
-              className="font-montserrat-semibold text-action text-neutral-1000"
-            >
-              Profile
-            </Text>
-          </View>
+      <SafeAreaView
+        className={`flex-1 ${desktopWeb ? "bg-neutral-50" : "bg-neutral-0"}`}
+        edges={desktopWeb ? [] : ["top", "bottom"]}
+      >
+        <Animated.View
+          style={[{ flex: 1, minHeight: 0, minWidth: 0 }, entranceStyle]}
+        >
+          {!desktopWeb ? (
+            <View className="h-[56px] items-center justify-center">
+              <Pressable
+                accessibilityHint="Returns to the previous screen"
+                accessibilityLabel="Go back"
+                accessibilityRole="button"
+                className="absolute h-[44px] w-[44px] items-start justify-center active:opacity-60"
+                hitSlop={4}
+                onPress={returnToPreviousScreen}
+                style={{ left: horizontalInset }}
+              >
+                <Image
+                  accessible={false}
+                  contentFit="contain"
+                  source={require("@/assets/icons/profile/back.png")}
+                  style={{ height: 21, width: 11 }}
+                />
+              </Pressable>
+              <Text
+                accessibilityRole="header"
+                className="font-montserrat-semibold text-action text-neutral-1000"
+              >
+                Profile
+              </Text>
+            </View>
+          ) : null}
 
           <ScrollView
             accessibilityLabel="Profile and account details"
@@ -230,6 +245,7 @@ export default function ProfileScreen() {
             contentContainerStyle={{
               alignItems: "center",
               paddingBottom: Math.max(insets.bottom, spacing.xl),
+              paddingTop: desktopWeb ? spacing.xxl : 0,
             }}
             contentInsetAdjustmentBehavior="never"
             decelerationRate="normal"
@@ -238,39 +254,49 @@ export default function ProfileScreen() {
             keyboardShouldPersistTaps="handled"
             overScrollMode="never"
             scrollsToTop
-            showsVerticalScrollIndicator={false}
+            showsVerticalScrollIndicator={desktopWeb}
           >
             <Pressable
               accessibilityHint="Opens the image library to choose a temporary profile picture"
-              accessibilityLabel="Edit profile picture"
+              accessibilityLabel={
+                profileImageUri
+                  ? "Change profile picture"
+                  : "Add profile picture"
+              }
               accessibilityRole="button"
               className="mt-[19px] h-[104px] w-[104px] active:opacity-80"
+              hitSlop={8}
               onPress={() => void pickProfileImage()}
+              style={{ cursor: "pointer" }}
             >
               <Image
-                accessibilityLabel="Profile picture"
-                accessibilityRole="image"
+                accessible={false}
                 contentFit="cover"
                 source={
                   profileImageUri
                     ? { uri: profileImageUri }
                     : require("@/assets/images/profile/profile-avatar.jpg")
                 }
-                style={{ borderRadius: 48, height: 96, width: 96 }}
+                style={{
+                  borderRadius: 48,
+                  cursor: "pointer",
+                  height: 96,
+                  width: 96,
+                }}
                 transition={120}
               />
-              <Image
+              <View
                 accessible={false}
-                contentFit="contain"
-                source={require("@/assets/icons/profile/edit-profile.png")}
-                style={{
-                  bottom: 0,
-                  height: 32,
-                  position: "absolute",
-                  right: 0,
-                  width: 32,
-                }}
-              />
+                className="absolute bottom-0 right-0 h-[34px] w-[34px] items-center justify-center rounded-pill border-[3px] border-neutral-0 bg-brand-blue"
+                style={{ cursor: "pointer" }}
+              >
+                <MaterialIcons
+                  color={colors.neutral[0]}
+                  name="photo-camera"
+                  size={17}
+                  style={{ cursor: "pointer" }}
+                />
+              </View>
             </Pressable>
 
             {photoStatus === "success" ? (
@@ -290,7 +316,28 @@ export default function ProfileScreen() {
               </Text>
             ) : null}
 
-            <View className="mt-lg" style={{ width: contentWidth }}>
+            <View
+              className={`mt-lg ${
+                desktopWeb
+                  ? "rounded-lg border border-neutral-200 bg-neutral-0 p-[40px] shadow-sm"
+                  : ""
+              }`}
+              style={{ width: contentWidth }}
+            >
+              {desktopWeb ? (
+                <View className="mb-xl">
+                  <Text
+                    accessibilityRole="header"
+                    className="font-montserrat-bold text-display tracking-[-0.8px] text-neutral-1000"
+                  >
+                    Account details
+                  </Text>
+                  <Text className="mt-xs max-w-[620px] font-montserrat-regular text-sm leading-[22px] text-neutral-600">
+                    Keep your personal, delivery, and temporary payment
+                    information organized in one place.
+                  </Text>
+                </View>
+              ) : null}
               <Text
                 accessibilityRole="header"
                 className="font-montserrat-semibold text-md text-neutral-1000"
@@ -558,7 +605,9 @@ export default function ProfileScreen() {
 
               <Pressable
                 accessibilityHint="Validates the form locally without storing or uploading it"
-                accessibilityLabel={isSubmitting ? "Saving profile" : "Save profile"}
+                accessibilityLabel={
+                  isSubmitting ? "Saving profile" : "Save profile"
+                }
                 accessibilityRole="button"
                 accessibilityState={{
                   busy: isSubmitting,

@@ -59,15 +59,25 @@ export function ProductGallery({ images, width }: ProductGalleryProps) {
         pagingEnabled
         ref={listRef}
         renderItem={({ item }) => (
-          <Image
-            accessibilityLabel={item.imageLabel}
-            accessibilityRole="image"
-            contentFit="cover"
-            recyclingKey={item.id}
-            source={item.image}
-            style={{ borderRadius: 16, height: imageHeight, width }}
-            transition={120}
-          />
+          <View
+            style={{
+              borderRadius: 16,
+              height: imageHeight,
+              overflow: "hidden",
+              width,
+            }}
+            testID="motion-image-frame"
+          >
+            <Image
+              accessibilityLabel={item.imageLabel}
+              accessibilityRole="image"
+              contentFit="cover"
+              recyclingKey={item.id}
+              source={item.image}
+              style={{ height: "100%", width: "100%" }}
+              transition={120}
+            />
+          </View>
         )}
         showsHorizontalScrollIndicator={false}
         snapToAlignment="start"

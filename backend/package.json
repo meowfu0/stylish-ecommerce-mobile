@@ -1,0 +1,105 @@
+{
+  "name": "stylish-ecommerce-backend",
+  "version": "1.0.0",
+  "description": "NestJS backend for the Stylish multi-vendor marketplace",
+  "private": true,
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "build": "nest build",
+    "auth:bootstrap": "ts-node src/cli/bootstrap-access-control.ts",
+    "auth:create-admin": "ts-node src/cli/create-platform-admin.ts",
+    "db:check": "drizzle-kit check",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:safety-check": "ts-node src/cli/inspect-database-safety.ts",
+    "db:verify-onboarding": "ts-node src/cli/verify-onboarding-migration.ts",
+    "db:studio": "drizzle-kit studio",
+    "redis:check": "ts-node src/cli/check-redis.ts",
+    "storage:bootstrap": "ts-node src/cli/bootstrap-product-images-bucket.ts",
+    "storage:check": "ts-node src/cli/check-supabase-storage.ts",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\" \"docs/**/*.md\" \"*.{json,md,ts,mjs}\" \"postman/*.json\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\" \"docs/**/*.md\" \"*.{json,md,ts,mjs}\" \"postman/*.json\"",
+    "lint": "eslint \"{src,test}/**/*.ts\" drizzle.config.ts",
+    "lint:fix": "eslint \"{src,test}/**/*.ts\" drizzle.config.ts --fix",
+    "start": "nest start",
+    "start:debug": "nest start --debug --watch",
+    "start:dev": "nest start --watch",
+    "start:prod": "node dist/main.js",
+    "test": "jest --runInBand",
+    "test:cov": "jest --coverage --runInBand",
+    "test:e2e": "jest --config ./test/jest-e2e.json --runInBand",
+    "test:watch": "jest --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nestjs/common": "11.1.28",
+    "@nestjs/config": "4.0.4",
+    "@nestjs/core": "11.1.28",
+    "@nestjs/jwt": "11.0.2",
+    "@nestjs/platform-express": "11.1.28",
+    "@nestjs/swagger": "11.4.5",
+    "@nestjs/throttler": "6.5.0",
+    "@supabase/supabase-js": "^2.111.0",
+    "argon2": "0.45.1",
+    "class-transformer": "0.5.1",
+    "class-validator": "0.15.1",
+    "dotenv": "17.2.3",
+    "drizzle-orm": "0.45.2",
+    "nodemailer": "^9.0.3",
+    "pg": "8.22.0",
+    "redis": "6.1.0",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.2",
+    "@nestjs/cli": "11.0.24",
+    "@nestjs/schematics": "11.1.0",
+    "@nestjs/testing": "11.1.28",
+    "@types/express": "5.0.6",
+    "@types/jest": "30.0.0",
+    "@types/node": "24.10.1",
+    "@types/nodemailer": "^8.0.1",
+    "@types/pg": "8.20.0",
+    "@types/supertest": "7.2.1",
+    "drizzle-kit": "0.31.10",
+    "eslint": "9.39.2",
+    "eslint-config-prettier": "10.1.8",
+    "globals": "17.8.0",
+    "jest": "30.4.2",
+    "prettier": "3.9.6",
+    "supertest": "7.2.2",
+    "ts-jest": "29.4.12",
+    "ts-loader": "9.6.2",
+    "ts-node": "10.9.2",
+    "tsconfig-paths": "4.2.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.65.0"
+  },
+  "jest": {
+    "moduleFileExtensions": [
+      "js",
+      "json",
+      "ts"
+    ],
+    "rootDir": "src",
+    "testRegex": ".*\\.spec\\.ts$",
+    "transform": {
+      "^.+\\.(t|j)s$": [
+        "ts-jest",
+        {
+          "tsconfig": "<rootDir>/../tsconfig.json"
+        }
+      ]
+    },
+    "collectCoverageFrom": [
+      "**/*.(t|j)s"
+    ],
+    "coverageDirectory": "../coverage",
+    "testEnvironment": "node"
+  }
+}

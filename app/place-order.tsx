@@ -36,6 +36,10 @@ import {
   MOCK_PLACE_ORDER_PRODUCT,
   type PlaceOrderCoupon,
 } from "@/constants/place-order-data";
+import {
+  getResponsiveContentWidth,
+  isDesktopWeb,
+} from "@/constants/responsive";
 
 const FIGMA_CONTENT_WIDTH = 349;
 const FIGMA_HORIZONTAL_INSET = 22;
@@ -77,14 +81,18 @@ export default function PlaceOrderScreen() {
   const [openSheet, setOpenSheet] = useState<OpenSheet>(null);
   const [paymentDetailsY, setPaymentDetailsY] = useState(0);
   const [quantity, setQuantity] = useState(1);
-  const [selectedCoupon, setSelectedCoupon] =
-    useState<PlaceOrderCoupon | null>(null);
+  const [selectedCoupon, setSelectedCoupon] = useState<PlaceOrderCoupon | null>(
+    null,
+  );
   const [selectedSize, setSelectedSize] = useState("42");
 
-  const contentWidth = Math.min(
-    FIGMA_CONTENT_WIDTH,
-    Math.max(0, width - FIGMA_HORIZONTAL_INSET * 2),
-  );
+  const desktopWeb = isDesktopWeb(width);
+  const contentWidth = getResponsiveContentWidth({
+    desktopMax: 900,
+    mobileGutter: FIGMA_HORIZONTAL_INSET,
+    mobileMax: FIGMA_CONTENT_WIDTH,
+    width,
+  });
   const totals = useMemo(
     () =>
       calculatePlaceOrderTotals(
@@ -147,83 +155,109 @@ export default function PlaceOrderScreen() {
 
   return (
     <>
-      <SafeAreaView className="flex-1 bg-neutral-25" edges={["top", "bottom"]}>
+      <SafeAreaView
+        className="flex-1 bg-neutral-25"
+        edges={desktopWeb ? [] : ["top", "bottom"]}
+      >
         <StatusBar style="dark" />
 
         <Animated.View style={[{ flex: 1 }, entranceStyle]}>
-          <View className="h-[62px] items-center justify-center bg-neutral-25">
-            <View
-              className="h-full items-center justify-center"
-              style={{ width: contentWidth }}
-            >
-              <Pressable
-                accessibilityHint="Returns to the previous screen"
-                accessibilityLabel="Go back"
-                accessibilityRole="button"
-                className="absolute left-[-14px] h-[44px] w-[44px] items-center justify-center active:opacity-60"
-                hitSlop={4}
-                onPress={goBack}
+          {!desktopWeb ? (
+            <View className="h-[62px] items-center justify-center bg-neutral-25">
+              <View
+                className="h-full items-center justify-center"
+                style={{ width: contentWidth }}
               >
-                <Image
-                  accessible={false}
-                  contentFit="contain"
-                  source={require("@/assets/icons/place-order/back.svg")}
-                  style={{ height: 21, width: 11 }}
-                />
-              </Pressable>
+                <Pressable
+                  accessibilityHint="Returns to the previous screen"
+                  accessibilityLabel="Go back"
+                  accessibilityRole="button"
+                  className="absolute left-[-14px] h-[44px] w-[44px] items-center justify-center active:opacity-60"
+                  hitSlop={4}
+                  onPress={goBack}
+                >
+                  <Image
+                    accessible={false}
+                    contentFit="contain"
+                    source={require("@/assets/icons/place-order/back.svg")}
+                    style={{ height: 21, width: 11 }}
+                  />
+                </Pressable>
 
-              <Text
-                accessibilityRole="header"
-                className="font-montserrat-semibold text-md text-neutral-1000"
-              >
-                Shopping Bag
-              </Text>
+                <Text
+                  accessibilityRole="header"
+                  className="font-montserrat-semibold text-md text-neutral-1000"
+                >
+                  Shopping Bag
+                </Text>
 
-              <Pressable
-                accessibilityHint={
-                  isFavorite
-                    ? "Removes this item from favorites"
-                    : "Adds this item to favorites"
-                }
-                accessibilityLabel={
-                  isFavorite ? "Remove from favorites" : "Add to favorites"
-                }
-                accessibilityRole="button"
-                accessibilityState={{ selected: isFavorite }}
-                className={`absolute right-[-10px] h-[44px] w-[44px] items-center justify-center rounded-pill border active:opacity-60 ${
-                  isFavorite
-                    ? "border-brand-primary bg-brand-socialSurface"
-                    : "border-transparent"
-                }`}
-                hitSlop={4}
-                onPress={() => setIsFavorite((current) => !current)}
-              >
-                <Image
-                  accessible={false}
-                  contentFit="contain"
-                  source={require("@/assets/icons/place-order/favorite.svg")}
-                  style={{ height: 16, width: 20 }}
-                />
-                {isFavorite ? (
-                  <View className="absolute right-[7px] top-[7px] h-[6px] w-[6px] rounded-pill bg-brand-primary" />
-                ) : null}
-              </Pressable>
+                <Pressable
+                  accessibilityHint={
+                    isFavorite
+                      ? "Removes this item from favorites"
+                      : "Adds this item to favorites"
+                  }
+                  accessibilityLabel={
+                    isFavorite ? "Remove from favorites" : "Add to favorites"
+                  }
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isFavorite }}
+                  className={`absolute right-[-10px] h-[44px] w-[44px] items-center justify-center rounded-pill border active:opacity-60 ${
+                    isFavorite
+                      ? "border-brand-primary bg-brand-socialSurface"
+                      : "border-transparent"
+                  }`}
+                  hitSlop={4}
+                  onPress={() => setIsFavorite((current) => !current)}
+                >
+                  <Image
+                    accessible={false}
+                    contentFit="contain"
+                    source={require("@/assets/icons/place-order/favorite.svg")}
+                    style={{ height: 16, width: 20 }}
+                  />
+                  {isFavorite ? (
+                    <View className="absolute right-[7px] top-[7px] h-[6px] w-[6px] rounded-pill bg-brand-primary" />
+                  ) : null}
+                </Pressable>
+              </View>
             </View>
-          </View>
+          ) : null}
 
           <ScrollView
             ref={scrollRef}
             className="flex-1"
             contentContainerStyle={{
               alignItems: "center",
-              paddingBottom: spacing.lg,
+              paddingBottom: desktopWeb ? spacing.xxl : spacing.lg,
             }}
             decelerationRate="normal"
             directionalLockEnabled
             scrollEventThrottle={16}
-            showsVerticalScrollIndicator={false}
+            showsVerticalScrollIndicator={desktopWeb}
           >
-            <View className="pt-[5px]" style={{ width: contentWidth }}>
+            <View
+              className={`${
+                desktopWeb
+                  ? "my-xl rounded-lg border border-neutral-200 bg-neutral-0 p-[40px] shadow-sm"
+                  : "pt-[5px]"
+              }`}
+              style={{ width: contentWidth }}
+            >
+              {desktopWeb ? (
+                <View className="mb-lg">
+                  <Text
+                    accessibilityRole="header"
+                    className="font-montserrat-bold text-display tracking-[-0.8px] text-neutral-1000"
+                  >
+                    Shopping bag
+                  </Text>
+                  <Text className="mt-xs font-montserrat-regular text-sm text-neutral-600">
+                    Choose product options, apply a coupon, and review your
+                    total.
+                  </Text>
+                </View>
+              ) : null}
               <CartItem
                 contentWidth={contentWidth}
                 onQuantityPress={() => setOpenSheet("quantity")}
@@ -287,9 +321,7 @@ export default function PlaceOrderScreen() {
                     }
                     onValuePress={() => setOpenSheet("coupon")}
                     value={
-                      selectedCoupon
-                        ? selectedCoupon.code
-                        : "Apply Coupon"
+                      selectedCoupon ? selectedCoupon.code : "Apply Coupon"
                     }
                     valueTone="accent"
                   />
@@ -308,9 +340,7 @@ export default function PlaceOrderScreen() {
                         ? "Free"
                         : formatPlaceOrderPrice(totals.deliveryFee)
                     }
-                    valueTone={
-                      totals.deliveryFee === 0 ? "accent" : "default"
-                    }
+                    valueTone={totals.deliveryFee === 0 ? "accent" : "default"}
                   />
                 </View>
               </View>
@@ -364,9 +394,8 @@ export default function PlaceOrderScreen() {
         onClose={() => setOpenSheet(null)}
         onSelect={(value) =>
           setSelectedCoupon(
-            MOCK_PLACE_ORDER_COUPONS.find(
-              (coupon) => coupon.id === value,
-            ) ?? null,
+            MOCK_PLACE_ORDER_COUPONS.find((coupon) => coupon.id === value) ??
+              null,
           )
         }
         options={couponOptions}

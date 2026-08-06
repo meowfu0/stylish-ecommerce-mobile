@@ -28,7 +28,11 @@ export function CatalogProductCard({
   product,
   width,
 }: CatalogProductCardProps) {
-  const scale = width / FIGMA_CARD_WIDTH;
+  const scale = Math.min(1.2, width / FIGMA_CARD_WIDTH);
+  const cardHeight = Math.max(
+    FIGMA_CARD_HEIGHT[imageSize] * scale,
+    FIGMA_IMAGE_HEIGHT[imageSize] * scale + 118,
+  );
 
   return (
     <Pressable
@@ -37,21 +41,30 @@ export function CatalogProductCard({
       accessibilityRole="button"
       className="overflow-hidden rounded-sm bg-neutral-0 shadow-sm active:opacity-80"
       onPress={onPress}
-      style={{ height: FIGMA_CARD_HEIGHT[imageSize] * scale, width }}
+      style={{ height: cardHeight, width }}
+      testID="motion-card"
     >
-      <Image
-        accessible={false}
-        contentFit="cover"
-        recyclingKey={product.id}
-        source={product.image}
+      <View
         style={{
-          borderTopLeftRadius: 8 * scale,
-          borderTopRightRadius: 8 * scale,
           height: FIGMA_IMAGE_HEIGHT[imageSize] * scale,
           width,
         }}
-        transition={120}
-      />
+        testID="motion-image-frame"
+      >
+        <Image
+          accessible={false}
+          contentFit="cover"
+          recyclingKey={product.id}
+          source={product.image}
+          style={{
+            borderTopLeftRadius: 8 * scale,
+            borderTopRightRadius: 8 * scale,
+            height: "100%",
+            width: "100%",
+          }}
+          transition={120}
+        />
+      </View>
 
       <View
         className="flex-1"

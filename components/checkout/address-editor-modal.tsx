@@ -6,12 +6,14 @@ import {
   Pressable,
   ScrollView,
   Text,
-  TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 
+import { StylishTextInput } from "@/components/forms/stylish-text-input";
 import type { CheckoutAddress } from "@/constants/checkout-data";
 import { colors } from "@/constants/design-tokens";
+import { isDesktopWeb } from "@/constants/responsive";
 
 type AddressEditorMode = "add" | "edit";
 
@@ -51,29 +53,37 @@ function AddressField({
   placeholder: string;
   value: string;
 }) {
+  const [isFocused, setIsFocused] = useState(false);
+
   return (
     <View className="mt-md">
       <Text className="font-montserrat-medium text-xs text-neutral-1000">
         {label}
       </Text>
-      <TextInput
-        accessibilityHint={error}
-        accessibilityLabel={accessibilityLabel}
-        className={`mt-[7px] min-h-[48px] rounded-sm border bg-neutral-0 px-[12px] font-montserrat-regular text-xs text-neutral-1000 ${
-          multiline ? "py-[12px]" : "py-0"
-        }`}
-        keyboardType={keyboardType}
-        multiline={multiline}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={colors.neutral[475]}
-        selectionColor={colors.brand.primary}
+      <View
+        className="mt-[7px] min-h-[48px] overflow-hidden rounded-sm border bg-neutral-0 px-[12px]"
         style={{
-          borderColor: error ? colors.brand.primary : colors.neutral[300],
-          textAlignVertical: multiline ? "top" : "center",
+          borderColor:
+            error || isFocused ? colors.brand.primary : colors.neutral[300],
         }}
-        value={value}
-      />
+      >
+        <StylishTextInput
+          accessibilityHint={error}
+          accessibilityLabel={accessibilityLabel}
+          className={`min-h-[46px] flex-1 font-montserrat-regular text-xs text-neutral-1000 ${
+            multiline ? "py-[12px]" : "py-0"
+          }`}
+          keyboardType={keyboardType}
+          multiline={multiline}
+          onBlur={() => setIsFocused(false)}
+          onChangeText={onChangeText}
+          onFocus={() => setIsFocused(true)}
+          placeholder={placeholder}
+          placeholderTextColor={colors.neutral[475]}
+          style={{ textAlignVertical: multiline ? "top" : "center" }}
+          value={value}
+        />
+      </View>
       {error ? (
         <Text
           accessibilityLiveRegion="polite"
@@ -93,6 +103,8 @@ export function AddressEditorModal({
   onSave,
   visible,
 }: AddressEditorModalProps) {
+  const { width } = useWindowDimensions();
+  const desktopWeb = isDesktopWeb(width);
   const [draft, setDraft] = useState<CheckoutAddress>(EMPTY_ADDRESS);
   const [errors, setErrors] = useState<Partial<Record<FieldName, string>>>({});
 
@@ -130,10 +142,7 @@ export function AddressEditorModal({
       ...draft,
       addressLine: draft.addressLine.trim(),
       contact: draft.contact.trim(),
-      id:
-        mode === "add"
-          ? `temporary-address-${Date.now()}`
-          : draft.id,
+      id: mode === "add" ? `temporary-address-${Date.now()}` : draft.id,
       label: draft.label.trim(),
     });
   };
@@ -148,7 +157,9 @@ export function AddressEditorModal({
     >
       <KeyboardAvoidingView
         behavior={Platform.select({ ios: "padding" })}
-        className="flex-1 justify-end"
+        className={`flex-1 ${
+          desktopWeb ? "items-center justify-center px-lg" : "justify-end"
+        }`}
       >
         <Pressable
           accessibilityLabel="Close address editor"
@@ -157,7 +168,12 @@ export function AddressEditorModal({
           onPress={onClose}
         />
 
-        <View className="max-h-[88%] rounded-t-lg bg-neutral-0 px-lg pb-xl pt-lg">
+        <View
+          className={`max-h-[88%] bg-neutral-0 px-lg pb-xl pt-lg ${
+            desktopWeb ? "rounded-lg shadow-lg" : "rounded-t-lg"
+          }`}
+          style={{ width: desktopWeb ? 560 : width }}
+        >
           <ScrollView
             bounces={false}
             keyboardShouldPersistTaps="handled"

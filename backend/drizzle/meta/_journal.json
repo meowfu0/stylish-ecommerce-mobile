@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1785470980471,
+      "tag": "0000_military_reavers",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785489531734,
+      "tag": "0001_calm_radioactive_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785500867787,
+      "tag": "0002_curvy_lyja",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1785506448343,
+      "tag": "0003_romantic_stingray",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1785513326986,
+      "tag": "0004_acoustic_titanium_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1785515392319,
+      "tag": "0005_thankful_toxin",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,15 +1,21 @@
 import { Image } from "expo-image";
-import { Pressable, Text, View } from "react-native";
+import { Platform, Pressable, useWindowDimensions, View } from "react-native";
+
+import { StylishLogo } from "@/components/brand/stylish-logo";
+import { DESKTOP_WEB_BREAKPOINT } from "@/constants/responsive";
 
 type HomeHeaderProps = {
   onMenuPress: () => void;
   onProfilePress: () => void;
 };
 
-export function HomeHeader({
-  onMenuPress,
-  onProfilePress,
-}: HomeHeaderProps) {
+export function HomeHeader({ onMenuPress, onProfilePress }: HomeHeaderProps) {
+  const { width } = useWindowDimensions();
+
+  if (Platform.OS === "web" && width >= DESKTOP_WEB_BREAKPOINT) {
+    return null;
+  }
+
   return (
     <View className="h-[56px] flex-row items-center justify-between px-md">
       <Pressable
@@ -28,21 +34,11 @@ export function HomeHeader({
       </Pressable>
 
       <View
-        accessibilityLabel="Stylish"
         accessibilityRole="header"
-        accessible
-        className="absolute left-1/2 flex-row items-center"
+        className="absolute left-1/2 items-center justify-center"
         style={{ transform: [{ translateX: -55 }] }}
       >
-        <Image
-          accessible={false}
-          contentFit="contain"
-          source={require("@/assets/icons/home/header-3.svg")}
-          style={{ height: 32, width: 40 }}
-        />
-        <Text className="ml-[5px] font-serif text-action text-brand-blue">
-          Stylish
-        </Text>
+        <StylishLogo testID="home-header-brand-logo" width={110} />
       </View>
 
       <Pressable

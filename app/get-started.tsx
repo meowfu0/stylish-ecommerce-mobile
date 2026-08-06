@@ -1,14 +1,11 @@
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from "react-native";
+import { Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+import { StylishText } from "@/components/typography/stylish-text";
+import { isDesktopWeb } from "@/constants/responsive";
 
 const FIGMA_FRAME = {
   width: 390,
@@ -22,6 +19,7 @@ export default function GetStartedScreen() {
   const widthScale = Math.min(1, width / FIGMA_FRAME.width);
   const buttonWidth = FIGMA_FRAME.buttonWidth * widthScale;
   const copyWidth = FIGMA_FRAME.copyWidth * widthScale;
+  const desktopWeb = isDesktopWeb(width);
 
   const openHome = () => {
     router.replace("/(tabs)/home");
@@ -46,33 +44,45 @@ export default function GetStartedScreen() {
       />
 
       <SafeAreaView className="flex-1">
-        <View className="flex-1 items-center justify-end">
-          <Text
+        <View
+          className={`flex-1 ${
+            desktopWeb
+              ? "mx-auto w-full max-w-[1280px] items-start justify-center px-[72px]"
+              : "items-center justify-end"
+          }`}
+        >
+          <StylishText
             accessibilityRole="header"
-            className="text-center font-montserrat-bold text-heroTitle text-neutral-0"
-            style={{ width: copyWidth }}
+            className={`text-neutral-0 ${
+              desktopWeb ? "max-w-[680px] text-left" : "text-center"
+            }`}
+            style={desktopWeb ? undefined : { width: copyWidth }}
+            variant="hero-title"
           >
             Authentic style, made easy.
-          </Text>
+          </StylishText>
 
-          <Text
-            className="mt-[12px] text-center font-montserrat-regular text-xs text-neutral-0"
-            style={{ width: copyWidth }}
+          <StylishText
+            className={`mt-[12px] text-neutral-0 ${
+              desktopWeb ? "max-w-[560px] text-left" : "text-center"
+            }`}
+            style={desktopWeb ? undefined : { width: copyWidth }}
+            variant="body"
           >
             Discover products you’ll love and shop them in just a few taps.
-          </Text>
+          </StylishText>
 
           <Pressable
             accessibilityHint="Opens the Home screen"
             accessibilityLabel="Get Started"
             accessibilityRole="button"
-            className="mt-[30px] h-[55px] items-center justify-center rounded-xs bg-brand-primary active:opacity-80"
+            className="mt-[30px] h-[55px] cursor-pointer items-center justify-center rounded-xs bg-brand-primary active:opacity-80"
             onPress={openHome}
-            style={{ width: buttonWidth }}
+            style={{ width: desktopWeb ? 220 : buttonWidth }}
           >
-            <Text className="font-montserrat-semibold text-authButton text-neutral-0">
+            <StylishText className="text-neutral-0" variant="button">
               Get Started
-            </Text>
+            </StylishText>
           </Pressable>
         </View>
       </SafeAreaView>

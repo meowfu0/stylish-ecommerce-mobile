@@ -1,29 +1,24 @@
-import { Image } from "expo-image";
-import { Pressable, Text } from "react-native";
+import { CatalogOptionsTrigger } from "@/components/catalog/catalog-options-trigger";
 
 type FilterButtonProps = {
+  active?: boolean;
+  count?: number;
   onPress: () => void;
 };
 
-export function FilterButton({ onPress }: FilterButtonProps) {
+export function FilterButton({
+  active = false,
+  count = 0,
+  onPress,
+}: FilterButtonProps) {
   return (
-    <Pressable
+    <CatalogOptionsTrigger
       accessibilityHint="Opens product filtering options"
-      accessibilityLabel="Filter products"
-      accessibilityRole="button"
-      className="h-[24px] flex-row items-center rounded-[6px] bg-neutral-0 px-[8px] shadow-sm active:opacity-70"
-      hitSlop={6}
+      active={active}
+      badgeCount={count}
+      kind="filter"
+      label="Filter"
       onPress={onPress}
-    >
-      <Text className="font-montserrat-regular text-xs text-neutral-1000">
-        Filter
-      </Text>
-      <Image
-        accessible={false}
-        contentFit="contain"
-        source={require("@/assets/icons/home/sort-filter-5.svg")}
-        style={{ height: 16, marginLeft: 4, width: 16 }}
-      />
-    </Pressable>
+    />
   );
 }
