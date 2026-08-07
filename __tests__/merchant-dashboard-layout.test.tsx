@@ -2,6 +2,7 @@ import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import { Animated, StyleSheet } from "react-native";
 
 import { rolePermissions } from "@/features/merchant-dashboard/dashboard-access";
+import { DashboardOverviewContent } from "@/features/merchant-dashboard/dashboard-overview-content";
 import {
   MetricsSection,
   SalesPerformance,
@@ -88,7 +89,7 @@ describe("merchant dashboard layout regressions", () => {
   });
 
   it("renders compact metric money without splitting the value", () => {
-    const screen = render(<MetricsSection mobile={false} />);
+    const screen = render(<MetricsSection />);
 
     expect(screen.getByText("₱486.3K")).toBeTruthy();
     expect(screen.getByText("₱413.3K")).toBeTruthy();
@@ -332,6 +333,70 @@ describe("merchant dashboard layout regressions", () => {
     expect(overflowingNavigation.props.className).toContain("st-scroll");
   });
 
+  it("starts with Catalog and Inventory collapsed and no scroll affordance", () => {
+    const screen = render(
+      <MerchantSidebar
+        onToggleRail={jest.fn()}
+        rail={false}
+        session={ownerSession}
+      />,
+    );
+    const navigation = screen.getByLabelText("Merchant sections");
+
+    expect(
+      screen.getByLabelText("Catalog").props.accessibilityState.expanded,
+    ).toBe(false);
+    expect(
+      screen.getByLabelText("Inventory").props.accessibilityState.expanded,
+    ).toBe(false);
+    expect(screen.queryByLabelText("Products")).toBeNull();
+    expect(screen.queryByLabelText("Stock Levels")).toBeNull();
+    expect(navigation.props.scrollEnabled).toBe(false);
+    expect(navigation.props.showsVerticalScrollIndicator).toBe(false);
+  });
+
+  it("carries no trailing nav padding that would fake an overflow", () => {
+    const screen = render(
+      <MerchantSidebar
+        onToggleRail={jest.fn()}
+        rail={false}
+        session={ownerSession}
+      />,
+    );
+    const content = StyleSheet.flatten(
+      screen.getByLabelText("Merchant sections").props.contentContainerStyle,
+    );
+
+    // Row height plus the utility region's border and top padding already
+    // separate the last row; extra spacing here is pure scroll range.
+    expect(content.paddingBottom).toBeUndefined();
+    expect(content.gap).toBeUndefined();
+  });
+
+  it("scrolls only past the point where content exceeds the viewport", () => {
+    const screen = render(
+      <MerchantSidebar
+        onToggleRail={jest.fn()}
+        rail={false}
+        session={ownerSession}
+      />,
+    );
+    const measure = (contentHeight: number) => {
+      const navigation = screen.getByLabelText("Merchant sections");
+      fireEvent(navigation, "layout", {
+        nativeEvent: { layout: { height: 500 } },
+      });
+      fireEvent(navigation, "contentSizeChange", 0, contentHeight);
+      return screen.getByLabelText("Merchant sections").props.scrollEnabled;
+    };
+
+    expect(measure(500)).toBe(false);
+    expect(measure(501)).toBe(false);
+    expect(measure(560)).toBe(true);
+    // Collapsing back below the viewport must retire the scrollbar again.
+    expect(measure(500)).toBe(false);
+  });
+
   it("expands the sidebar before opening a rail group", () => {
     const onToggleRail = jest.fn();
     const screen = render(
@@ -372,18 +437,19 @@ describe("merchant dashboard layout regressions", () => {
     expect(loading.queryByText("No sales data for this range yet")).toBeNull();
     loading.unmount();
 
-    const partial = render(<DashboardStateBanner state="partial" />);
+    const partial = render(
+      <DashboardStateBanner
+        failedSections={["sales", "activity"]}
+        state="partial"
+      />,
+    );
     expect(
-      partial.getByText(
-        "12 variants need restocking before your next campaign",
-      ),
+      partial.getByText("Some dashboard information couldn’t be loaded"),
     ).toBeTruthy();
     partial.unmount();
 
     const refreshing = render(<DashboardStateBanner state="refreshing" />);
-    expect(
-      refreshing.getByText("Some figures may be a few minutes behind"),
-    ).toBeTruthy();
+    expect(refreshing.getByText("Refreshing your dashboard")).toBeTruthy();
     refreshing.unmount();
 
     const salesEmpty = render(<SalesPerformance empty />);
@@ -391,6 +457,92 @@ describe("merchant dashboard layout regressions", () => {
       salesEmpty.getByText("No sales data for this range yet"),
     ).toBeTruthy();
     expect(salesEmpty.queryByTestId("chart-series-revenue")).toBeNull();
+  });
+
+  it("names the sections that could not be loaded and offers a retry", () => {
+    const onRetry = jest.fn();
+    const screen = render(
+      <DashboardStateBanner
+        failedSections={["sales", "activity"]}
+        onRetry={onRetry}
+        state="partial"
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        "Sales performance and Recent activity could not be loaded right now. Everything else below is up to date, and orders and inventory actions still work normally.",
+      ),
+    ).toBeTruthy();
+
+    fireEvent.press(screen.getByText("Try Again"));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps working sections and replaces only the failed ones", () => {
+    const screen = render(
+      <DashboardOverviewContent
+        compactOrders={false}
+        failedSections={["sales"]}
+        hasSalesHistory
+        mobile={false}
+        paired
+        session={ownerSession}
+        state="partial"
+      />,
+    );
+
+    expect(
+      screen.getByTestId("dashboard-section-unavailable-sales"),
+    ).toBeTruthy();
+    expect(screen.queryByTestId("dashboard-sales-chart")).toBeNull();
+    // Unaffected regions keep rendering real data.
+    expect(screen.getByText("₱486.3K")).toBeTruthy();
+  });
+
+  it("shows the sales empty state without inventing chart points", () => {
+    const screen = render(
+      <DashboardOverviewContent
+        compactOrders={false}
+        hasSalesHistory={false}
+        mobile={false}
+        paired
+        session={ownerSession}
+        state="ready"
+      />,
+    );
+
+    expect(screen.getByText("No sales data for this range yet")).toBeTruthy();
+    expect(screen.queryByTestId("chart-series-revenue")).toBeNull();
+  });
+
+  it("disables selling navigation while the merchant is inactive", () => {
+    const inactiveSession: MerchantSession = {
+      ...ownerSession,
+      storeStatus: "inactive",
+    };
+    const screen = render(
+      <MerchantSidebar
+        onToggleRail={jest.fn()}
+        rail={false}
+        session={inactiveSession}
+      />,
+    );
+
+    expect(
+      screen.getByLabelText("Orders").props.accessibilityState.disabled,
+    ).toBe(true);
+    expect(screen.getByLabelText("Orders").props.accessibilityHint).toBe(
+      "Selling is paused for this merchant, so this section is unavailable",
+    );
+    // Account and profile work stays reachable.
+    expect(
+      screen.getByLabelText("Merchant Profile").props.accessibilityState
+        .disabled,
+    ).toBe(false);
+    expect(
+      screen.getByLabelText("Settings").props.accessibilityState.disabled,
+    ).toBe(false);
   });
 
   it("renders safe recovery actions for restricted and inactive states", () => {
