@@ -56,7 +56,7 @@ export function DashboardDocumentationScreen() {
               Merchant dashboard states &amp; permissions
             </StylishText>
             <StylishText style={styles.subtitle} unstyled variant="bodyLarge">
-              Design documentation for the Stylish merchant workspace. These
+              Design documentation for the Velori merchant workspace. These
               frames are not user-facing screens.
             </StylishText>
             <DashboardButton

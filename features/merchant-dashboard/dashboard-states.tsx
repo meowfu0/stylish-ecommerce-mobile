@@ -135,7 +135,7 @@ export function DashboardBlockingState({
       tone: "info" as const,
     },
     inactive: {
-      body: "Selling is paused for this merchant, so the storefront and new orders are unavailable. The Stylish partner team can walk you through what’s needed to reactivate.",
+      body: "Selling is paused for this merchant, so the storefront and new orders are unavailable. The Velori partner team can walk you through what’s needed to reactivate.",
       icon: "shield-alert-outline" as DashboardIconName,
       title: `${session.merchantName} is currently inactive`,
       tone: "danger" as const,

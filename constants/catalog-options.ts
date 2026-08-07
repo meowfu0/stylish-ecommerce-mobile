@@ -179,7 +179,7 @@ export const CATALOG_PROMOTION_OPTIONS = [
 ] as const satisfies readonly CatalogFacetOption<CatalogPromotion>[];
 
 export const CATALOG_BRAND_OPTIONS = [
-  { label: "Stylish", value: "stylish" },
+  { label: "Velori", value: "stylish" },
   { label: "Lumen", value: "lumen" },
   { label: "Amour", value: "amour" },
   { label: "Dahlia", value: "dahlia" },
