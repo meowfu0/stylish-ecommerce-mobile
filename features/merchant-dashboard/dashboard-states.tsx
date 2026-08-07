@@ -3,6 +3,7 @@ import { StyleSheet, View } from "react-native";
 
 import { StylishText } from "@/components/typography/stylish-text";
 import { borderRadius, colors, spacing } from "@/constants/design-tokens";
+import { dashboardSectionLabels } from "@/features/merchant-dashboard/dashboard-data-source";
 import {
   DashboardButton,
   DashboardCard,
@@ -11,6 +12,7 @@ import {
   DashboardSkeleton,
 } from "@/features/merchant-dashboard/dashboard-primitives";
 import type {
+  DashboardSectionKey,
   DashboardState,
   MerchantSession,
   Permission,
@@ -27,43 +29,64 @@ type StateActions = {
   onSignInAgain?: () => void | Promise<void>;
 };
 
-export function DashboardStateBanner({ state }: { state: DashboardState }) {
+function listUnavailableSections(failedSections: readonly DashboardSectionKey[]) {
+  const labels = failedSections.map((key) => dashboardSectionLabels[key]);
+  if (labels.length === 0) return "Some sections";
+  if (labels.length === 1) return labels[0];
+  return `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]}`;
+}
+
+export function DashboardStateBanner({
+  failedSections = [],
+  onRetry,
+  state,
+}: {
+  failedSections?: readonly DashboardSectionKey[];
+  onRetry?: () => void;
+  state: DashboardState;
+}) {
   if (state !== "partial" && state !== "refreshing") return null;
 
   const partial = state === "partial";
+  const unavailable = listUnavailableSections(failedSections);
+
   return (
     <View
       accessibilityLiveRegion="polite"
+      accessibilityState={{ busy: !partial }}
       style={[
         styles.banner,
-        partial ? styles.bannerInfo : styles.bannerWarning,
+        partial ? styles.bannerWarning : styles.bannerInfo,
       ]}
       testID={`dashboard-state-${state}`}
     >
       <DashboardIcon
-        color={partial ? colors.feedback.info : colors.feedback.warning}
-        name={partial ? "information-outline" : "cloud-sync-outline"}
+        color={partial ? colors.feedback.warning : colors.feedback.info}
+        name={partial ? "alert-outline" : "cloud-sync-outline"}
       />
       <View style={styles.bannerCopy}>
         <StylishText
-          style={[styles.bannerTitle, !partial && styles.bannerTitleWarning]}
+          style={[styles.bannerTitle, partial && styles.bannerTitleWarning]}
           unstyled
           variant="label"
         >
           {partial
-            ? "12 variants need restocking before your next campaign"
-            : "Some figures may be a few minutes behind"}
+            ? "Some dashboard information couldn’t be loaded"
+            : "Refreshing your dashboard"}
         </StylishText>
         <StylishText
-          style={[styles.bannerBody, !partial && styles.bannerBodyWarning]}
+          style={[styles.bannerBody, partial && styles.bannerBodyWarning]}
           unstyled
           variant="caption"
         >
           {partial
-            ? "Sales history is still building, so trends will sharpen as more orders come in."
-            : "We’re refreshing your performance data in the background. Orders and inventory actions still work normally."}
+            ? `${unavailable} could not be loaded right now. Everything else below is up to date, and orders and inventory actions still work normally.`
+            : "Your current figures stay on screen while we bring in the latest numbers. Nothing is blocked while this finishes."}
         </StylishText>
       </View>
+      {partial && onRetry ? (
+        <DashboardButton icon="refresh" label="Try Again" onPress={onRetry} />
+      ) : null}
     </View>
   );
 }
@@ -321,6 +344,44 @@ function NewMerchantState({
   );
 }
 
+/**
+ * Stands in for one region that failed while the rest of the dashboard keeps
+ * working. It holds the region's footprint so recovering does not shift the
+ * layout, and it never falls back to stale or invented figures.
+ */
+export function DashboardSectionUnavailable({
+  onRetry,
+  section,
+  tall = false,
+}: {
+  onRetry?: () => void;
+  section: DashboardSectionKey;
+  tall?: boolean;
+}) {
+  return (
+    <DashboardCard
+      style={[styles.unavailableCard, tall && styles.unavailableCardTall]}
+      testID={`dashboard-section-unavailable-${section}`}
+    >
+      <DashboardIcon
+        color={colors.feedback.warning}
+        name="cloud-off-outline"
+        size={24}
+      />
+      <StylishText style={styles.unavailableTitle} unstyled variant="label">
+        {dashboardSectionLabels[section]} couldn’t be loaded
+      </StylishText>
+      <StylishText style={styles.unavailableBody} unstyled variant="caption">
+        The rest of your dashboard is unaffected. Try loading this section
+        again in a moment.
+      </StylishText>
+      {onRetry ? (
+        <DashboardButton icon="refresh" label="Try Again" onPress={onRetry} />
+      ) : null}
+    </DashboardCard>
+  );
+}
+
 function SkeletonLines({ widths }: { widths: (number | `${number}%`)[] }) {
   return (
     <View style={styles.skeletonLines}>
@@ -375,6 +436,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     borderWidth: 1,
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: 14,
@@ -386,7 +448,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   bannerBodyWarning: { color: "rgba(138,90,0,0.85)" },
-  bannerCopy: { flex: 1, gap: spacing.xxs, minWidth: 0 },
+  bannerCopy: { flex: 1, gap: spacing.xxs, minWidth: 200 },
   bannerInfo: {
     backgroundColor: "rgba(207,226,252,0.35)",
     borderColor: colors.brand.blueSoft,
@@ -535,5 +597,30 @@ const styles = StyleSheet.create({
   stateIconWarning: {
     backgroundColor: colors.feedback.warningSoft,
     borderColor: "#F3DFB5",
+  },
+  unavailableBody: {
+    color: colors.neutral[550],
+    fontFamily: "Montserrat_400Regular",
+    fontSize: 12,
+    lineHeight: 18,
+    maxWidth: 320,
+    textAlign: "center",
+  },
+  unavailableCard: {
+    alignItems: "center",
+    flex: 1,
+    gap: spacing.xs,
+    justifyContent: "center",
+    minHeight: 156,
+    minWidth: 260,
+    padding: spacing.lg,
+  },
+  unavailableCardTall: { minHeight: 358 },
+  unavailableTitle: {
+    color: colors.ink.primary,
+    fontFamily: "Montserrat_600SemiBold",
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: "center",
   },
 });

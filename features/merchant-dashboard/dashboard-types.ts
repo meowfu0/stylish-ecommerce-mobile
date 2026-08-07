@@ -28,6 +28,24 @@ export type DashboardDataState = Exclude<
   "inactive" | "permission-denied" | "session-expired"
 >;
 
+/** One independently loaded dashboard region. */
+export type DashboardSectionKey =
+  | "activity"
+  | "catalog"
+  | "inventory"
+  | "metrics"
+  | "orders"
+  | "sales";
+
+export const DASHBOARD_SECTION_KEYS: DashboardSectionKey[] = [
+  "metrics",
+  "sales",
+  "orders",
+  "inventory",
+  "catalog",
+  "activity",
+];
+
 export type MerchantRole =
   | "Merchant Owner"
   | "Merchant Administrator"
