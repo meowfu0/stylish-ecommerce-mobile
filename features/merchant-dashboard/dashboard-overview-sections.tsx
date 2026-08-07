@@ -407,39 +407,42 @@ function RevenueArea({ chartWidth }: { chartWidth: number }) {
 export function SalesPerformance({ empty = false }: { empty?: boolean }) {
   const [cadence, setCadence] = useState<ChartCadence>("daily");
   const [chartWidth, setChartWidth] = useState(0);
+  const cadenceControl = (
+    <View style={styles.segmentedControl}>
+      {(["daily", "weekly", "monthly"] as ChartCadence[]).map((item) => (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ selected: cadence === item }}
+          key={item}
+          onPress={() => setCadence(item)}
+          style={[
+            styles.segmentButton,
+            cadence === item && styles.segmentButtonActive,
+          ]}
+        >
+          <StylishText
+            style={[
+              styles.segmentLabel,
+              cadence === item && styles.segmentLabelActive,
+            ]}
+            unstyled
+            variant="caption"
+          >
+            {item.charAt(0).toUpperCase() + item.slice(1)}
+          </StylishText>
+        </Pressable>
+      ))}
+    </View>
+  );
 
   return (
     <DashboardCard style={styles.growCard} testID="dashboard-sales-performance">
       <SectionHeading
+        action={cadenceControl}
         description="Last 7 days · daily view"
         title="Sales performance"
       />
       <View style={styles.chartContent}>
-        <View style={styles.segmentedControl}>
-          {(["daily", "weekly", "monthly"] as ChartCadence[]).map((item) => (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{ selected: cadence === item }}
-              key={item}
-              onPress={() => setCadence(item)}
-              style={[
-                styles.segmentButton,
-                cadence === item && styles.segmentButtonActive,
-              ]}
-            >
-              <StylishText
-                style={[
-                  styles.segmentLabel,
-                  cadence === item && styles.segmentLabelActive,
-                ]}
-                unstyled
-                variant="caption"
-              >
-                {item.charAt(0).toUpperCase() + item.slice(1)}
-              </StylishText>
-            </Pressable>
-          ))}
-        </View>
         <View style={styles.legend}>
           <LegendItem
             color={colors.brand.primary}
@@ -467,17 +470,17 @@ export function SalesPerformance({ empty = false }: { empty?: boolean }) {
           }
           accessibilityRole="image"
           onLayout={(event) => setChartWidth(event.nativeEvent.layout.width)}
-          style={styles.chart}
+          style={[styles.chart, empty && styles.chartEmptySurface]}
           testID="dashboard-sales-chart"
         >
-          {[0, 1, 2, 3].map((line) => (
-            <View
-              key={line}
-              style={[styles.chartGridLine, { top: line * 52 }]}
-            />
-          ))}
           {!empty ? (
             <>
+              {[0, 1, 2, 3].map((line) => (
+                <View
+                  key={line}
+                  style={[styles.chartGridLine, { top: line * 52 }]}
+                />
+              ))}
               <RevenueArea chartWidth={chartWidth} />
               <ChartSeriesLine
                 chartWidth={chartWidth}
@@ -500,44 +503,53 @@ export function SalesPerformance({ empty = false }: { empty?: boolean }) {
               />
             </>
           ) : null}
-          <View style={styles.chartLabels}>
-            {chartSeries.map((point) => (
-              <StylishText
-                key={point.label}
-                style={styles.chartLabel}
-                unstyled
-                variant="caption"
-              >
-                {point.label}
-              </StylishText>
-            ))}
-          </View>
+          {!empty ? (
+            <View style={styles.chartLabels}>
+              {chartSeries.map((point) => (
+                <StylishText
+                  key={point.label}
+                  style={styles.chartLabel}
+                  unstyled
+                  variant="caption"
+                >
+                  {point.label}
+                </StylishText>
+              ))}
+            </View>
+          ) : null}
           {empty ? (
             <View style={styles.chartEmpty}>
-              <DashboardIcon name="chart-line-variant" size={30} />
+              <DashboardIcon
+                color={colors.neutral[400]}
+                name="chart-line-variant"
+                size={26}
+              />
               <StylishText
                 style={styles.chartEmptyTitle}
                 unstyled
                 variant="label"
               >
-                No sales in this range yet
+                No sales data for this range yet
               </StylishText>
               <StylishText
                 style={styles.chartEmptyBody}
                 unstyled
                 variant="caption"
               >
-                Try another date range as your first orders arrive.
+                Once orders start coming in, revenue, orders, and refunds will
+                appear here.
               </StylishText>
             </View>
           ) : null}
         </View>
 
-        <View style={styles.chartTotals}>
-          <ChartTotal label="Revenue" value="₱486,275" />
-          <ChartTotal label="Orders" value="318" />
-          <ChartTotal label="Refunds" value="₱8,480" />
-        </View>
+        {!empty ? (
+          <View style={styles.chartTotals}>
+            <ChartTotal label="Revenue" value="₱486,275" />
+            <ChartTotal label="Orders" value="318" />
+            <ChartTotal label="Refunds" value="₱8,480" />
+          </View>
+        ) : null}
       </View>
     </DashboardCard>
   );
@@ -793,6 +805,12 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: spacing.lg,
     top: spacing.lg,
+  },
+  chartEmptySurface: {
+    backgroundColor: colors.neutral[50],
+    borderColor: colors.neutral[200],
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
   },
   chartEmptyBody: {
     color: colors.neutral[550],

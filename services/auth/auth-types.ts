@@ -15,10 +15,14 @@ export type AuthTokens = {
 
 export type AuthenticatedUserContext = AuthUserSummary & {
   merchantMemberships: {
+    defaultLocation?: string | null;
     merchantId: string;
     merchantName: string;
+    merchantStatus?: string;
     membershipId: string;
+    permissions?: string[];
     roles: string[];
+    verified?: boolean;
   }[];
   platformRoles: string[];
   profile: {

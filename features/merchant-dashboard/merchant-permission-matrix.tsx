@@ -3,7 +3,7 @@ import { StyleSheet, View } from "react-native";
 import { StylishText } from "@/components/typography/stylish-text";
 import { borderRadius, colors, spacing } from "@/constants/design-tokens";
 import {
-  merchantPermissions,
+  dashboardMatrixPermissions,
   rolePermissions,
 } from "@/features/merchant-dashboard/dashboard-access";
 import { DashboardIcon } from "@/features/merchant-dashboard/dashboard-primitives";
@@ -23,7 +23,7 @@ export function MerchantPermissionMatrix() {
             {role}
           </StylishText>
           <View style={styles.permissionList}>
-            {merchantPermissions.map((permission) => {
+            {dashboardMatrixPermissions.map((permission) => {
               const granted = rolePermissions[role].includes(permission);
               return (
                 <View key={permission} style={styles.permissionRow}>

@@ -152,6 +152,35 @@ textarea:autofill {
   background-color: #f83758;
 }
 
+.merchant-sidebar-nav {
+  overflow-x: hidden !important;
+}
+
+.merchant-sidebar-nav--static {
+  overflow-y: hidden !important;
+  scrollbar-width: none;
+}
+
+.merchant-sidebar-nav--static::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.merchant-sidebar-nav--scrollable {
+  overflow-y: auto !important;
+}
+
+.merchant-sidebar-nav--rail {
+  scrollbar-width: none;
+}
+
+.merchant-sidebar-nav--rail::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 @media (max-width: 767px) and (pointer: coarse) {
   .st-scroll {
     scrollbar-width: none;

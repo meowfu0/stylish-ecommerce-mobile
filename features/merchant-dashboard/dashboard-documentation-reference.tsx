@@ -18,8 +18,8 @@ import { MerchantPermissionMatrix } from "@/features/merchant-dashboard/merchant
 export function PermissionMatrixSection() {
   return (
     <DocumentationSection
-      description="Every cell is resolved from the shared merchant role-to-permission map."
-      title="Role × permission matrix"
+      description="Permissions are resolved from the shared merchant role-to-permission map and are never chosen by the user."
+      title="Role and permission matrix"
     >
       <View style={styles.roleCallout}>
         <StylishText
@@ -60,7 +60,7 @@ export function NavigationModelSection() {
                     unstyled
                     variant="caption"
                   >
-                    Badge {item.badge}
+                    {item.badge}
                   </StylishText>
                 </View>
               ) : null}
@@ -98,9 +98,9 @@ export function NavigationModelSection() {
           unstyled
           variant="bodySmall"
         >
-          Sections a role cannot read are hidden from navigation, while actions
-          that are visible but unavailable render disabled with the reason in
-          the title attribute.
+          Sections a role cannot read are hidden from navigation. Direct links
+          to restricted sections resolve to the Permission Denied state, while
+          unavailable actions remain disabled with a clear reason.
         </StylishText>
       </View>
     </DocumentationSection>

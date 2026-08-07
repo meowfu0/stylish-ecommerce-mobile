@@ -5,23 +5,28 @@ export type DashboardState =
   | "ready"
   | "empty"
   | "partial"
+  | "refreshing"
   | "error"
   | "permission-denied"
   | "session-expired"
-  | "suspended"
-  | "degraded";
+  | "inactive";
 
 export const DASHBOARD_STATES: DashboardState[] = [
   "loading",
   "ready",
   "empty",
   "partial",
+  "refreshing",
   "error",
   "permission-denied",
   "session-expired",
-  "suspended",
-  "degraded",
+  "inactive",
 ];
+
+export type DashboardDataState = Exclude<
+  DashboardState,
+  "inactive" | "permission-denied" | "session-expired"
+>;
 
 export type MerchantRole =
   | "Merchant Owner"

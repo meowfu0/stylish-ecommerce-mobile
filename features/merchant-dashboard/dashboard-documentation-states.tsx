@@ -1,4 +1,4 @@
-import { StyleSheet, useWindowDimensions, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { StylishText } from "@/components/typography/stylish-text";
 import { borderRadius, colors, spacing } from "@/constants/design-tokens";
@@ -12,18 +12,19 @@ import {
   DocumentationStage,
 } from "@/features/merchant-dashboard/dashboard-documentation-primitives";
 import { documentationMerchantSession } from "@/features/merchant-dashboard/dashboard-data";
-import { DashboardOverviewContent } from "@/features/merchant-dashboard/dashboard-overview-content";
 import { SalesPerformance } from "@/features/merchant-dashboard/dashboard-overview-sections";
+import {
+  DashboardBlockingState,
+  DashboardLoadingState,
+  DashboardStateBanner,
+} from "@/features/merchant-dashboard/dashboard-states";
+import type { DashboardState } from "@/features/merchant-dashboard/dashboard-types";
 import { MerchantSidebar } from "@/features/merchant-dashboard/merchant-sidebar";
 
 export function DashboardStatesSection() {
-  const { width } = useWindowDimensions();
-  const mobile = width < 768;
-  const paired = width >= 1024;
-
   return (
     <DocumentationSection
-      description="Nine reachable states use the real overview, shared fixtures, and production state components."
+      description="Eight dashboard states plus the chart-empty state use the same production components shown to merchants."
       title="Dashboard states"
     >
       <View style={styles.stateFrames}>
@@ -34,16 +35,7 @@ export function DashboardStatesSection() {
             name={`Merchant / Dashboard — ${frame.name}`}
             trigger={frame.trigger}
           >
-            <DashboardOverviewContent
-              compactMetrics={width < 1280}
-              compactOrders={width < 1024}
-              mobile={mobile}
-              onRetry={() => undefined}
-              onSignInAgain={() => undefined}
-              paired={paired}
-              session={documentationMerchantSession}
-              state={frame.state}
-            />
+            <DashboardStatePreview state={frame.state} />
           </DocumentationFrame>
         ))}
       </View>
@@ -51,14 +43,37 @@ export function DashboardStatesSection() {
   );
 }
 
+function DashboardStatePreview({ state }: { state: DashboardState }) {
+  if (state === "loading") return <DashboardLoadingState />;
+  if (state === "partial" || state === "refreshing") {
+    return <DashboardStateBanner state={state} />;
+  }
+
+  return (
+    <DashboardBlockingState
+      deniedSection="Staff & Permissions"
+      onContactSupport={() => undefined}
+      onCreateProduct={() => undefined}
+      onImportCatalog={() => undefined}
+      onRetry={() => undefined}
+      onReturnToOverview={() => undefined}
+      onReviewMerchantProfile={() => undefined}
+      onSignInAgain={() => undefined}
+      requiredPermission="staff.manage"
+      session={documentationMerchantSession}
+      state={state}
+    />
+  );
+}
+
 export function ChartEmptyStateSection() {
   return (
     <DocumentationSection
-      description="Axes, labels, cadence controls, and legend remain visible without inventing a zero-value trend."
+      description="Cadence controls and the legend remain visible without inventing axes, totals, or a zero-value trend."
       title="Chart empty state"
     >
       <DocumentationFrame
-        description="The chart keeps its orientation controls while the plot explains why data is absent."
+        description="The chart keeps its orientation controls while a neutral plot surface explains why data is absent."
         name="Merchant / Sales Performance — Empty data"
       >
         <SalesPerformance empty />

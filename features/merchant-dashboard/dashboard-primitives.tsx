@@ -95,6 +95,7 @@ export function DashboardButton({
   disabled = false,
   icon,
   label,
+  large = false,
   onPress,
   title,
   tone = "secondary",
@@ -102,6 +103,7 @@ export function DashboardButton({
   disabled?: boolean;
   icon?: DashboardIconName;
   label: string;
+  large?: boolean;
   onPress?: () => void;
   title?: string;
   tone?: "primary" | "secondary" | "quiet";
@@ -123,6 +125,7 @@ export function DashboardButton({
       onPressOut={() => setPressed(false)}
       style={[
         styles.button,
+        large && styles.buttonLarge,
         tone === "primary" && styles.buttonPrimary,
         tone === "primary" && hovered && !disabled && styles.buttonPrimaryHover,
         tone === "secondary" && styles.buttonSecondary,
@@ -216,6 +219,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   buttonLabelPrimary: { color: colors.neutral[0] },
+  buttonLarge: { minHeight: 56, paddingHorizontal: spacing.lg },
   buttonPressed: { opacity: 0.82, transform: [{ scale: 0.99 }] },
   buttonPrimary: {
     backgroundColor: colors.brand.primary,

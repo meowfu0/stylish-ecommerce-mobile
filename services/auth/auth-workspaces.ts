@@ -3,12 +3,17 @@ import type { Href } from "expo-router";
 import type { AuthenticatedUserContext } from "@/services/auth/auth-types";
 
 export type AuthWorkspace = {
+  defaultLocation?: string | null;
   description: string;
   key: string;
   kind: "customer" | "merchant" | "platform";
   merchantId?: string;
+  merchantRoleKeys?: string[];
+  merchantStatus?: string;
+  permissions?: string[];
   roleLabel: string;
   title: string;
+  verified?: boolean;
 };
 
 const WORKSPACE_DESTINATIONS: Readonly<Record<AuthWorkspace["kind"], Href>> = {
@@ -86,12 +91,17 @@ export function workspacesFromAuthContext(
 
     seenMerchantIds.add(membership.merchantId);
     workspaces.push({
+      defaultLocation: membership.defaultLocation,
       description: `Run the ${membership.merchantName} storefront: catalog, inventory, orders, and staff.`,
       key: `merchant:${membership.merchantId}`,
       kind: "merchant",
       merchantId: membership.merchantId,
+      merchantRoleKeys: membership.roles,
+      merchantStatus: membership.merchantStatus,
+      permissions: membership.permissions,
       roleLabel: roleLabelFor(membership.roles),
       title: `Manage ${membership.merchantName}`,
+      verified: membership.verified,
     });
   }
 

@@ -1,6 +1,8 @@
 import {
   can,
   merchantPermissions,
+  normalizeMerchantRole,
+  resolveMerchantPermissions,
   rolePermissions,
 } from "@/features/merchant-dashboard/dashboard-access";
 import {
@@ -15,7 +17,12 @@ import {
   sidebarFrames,
 } from "@/features/merchant-dashboard/dashboard-documentation-data";
 import { formatPeso } from "@/features/merchant-dashboard/dashboard-format";
-import { merchantNavigationItems } from "@/features/merchant-dashboard/merchant-navigation";
+import {
+  findMerchantNavigationTarget,
+  merchantNavigationItems,
+  visibleMerchantNavigationItems,
+} from "@/features/merchant-dashboard/merchant-navigation";
+import { resolveDashboardState } from "@/features/merchant-dashboard/dashboard-state-model";
 import {
   DASHBOARD_STATES,
   type MerchantSession,
@@ -40,11 +47,11 @@ describe("merchant dashboard model", () => {
       "ready",
       "empty",
       "partial",
+      "refreshing",
       "error",
       "permission-denied",
       "session-expired",
-      "suspended",
-      "degraded",
+      "inactive",
     ]);
   });
 
@@ -67,15 +74,134 @@ describe("merchant dashboard model", () => {
 
   it("documents every dashboard and sidebar state once", () => {
     expect(dashboardStateFrames.map((frame) => frame.state)).toEqual(
-      DASHBOARD_STATES,
+      DASHBOARD_STATES.filter((state) => state !== "ready"),
     );
-    expect(new Set(dashboardStateFrames.map((frame) => frame.id)).size).toBe(9);
+    expect(new Set(dashboardStateFrames.map((frame) => frame.id)).size).toBe(8);
     expect(sidebarFrames).toHaveLength(7);
     expect(new Set(sidebarFrames.map((frame) => frame.id)).size).toBe(7);
     expect(
       dashboardStateFrames.every((frame) => frame.trigger.length > 0),
     ).toBe(true);
     expect(sidebarFrames.every((frame) => frame.thumb.length > 0)).toBe(true);
+  });
+
+  it("resolves session, lifecycle, permission, and data states in priority order", () => {
+    expect(
+      resolveDashboardState({
+        authStatus: "restoring",
+        dataState: "ready",
+        session: catalogSession,
+      }),
+    ).toBe("loading");
+    expect(
+      resolveDashboardState({
+        authReason: "session-expired",
+        authStatus: "unauthenticated",
+        dataState: "ready",
+        session: catalogSession,
+      }),
+    ).toBe("session-expired");
+    expect(
+      resolveDashboardState({
+        authStatus: "authenticated",
+        dataState: "ready",
+        requiredPermission: "inventory.read",
+        session: catalogSession,
+      }),
+    ).toBe("permission-denied");
+    expect(
+      resolveDashboardState({
+        authStatus: "authenticated",
+        dataState: "refreshing",
+        session: catalogSession,
+      }),
+    ).toBe("refreshing");
+  });
+
+  it("defaults unknown backend roles to no merchant permissions", () => {
+    const unknownRole = normalizeMerchantRole("invented_role");
+
+    expect(unknownRole).toBeUndefined();
+    expect(resolveMerchantPermissions(undefined, unknownRole)).toEqual([]);
+  });
+
+  it("uses backend permission keys when available", () => {
+    expect(
+      resolveMerchantPermissions(
+        ["merchant.catalog.read", "merchant.inventory.adjust"],
+        "Merchant Owner",
+      ),
+    ).toEqual(["products.read", "inventory.adjust"]);
+    expect(resolveMerchantPermissions([], "Merchant Owner")).toEqual([]);
+  });
+
+  it("centralizes route permissions and filters navigation", () => {
+    const visible = visibleMerchantNavigationItems(
+      rolePermissions["Catalog Staff"],
+    );
+
+    expect(visible.map((item) => item.label)).toEqual(["Overview", "Catalog"]);
+    expect(findMerchantNavigationTarget("staff-permissions")).toMatchObject({
+      label: "Staff & Permissions",
+      permission: "staff.manage",
+    });
+  });
+
+  it.each([
+    [
+      "Merchant Owner",
+      [
+        "Overview",
+        "Catalog",
+        "Inventory",
+        "Orders",
+        "Fulfillment",
+        "Promotions",
+        "Reviews",
+        "Staff & Permissions",
+        "Reports",
+        "Merchant Profile",
+        "Settings",
+      ],
+    ],
+    [
+      "Merchant Administrator",
+      [
+        "Overview",
+        "Catalog",
+        "Inventory",
+        "Orders",
+        "Fulfillment",
+        "Promotions",
+        "Reviews",
+        "Staff & Permissions",
+        "Reports",
+        "Merchant Profile",
+        "Settings",
+      ],
+    ],
+    [
+      "Manager",
+      [
+        "Overview",
+        "Catalog",
+        "Inventory",
+        "Orders",
+        "Fulfillment",
+        "Promotions",
+        "Reviews",
+        "Reports",
+        "Merchant Profile",
+      ],
+    ],
+    ["Catalog Staff", ["Overview", "Catalog"]],
+    ["Inventory Staff", ["Overview", "Inventory"]],
+    ["Fulfillment Staff", ["Overview", "Inventory", "Orders", "Fulfillment"]],
+    ["Support Staff", ["Overview", "Orders"]],
+  ] as const)("shows only authorized navigation for %s", (role, labels) => {
+    const visible = visibleMerchantNavigationItems(rolePermissions[role]);
+
+    expect(visible.map((item) => item.label)).toEqual(labels);
   });
 
   it("uses the complete shared access-control and navigation models", () => {

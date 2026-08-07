@@ -82,7 +82,7 @@ export function DocumentationFrame({
 
 export function DocumentationStage({
   children,
-  height = 620,
+  height = 560,
   rail = false,
 }: {
   children: ReactNode;

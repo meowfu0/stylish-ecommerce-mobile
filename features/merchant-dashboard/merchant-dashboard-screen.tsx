@@ -13,9 +13,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { colors, spacing } from "@/constants/design-tokens";
 import {
   normalizeMerchantRole,
-  rolePermissions,
+  resolveMerchantPermissions,
 } from "@/features/merchant-dashboard/dashboard-access";
 import { DashboardOverviewContent } from "@/features/merchant-dashboard/dashboard-overview-content";
+import {
+  normalizeMerchantStoreStatus,
+  resolveDashboardState,
+} from "@/features/merchant-dashboard/dashboard-state-model";
 import type {
   DashboardState,
   DateRange,
@@ -23,6 +27,7 @@ import type {
 } from "@/features/merchant-dashboard/dashboard-types";
 import { DASHBOARD_STATES } from "@/features/merchant-dashboard/dashboard-types";
 import { MerchantHeader } from "@/features/merchant-dashboard/merchant-header";
+import { findMerchantNavigationTarget } from "@/features/merchant-dashboard/merchant-navigation";
 import { MerchantSidebar } from "@/features/merchant-dashboard/merchant-sidebar";
 import { NotificationDrawer } from "@/features/merchant-dashboard/notification-drawer";
 import { useAuthSessionStore } from "@/stores/auth-session-store";
@@ -30,20 +35,34 @@ import { useAuthWorkspaceStore } from "@/stores/auth-workspace-store";
 
 function parsePreviewState(
   value: string | string[] | undefined,
-): DashboardState {
+): DashboardState | undefined {
   const candidate = Array.isArray(value) ? value[0] : value;
+  if (!candidate) return undefined;
+  if (candidate === "degraded") return "refreshing";
+  if (candidate === "suspended") return "inactive";
   return DASHBOARD_STATES.includes(candidate as DashboardState)
     ? (candidate as DashboardState)
-    : "ready";
+    : undefined;
 }
 
 export function MerchantDashboardScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ previewState?: string }>();
+  const params = useLocalSearchParams<{
+    previewState?: string;
+    section?: string;
+  }>();
   const { height, width } = useWindowDimensions();
   const authUser = useAuthSessionStore((state) => state.user);
+  const authReason = useAuthSessionStore((state) => state.reason);
+  const authStatus = useAuthSessionStore((state) => state.status);
   const workspace = useAuthWorkspaceStore((state) => state.selectedWorkspace);
-  const previewState = parsePreviewState(params.previewState);
+  const previewState =
+    process.env.NODE_ENV === "production"
+      ? undefined
+      : parsePreviewState(params.previewState);
+  const navigationTarget = findMerchantNavigationTarget(
+    Array.isArray(params.section) ? params.section[0] : params.section,
+  );
   const mobileNavigation = width < 1024;
   const mobileContent = width <= 768;
   const dockNotifications = Platform.OS === "web" && width >= 1536;
@@ -58,36 +77,53 @@ export function MerchantDashboardScreen() {
   }, [mobileNavigation]);
 
   useEffect(() => {
+    if (authStatus === "unauthenticated" && authReason === "session-expired") {
+      router.replace("/sign-in?reason=session-expired");
+      return;
+    }
     if (!workspace || workspace.kind !== "merchant") {
       router.replace("/auth/choose-workspace");
     }
-  }, [router, workspace]);
+  }, [authReason, authStatus, router, workspace]);
 
   const session = useMemo<MerchantSession | null>(() => {
     if (!workspace || workspace.kind !== "merchant") return null;
-    const role = normalizeMerchantRole(workspace.roleLabel);
+    const resolvedRole = normalizeMerchantRole(
+      workspace.merchantRoleKeys?.[0] ?? workspace.roleLabel,
+    );
+    const role = resolvedRole ?? "Support Staff";
     const merchantName = workspace.title.replace(/^Manage\s+/i, "");
     const displayName =
       authUser?.profile?.displayName?.trim() ||
       authUser?.profile?.firstName?.trim() ||
       "Owner";
     return {
-      defaultLocation: `${merchantName} Makati Warehouse`,
+      defaultLocation:
+        workspace.defaultLocation || `${merchantName} Main Location`,
       displayName,
       email: authUser?.email ?? "",
       merchantHandle: workspace.key,
       merchantName,
-      permissions: rolePermissions[role],
+      permissions: resolveMerchantPermissions(
+        workspace.permissions,
+        resolvedRole,
+      ),
       role,
-      storeStatus: "active",
-      verified: true,
+      storeStatus: normalizeMerchantStoreStatus(workspace.merchantStatus),
+      verified: workspace.verified ?? true,
     };
   }, [authUser, workspace]);
 
   if (!session) return <View style={styles.page} />;
 
-  const state =
-    session.storeStatus === "suspended" ? "suspended" : previewState;
+  const state = resolveDashboardState({
+    authReason: authReason === "session-expired" ? authReason : null,
+    authStatus,
+    dataState: "ready",
+    previewState,
+    requiredPermission: navigationTarget.permission,
+    session,
+  });
   const contentPadding = mobileContent ? spacing.md : spacing.lg;
   const mainAvailableWidth =
     width -
@@ -105,6 +141,7 @@ export function MerchantDashboardScreen() {
             style={[styles.desktopSidebar, rail && styles.desktopSidebarRail]}
           >
             <MerchantSidebar
+              activeItemLabel={navigationTarget.label}
               onToggleRail={() => setRail((current) => !current)}
               rail={rail}
               session={session}
@@ -137,8 +174,22 @@ export function MerchantDashboardScreen() {
                 compactOrders={mobileNavigation}
                 compactMetrics={compactMetrics}
                 mobile={mobileContent}
+                deniedSection={navigationTarget.label}
+                onCreateProduct={() =>
+                  router.push("/merchant/dashboard?section=products")
+                }
+                onImportCatalog={() =>
+                  router.push("/merchant/dashboard?section=catalog")
+                }
                 onRetry={() => setRetryKey((current) => current + 1)}
+                onReturnToOverview={() =>
+                  router.replace("/merchant/dashboard?section=overview")
+                }
+                onReviewMerchantProfile={() =>
+                  router.push("/merchant/dashboard?section=merchant-profile")
+                }
                 paired={paired}
+                requiredPermission={navigationTarget.permission}
                 session={session}
                 state={state}
               />
@@ -160,6 +211,7 @@ export function MerchantDashboardScreen() {
             />
             <View style={styles.mobileSidebar}>
               <MerchantSidebar
+                activeItemLabel={navigationTarget.label}
                 onClose={() => setDrawerOpen(false)}
                 onToggleRail={() => undefined}
                 rail={false}

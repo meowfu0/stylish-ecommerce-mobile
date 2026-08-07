@@ -23,35 +23,58 @@ import {
 import type {
   DashboardState,
   MerchantSession,
+  Permission,
 } from "@/features/merchant-dashboard/dashboard-types";
 
 export function DashboardOverviewContent({
   compactMetrics,
   compactOrders,
   mobile,
+  deniedSection,
+  onContactSupport,
+  onCreateProduct,
+  onImportCatalog,
   onRetry,
+  onReturnToOverview,
+  onReviewMerchantProfile,
   onSignInAgain,
   paired,
   session,
   state,
+  requiredPermission,
 }: {
   compactMetrics: boolean;
   compactOrders: boolean;
   mobile: boolean;
+  deniedSection?: string;
+  onContactSupport?: () => void;
+  onCreateProduct?: () => void;
+  onImportCatalog?: () => void;
   onRetry?: () => void;
+  onReturnToOverview?: () => void;
+  onReviewMerchantProfile?: () => void;
   onSignInAgain?: () => void | Promise<void>;
   paired: boolean;
   session: MerchantSession;
   state: DashboardState;
+  requiredPermission?: Permission;
 }) {
-  const renderOverview = ["ready", "partial", "degraded"].includes(state);
+  const renderOverview = ["ready", "partial", "refreshing"].includes(state);
 
   return (
     <View style={styles.contentColumn}>
       <DashboardStateBanner state={state} />
       <DashboardBlockingState
+        deniedSection={deniedSection}
+        onContactSupport={onContactSupport}
+        onCreateProduct={onCreateProduct}
+        onImportCatalog={onImportCatalog}
         onRetry={onRetry}
+        onReturnToOverview={onReturnToOverview}
+        onReviewMerchantProfile={onReviewMerchantProfile}
         onSignInAgain={onSignInAgain}
+        requiredPermission={requiredPermission}
+        session={session}
         state={state}
       />
 
@@ -60,7 +83,7 @@ export function DashboardOverviewContent({
           <WelcomeBanner mobile={mobile} session={session} />
           <MetricsSection mobile={compactMetrics} />
           <View style={[styles.pairedGrid, !paired && styles.stackedGrid]}>
-            <SalesPerformance />
+            <SalesPerformance empty={state === "partial"} />
             <ActionRequired session={session} />
           </View>
           <OrderPipeline />

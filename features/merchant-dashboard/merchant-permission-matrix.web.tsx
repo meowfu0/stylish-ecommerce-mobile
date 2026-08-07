@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 
 import { colors } from "@/constants/design-tokens";
 import {
-  merchantPermissions,
+  dashboardMatrixPermissions,
   rolePermissions,
 } from "@/features/merchant-dashboard/dashboard-access";
 import type { MerchantRole } from "@/features/merchant-dashboard/dashboard-types";
@@ -20,7 +20,7 @@ export function MerchantPermissionMatrix() {
     >
       <table style={styles.table}>
         <caption style={styles.srOnly}>
-          Merchant roles and the permissions granted to each role
+          Merchant permissions and the roles that receive each permission
         </caption>
         <thead>
           <tr>
@@ -28,33 +28,28 @@ export function MerchantPermissionMatrix() {
               scope="col"
               style={{ ...styles.header, ...styles.stickyCorner }}
             >
-              Role
+              Permission
             </th>
-            {merchantPermissions.map((permission) => (
-              <th key={permission} scope="col" style={styles.header}>
-                {permission}
+            {roles.map((role) => (
+              <th key={role} scope="col" style={styles.header}>
+                {role}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {roles.map((role) => (
-            <tr key={role}>
-              <th scope="row" style={styles.stickyRole}>
-                {role}
+          {dashboardMatrixPermissions.map((permission) => (
+            <tr key={permission}>
+              <th scope="row" style={styles.stickyPermission}>
+                {permission}
               </th>
-              {merchantPermissions.map((permission) => {
+              {roles.map((role) => {
                 const granted = rolePermissions[role].includes(permission);
                 return (
-                  <td key={permission} style={styles.cell}>
-                    <span
-                      aria-hidden="true"
-                      style={granted ? styles.granted : styles.withheld}
-                    >
-                      {granted ? "✓" : "—"}
-                    </span>
-                    <span style={styles.srOnly}>
-                      {granted ? "Granted" : "Withheld"}
+                  <td key={role} style={styles.cell}>
+                    <span style={granted ? styles.granted : styles.withheld}>
+                      <span aria-hidden="true">{granted ? "✓" : "—"}</span>{" "}
+                      {granted ? "Granted" : "None"}
                     </span>
                   </td>
                 );
@@ -63,6 +58,10 @@ export function MerchantPermissionMatrix() {
           ))}
         </tbody>
       </table>
+      <p style={styles.note}>
+        Roles are never selectable in the product. This matrix is design
+        documentation only.
+      </p>
     </div>
   );
 }
@@ -73,26 +72,29 @@ const styles: Record<string, CSSProperties> = {
   cell: {
     borderBottom: border,
     minWidth: 136,
-    padding: 12,
-    textAlign: "center",
+    padding: "14px 10px",
+    textAlign: "left",
   },
-  granted: {
-    color: colors.feedback.success,
-    fontSize: 13,
-    fontWeight: 600,
-  },
+  granted: { color: colors.feedback.success, fontSize: 12, fontWeight: 600 },
   header: {
-    backgroundColor: colors.neutral[50],
+    backgroundColor: colors.neutral[0],
     borderBottom: border,
     color: colors.ink.primary,
-    fontSize: 12,
-    fontWeight: 700,
+    fontSize: 11,
+    fontWeight: 600,
     minWidth: 136,
-    padding: 12,
+    padding: "10px",
     position: "sticky",
     textAlign: "left",
     top: 0,
     zIndex: 2,
+  },
+  note: {
+    color: colors.neutral[550],
+    fontSize: 12,
+    lineHeight: "18px",
+    margin: 0,
+    padding: "12px 24px 16px",
   },
   srOnly: {
     clip: "rect(0, 0, 0, 0)",
@@ -103,17 +105,17 @@ const styles: Record<string, CSSProperties> = {
     whiteSpace: "nowrap",
     width: 1,
   },
-  stickyCorner: { left: 0, minWidth: 220, zIndex: 4 },
-  stickyRole: {
+  stickyCorner: { left: 0, minWidth: 210, zIndex: 4 },
+  stickyPermission: {
     backgroundColor: colors.neutral[0],
     borderBottom: border,
     borderRight: border,
     color: colors.ink.primary,
     fontSize: 13,
-    fontWeight: 600,
+    fontWeight: 500,
     left: 0,
-    minWidth: 220,
-    padding: 12,
+    minWidth: 210,
+    padding: "14px 10px",
     position: "sticky",
     textAlign: "left",
     zIndex: 1,
@@ -122,15 +124,14 @@ const styles: Record<string, CSSProperties> = {
     borderCollapse: "separate",
     borderSpacing: 0,
     fontFamily: "Montserrat_400Regular, Montserrat, Arial, sans-serif",
-    minWidth: 2124,
+    minWidth: 1160,
     width: "100%",
   },
-  withheld: { color: colors.neutral[400], fontSize: 13 },
+  withheld: { color: colors.neutral[400], fontSize: 12, fontWeight: 500 },
   wrapper: {
     backgroundColor: colors.neutral[0],
     border,
     borderRadius: 12,
-    maxHeight: 560,
     maxWidth: "100%",
     overflow: "auto",
     overscrollBehavior: "contain",

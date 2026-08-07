@@ -33,8 +33,8 @@ import {
   type DashboardIconName,
 } from "@/features/merchant-dashboard/dashboard-primitives";
 import {
-  merchantNavigationItems,
   type MerchantNavigationItem,
+  visibleMerchantNavigationItems,
 } from "@/features/merchant-dashboard/merchant-navigation";
 import { SidebarPressable } from "@/features/merchant-dashboard/sidebar-pressable";
 import type { MerchantSession } from "@/features/merchant-dashboard/dashboard-types";
@@ -305,6 +305,7 @@ function SidebarChildList({
   expanded,
   groupId,
   items,
+  onNavigate,
   onEscape,
   reducedMotion,
 }: {
@@ -313,6 +314,7 @@ function SidebarChildList({
   expanded: boolean;
   groupId: string;
   items: NonNullable<MerchantNavigationItem["children"]>;
+  onNavigate: (route: MerchantNavigationItem["route"]) => void;
   onEscape: () => void;
   reducedMotion: boolean;
 }) {
@@ -357,6 +359,7 @@ function SidebarChildList({
         child
         disabled={disabled}
         label={item.label}
+        onPress={() => onNavigate(item.route)}
         reducedMotion={reducedMotion}
       />
     );
@@ -454,6 +457,7 @@ function SidebarNavItem({
   disabled,
   expanded,
   item,
+  onNavigate,
   onEscape,
   onToggle,
   rail,
@@ -463,6 +467,7 @@ function SidebarNavItem({
   disabled: boolean;
   expanded: boolean;
   item: MerchantNavigationItem;
+  onNavigate: (route: MerchantNavigationItem["route"]) => void;
   onEscape: () => void;
   onToggle: () => void;
   rail: boolean;
@@ -470,7 +475,13 @@ function SidebarNavItem({
 }) {
   const groupId = sidebarItemId(item.label);
   const hasChildren = Boolean(item.children?.length);
-  const active = !disabled && !hasChildren && item.label === activeItemLabel;
+  const activeChild = Boolean(
+    item.children?.some((child) => child.label === activeItemLabel),
+  );
+  const active =
+    !disabled &&
+    ((!hasChildren && item.label === activeItemLabel) ||
+      (hasChildren && activeChild && !expanded));
 
   return (
     <View>
@@ -482,7 +493,7 @@ function SidebarNavItem({
         expanded={expanded}
         icon={item.icon}
         label={item.label}
-        onPress={hasChildren ? onToggle : undefined}
+        onPress={hasChildren ? onToggle : () => onNavigate(item.route)}
         rail={rail}
         reducedMotion={reducedMotion}
         showChevron={hasChildren}
@@ -496,6 +507,7 @@ function SidebarNavItem({
           expanded={expanded}
           groupId={groupId}
           items={item.children}
+          onNavigate={onNavigate}
           onEscape={onEscape}
           reducedMotion={reducedMotion}
         />
@@ -523,17 +535,11 @@ export function MerchantSidebar({
   const reducedMotion = useReducedMotion();
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isScrolling, setIsScrolling] = useState(false);
-  const [openGroupIds, setOpenGroupIds] = useState<Set<string>>(() => {
-    return new Set(
-      merchantNavigationItems
-        .filter(
-          (item) =>
-            item.children?.length &&
-            (!item.permission || can(session, item.permission)),
-        )
-        .map((item) => sidebarItemId(item.label)),
-    );
-  });
+  const [navigationContentHeight, setNavigationContentHeight] = useState(0);
+  const [navigationViewportHeight, setNavigationViewportHeight] = useState(0);
+  const [openGroupIds, setOpenGroupIds] = useState<Set<string>>(
+    () => new Set(),
+  );
 
   useEffect(
     () => () => {
@@ -541,21 +547,6 @@ export function MerchantSidebar({
     },
     [],
   );
-
-  useEffect(() => {
-    const activeParent = merchantNavigationItems.find((item) => {
-      return item.children?.some((child) => child.label === activeItemLabel);
-    });
-    if (!activeParent) return;
-
-    const activeGroupId = sidebarItemId(activeParent.label);
-    setOpenGroupIds((current) => {
-      if (current.has(activeGroupId)) return current;
-      const next = new Set(current);
-      next.add(activeGroupId);
-      return next;
-    });
-  }, [activeItemLabel]);
 
   const noteScrollActivity = () => {
     setIsScrolling(true);
@@ -570,11 +561,8 @@ export function MerchantSidebar({
 
   const toggleGroup = (groupId: string) => {
     setOpenGroupIds((current) => {
-      const next = new Set(current);
-      if (rail) next.add(groupId);
-      else if (next.has(groupId)) next.delete(groupId);
-      else next.add(groupId);
-      return next;
+      if (current.has(groupId)) return new Set();
+      return new Set([groupId]);
     });
 
     if (rail) onToggleRail();
@@ -595,10 +583,22 @@ export function MerchantSidebar({
     }
   };
 
+  const navigationOverflows =
+    navigationViewportHeight > 0 &&
+    navigationContentHeight > navigationViewportHeight + 1;
+  const navigationCanScroll = navigationOverflows || Boolean(scrollDemo);
+  const navigationShowsScrollbar = navigationCanScroll && !rail;
+  const visibleNavigationItems = visibleMerchantNavigationItems(
+    session.permissions,
+  );
   const scrollClass = [
-    "st-scroll",
-    isScrolling && "is-scrolling",
-    scrollDemo && `st-scroll--demo-${scrollDemo}`,
+    "merchant-sidebar-nav",
+    navigationCanScroll
+      ? "merchant-sidebar-nav--scrollable st-scroll"
+      : "merchant-sidebar-nav--static",
+    rail && "merchant-sidebar-nav--rail",
+    navigationCanScroll && isScrolling && "is-scrolling",
+    navigationCanScroll && scrollDemo && `st-scroll--demo-${scrollDemo}`,
   ]
     .filter(Boolean)
     .join(" ");
@@ -677,20 +677,29 @@ export function MerchantSidebar({
       <ScrollView
         accessibilityLabel="Merchant sections"
         bounces={false}
-        className={[rail ? undefined : scrollClass, scrollFocusRingClass]
+        className={[scrollClass, navigationCanScroll && scrollFocusRingClass]
           .filter(Boolean)
           .join(" ")}
         contentContainerStyle={[
           styles.navContent,
           rail && styles.navContentRail,
         ]}
+        onContentSizeChange={(_width, height) => {
+          setNavigationContentHeight(Math.ceil(height));
+        }}
+        onLayout={(event) => {
+          setNavigationViewportHeight(
+            Math.ceil(event.nativeEvent.layout.height),
+          );
+        }}
         onScroll={noteScrollActivity}
+        scrollEnabled={navigationCanScroll}
         scrollEventThrottle={120}
-        showsVerticalScrollIndicator={!rail}
+        showsVerticalScrollIndicator={navigationShowsScrollbar}
         style={styles.navRegion}
-        tabIndex={0}
+        tabIndex={navigationCanScroll ? 0 : -1}
       >
-        {merchantNavigationItems.map((item) => {
+        {visibleNavigationItems.map((item) => {
           const groupId = sidebarItemId(item.label);
           const disabled = Boolean(
             item.permission && !can(session, item.permission),
@@ -703,6 +712,10 @@ export function MerchantSidebar({
               expanded={openGroupIds.has(groupId)}
               item={item}
               key={item.label}
+              onNavigate={(route) => {
+                router.push(route);
+                onClose?.();
+              }}
               onEscape={() => closeGroupFromKeyboard(groupId)}
               onToggle={() => toggleGroup(groupId)}
               rail={rail}

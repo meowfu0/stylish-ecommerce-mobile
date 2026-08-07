@@ -1,28 +1,29 @@
 import { colors } from "@/constants/design-tokens";
 import type { DashboardState } from "@/features/merchant-dashboard/dashboard-types";
-import { DASHBOARD_STATES } from "@/features/merchant-dashboard/dashboard-types";
+
+type DocumentedDashboardState = Exclude<DashboardState, "ready">;
 
 type DashboardStateFrame = {
   id: string;
   name: string;
   note: string;
-  state: DashboardState;
+  state: DocumentedDashboardState;
   trigger: string;
 };
 
 const dashboardStateDetails: Record<
-  DashboardState,
+  DocumentedDashboardState,
   Omit<DashboardStateFrame, "id" | "state">
 > = {
-  degraded: {
-    name: "Degraded data",
-    note: "Recent figures remain useful while a safe delayed-data notice is visible.",
+  refreshing: {
+    name: "Data refreshing",
+    note: "Existing data remains visible behind a non-blocking refresh notice.",
     trigger:
       "Triggered when some figures are delayed but the workspace remains safe to use.",
   },
   empty: {
-    name: "New merchant",
-    note: "Guided setup replaces misleading zeroed sales and order metrics.",
+    name: "New merchant / Empty",
+    note: "A guided first-product setup replaces misleading zeroed metrics.",
     trigger:
       "Triggered after approval when the merchant has no products or orders yet.",
   },
@@ -49,31 +50,36 @@ const dashboardStateDetails: Record<
     trigger:
       "Triggered when the signed-in role cannot read the requested section.",
   },
-  ready: {
-    name: "Fully populated",
-    note: "The real overview composition renders with the shared Philippine fixtures.",
-    trigger: "Triggered when all permitted overview data is available.",
-  },
   "session-expired": {
     name: "Session expired",
     note: "The user is prompted to authenticate again without exposing session details.",
     trigger: "Triggered after an access session expires or is revoked.",
   },
-  suspended: {
-    name: "Merchant suspended",
+  inactive: {
+    name: "Merchant inactive",
     note: "Selling is paused while support and merchant-profile access remain available.",
     trigger:
       "Triggered when platform review marks the merchant workspace inactive.",
   },
 };
 
-export const dashboardStateFrames: DashboardStateFrame[] = DASHBOARD_STATES.map(
-  (state) => ({
+const documentedDashboardStates: DocumentedDashboardState[] = [
+  "loading",
+  "empty",
+  "partial",
+  "refreshing",
+  "error",
+  "permission-denied",
+  "session-expired",
+  "inactive",
+];
+
+export const dashboardStateFrames: DashboardStateFrame[] =
+  documentedDashboardStates.map((state) => ({
     id: `dashboard-state-${state}`,
     state,
     ...dashboardStateDetails[state],
-  }),
-);
+  }));
 
 export type SidebarFrame = {
   height?: number;
@@ -116,7 +122,7 @@ export const sidebarFrames = [
     thumb: colors.brand.primaryActive,
   },
   {
-    height: 720,
+    height: 420,
     id: "sidebar-short-laptop",
     name: "Short laptop viewport (720px tall)",
     note: "Only the navigation region scrolls; utilities stay fixed.",

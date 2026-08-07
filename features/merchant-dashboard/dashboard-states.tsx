@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { Pressable, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { StylishText } from "@/components/typography/stylish-text";
 import { borderRadius, colors, spacing } from "@/constants/design-tokens";
@@ -10,11 +10,25 @@ import {
   type DashboardIconName,
   DashboardSkeleton,
 } from "@/features/merchant-dashboard/dashboard-primitives";
-import type { DashboardState } from "@/features/merchant-dashboard/dashboard-types";
+import type {
+  DashboardState,
+  MerchantSession,
+  Permission,
+} from "@/features/merchant-dashboard/dashboard-types";
 import { signOutCurrentSession } from "@/services/auth/auth-session";
 
+type StateActions = {
+  onContactSupport?: () => void;
+  onCreateProduct?: () => void;
+  onImportCatalog?: () => void;
+  onRetry?: () => void;
+  onReturnToOverview?: () => void;
+  onReviewMerchantProfile?: () => void;
+  onSignInAgain?: () => void | Promise<void>;
+};
+
 export function DashboardStateBanner({ state }: { state: DashboardState }) {
-  if (state !== "degraded" && state !== "partial") return null;
+  if (state !== "partial" && state !== "refreshing") return null;
 
   const partial = state === "partial";
   return (
@@ -22,23 +36,32 @@ export function DashboardStateBanner({ state }: { state: DashboardState }) {
       accessibilityLiveRegion="polite"
       style={[
         styles.banner,
-        partial ? styles.bannerWarning : styles.bannerInfo,
+        partial ? styles.bannerInfo : styles.bannerWarning,
       ]}
+      testID={`dashboard-state-${state}`}
     >
       <DashboardIcon
-        color={partial ? colors.feedback.warning : colors.feedback.info}
-        name={partial ? "alert-outline" : "clock-outline"}
+        color={partial ? colors.feedback.info : colors.feedback.warning}
+        name={partial ? "information-outline" : "cloud-sync-outline"}
       />
       <View style={styles.bannerCopy}>
-        <StylishText style={styles.bannerTitle} unstyled variant="label">
+        <StylishText
+          style={[styles.bannerTitle, !partial && styles.bannerTitleWarning]}
+          unstyled
+          variant="label"
+        >
           {partial
-            ? "Some items need attention"
-            : "Recent data is still catching up"}
+            ? "12 variants need restocking before your next campaign"
+            : "Some figures may be a few minutes behind"}
         </StylishText>
-        <StylishText style={styles.bannerBody} unstyled variant="caption">
+        <StylishText
+          style={[styles.bannerBody, !partial && styles.bannerBodyWarning]}
+          unstyled
+          variant="caption"
+        >
           {partial
-            ? "Low-stock warnings are available, while sales history is not ready for this range."
-            : "Some figures may be a few minutes behind. You can continue working safely."}
+            ? "Sales history is still building, so trends will sharpen as more orders come in."
+            : "We’re refreshing your performance data in the background. Orders and inventory actions still work normally."}
         </StylishText>
       </View>
     </View>
@@ -46,54 +69,61 @@ export function DashboardStateBanner({ state }: { state: DashboardState }) {
 }
 
 export function DashboardBlockingState({
-  onSignInAgain,
-  onRetry,
+  deniedSection = "This section",
+  requiredPermission,
+  session,
   state,
-}: {
-  onSignInAgain?: () => void | Promise<void>;
-  onRetry?: () => void;
+  ...actions
+}: StateActions & {
+  deniedSection?: string;
+  requiredPermission?: Permission;
+  session: MerchantSession;
   state: DashboardState;
 }) {
   const router = useRouter();
 
-  if (state === "ready" || state === "partial" || state === "degraded") {
+  if (state === "ready" || state === "partial" || state === "refreshing") {
     return null;
   }
   if (state === "loading") return <DashboardLoadingState />;
+  if (state === "empty") {
+    return <NewMerchantState actions={actions} session={session} />;
+  }
 
-  const config = {
-    empty: {
-      body: "Start with your merchant profile, first product, and opening stock. Live performance appears after your first orders.",
-      icon: "store-plus-outline" as DashboardIconName,
-      title: "Let’s get your store ready",
-    },
+  const stateConfig = {
     error: {
-      body: "We couldn’t load the merchant overview. Your data is safe. Check your connection and try again.",
-      icon: "cloud-alert-outline" as DashboardIconName,
-      title: "Dashboard unavailable",
+      body: "Something went wrong while fetching your merchant data. Your catalog and orders are safe — try again in a moment.",
+      icon: "alert-outline" as DashboardIconName,
+      title: "We couldn’t load your dashboard",
+      tone: "danger" as const,
     },
     "permission-denied": {
-      body: "You don’t have permission to view this section. Ask the merchant owner if your responsibilities have changed.",
+      body: `${deniedSection} isn’t part of your role in this workspace. Ask the merchant owner if you need access.${
+        requiredPermission ? ` Required permission: ${requiredPermission}.` : ""
+      }`,
       icon: "shield-lock-outline" as DashboardIconName,
-      title: "Access restricted",
+      title: "You don’t have permission to view this section.",
+      tone: "warning" as const,
     },
     "session-expired": {
-      body: "Your secure session ended. Sign in again to continue to this workspace.",
-      icon: "timer-lock-outline" as DashboardIconName,
-      title: "Session expired",
+      body: "For your security we signed you out after a period of inactivity. Sign in again to return to this workspace.",
+      icon: "timer-off-outline" as DashboardIconName,
+      title: "Your session expired",
+      tone: "info" as const,
     },
-    suspended: {
-      body: "This merchant workspace is currently suspended. Storefront publishing and commerce actions are unavailable until the account review is complete.",
-      icon: "store-alert-outline" as DashboardIconName,
-      title: "Merchant workspace suspended",
+    inactive: {
+      body: "Selling is paused for this merchant, so the storefront and new orders are unavailable. The Stylish partner team can walk you through what’s needed to reactivate.",
+      icon: "shield-alert-outline" as DashboardIconName,
+      title: `${session.merchantName} is currently inactive`,
+      tone: "danger" as const,
     },
   }[state];
 
-  if (!config) return null;
+  if (!stateConfig) return null;
 
   const signInAgain = async () => {
-    if (onSignInAgain) {
-      await onSignInAgain();
+    if (actions.onSignInAgain) {
+      await actions.onSignInAgain();
       return;
     }
     await signOutCurrentSession();
@@ -106,17 +136,20 @@ export function DashboardBlockingState({
         <View
           style={[
             styles.stateIcon,
-            state === "suspended" && styles.stateIconWarning,
+            stateConfig.tone === "warning" && styles.stateIconWarning,
+            stateConfig.tone === "info" && styles.stateIconInfo,
           ]}
         >
           <DashboardIcon
             color={
-              state === "suspended"
+              stateConfig.tone === "warning"
                 ? colors.feedback.warning
-                : colors.feedback.danger
+                : stateConfig.tone === "info"
+                  ? colors.feedback.info
+                  : colors.feedback.danger
             }
-            name={config.icon}
-            size={30}
+            name={stateConfig.icon}
+            size={28}
           />
         </View>
         <View style={styles.blockingCopy}>
@@ -126,74 +159,65 @@ export function DashboardBlockingState({
             unstyled
             variant="headingMedium"
           >
-            {config.title}
+            {stateConfig.title}
           </StylishText>
           <StylishText style={styles.blockingBody} unstyled variant="bodySmall">
-            {config.body}
+            {stateConfig.body}
           </StylishText>
         </View>
-
-        {state === "empty" ? (
-          <View style={styles.setupList}>
-            <SetupStep
-              icon="store-cog-outline"
-              label="Complete merchant profile"
-              step="1"
-            />
-            <SetupStep
-              icon="tag-plus-outline"
-              label="Create your first product"
-              step="2"
-            />
-            <SetupStep
-              icon="cube-outline"
-              label="Add opening inventory"
-              step="3"
-            />
-          </View>
-        ) : null}
-
         <View style={styles.blockingActions}>
           {state === "error" ? (
-            <DashboardButton
-              icon="refresh"
-              label="Try Again"
-              onPress={onRetry}
-              tone="primary"
-            />
+            <>
+              <DashboardButton
+                icon="refresh"
+                label="Try Again"
+                large
+                onPress={actions.onRetry}
+                tone="primary"
+              />
+              <DashboardButton
+                label="Contact Support"
+                large
+                onPress={actions.onContactSupport}
+              />
+            </>
           ) : null}
           {state === "session-expired" ? (
             <DashboardButton
-              icon="login"
               label="Sign In Again"
+              large
               onPress={() => void signInAgain()}
               tone="primary"
             />
           ) : null}
           {state === "permission-denied" ? (
             <>
-              <DashboardButton label="Return to Overview" tone="primary" />
-              <DashboardButton label="Contact Merchant Owner" />
-            </>
-          ) : null}
-          {state === "empty" ? (
-            <>
               <DashboardButton
-                icon="plus"
-                label="Create Product"
+                label="Return to Overview"
+                large
+                onPress={actions.onReturnToOverview}
                 tone="primary"
               />
-              <DashboardButton label="Complete Merchant Profile" />
+              <DashboardButton
+                label="Contact Merchant Owner"
+                large
+                onPress={actions.onContactSupport}
+              />
             </>
           ) : null}
-          {state === "suspended" ? (
+          {state === "inactive" ? (
             <>
               <DashboardButton
-                icon="lifebuoy"
                 label="Contact Support"
+                large
+                onPress={actions.onContactSupport}
                 tone="primary"
               />
-              <DashboardButton label="Review Merchant Profile" />
+              <DashboardButton
+                label="Review Merchant Profile"
+                large
+                onPress={actions.onReviewMerchantProfile}
+              />
             </>
           ) : null}
         </View>
@@ -202,28 +226,108 @@ export function DashboardBlockingState({
   );
 }
 
-function SetupStep({
-  icon,
-  label,
-  step,
+function NewMerchantState({
+  actions,
+  session,
 }: {
-  icon: DashboardIconName;
-  label: string;
-  step: string;
+  actions: StateActions;
+  session: MerchantSession;
 }) {
+  const setupSteps = [
+    {
+      body: "Create products with images, variants, and pricing in Philippine pesos.",
+      icon: "tag-plus-outline" as DashboardIconName,
+      title: "Build your catalog",
+    },
+    {
+      body: "Assign inventory to a location and set reorder thresholds.",
+      icon: "cube-outline" as DashboardIconName,
+      title: "Set your stock",
+    },
+    {
+      body: "Publish to the marketplace and track orders as they arrive.",
+      icon: "store-check-outline" as DashboardIconName,
+      title: "Publish and sell",
+    },
+  ];
+
   return (
-    <Pressable accessibilityRole="button" style={styles.setupStep}>
-      <View style={styles.setupNumber}>
-        <StylishText style={styles.setupNumberText} unstyled variant="caption">
-          {step}
-        </StylishText>
-      </View>
-      <DashboardIcon name={icon} />
-      <StylishText style={styles.setupLabel} unstyled variant="label">
-        {label}
-      </StylishText>
-      <DashboardIcon name="arrow-right" size={16} />
-    </Pressable>
+    <View style={styles.blockingContainer} testID="dashboard-state-empty">
+      <DashboardCard style={styles.emptyCard}>
+        <View style={styles.stateIcon}>
+          <DashboardIcon
+            color={colors.feedback.danger}
+            name="store-plus-outline"
+            size={28}
+          />
+        </View>
+        <View style={styles.blockingCopy}>
+          <StylishText
+            accessibilityRole="header"
+            style={styles.blockingTitle}
+            unstyled
+            variant="headingMedium"
+          >
+            {session.merchantName} is ready for its first product
+          </StylishText>
+          <StylishText style={styles.blockingBody} unstyled variant="bodySmall">
+            Your workspace is set up and verified. Add a product, set its stock,
+            and publish it to start receiving orders.
+          </StylishText>
+        </View>
+        <View style={styles.blockingActions}>
+          <DashboardButton
+            icon="plus"
+            label="Add Product"
+            large
+            onPress={actions.onCreateProduct}
+            tone="primary"
+          />
+          <DashboardButton
+            label="Import catalog"
+            large
+            onPress={actions.onImportCatalog}
+          />
+        </View>
+        <View style={styles.setupGrid}>
+          {setupSteps.map((step, index) => (
+            <View key={step.title} style={styles.setupCard}>
+              <View style={styles.setupStepHeader}>
+                <View style={styles.setupNumber}>
+                  <StylishText
+                    style={styles.setupNumberText}
+                    unstyled
+                    variant="caption"
+                  >
+                    {index + 1}
+                  </StylishText>
+                </View>
+                <DashboardIcon
+                  color={colors.feedback.danger}
+                  name={step.icon}
+                />
+              </View>
+              <StylishText style={styles.setupTitle} unstyled variant="label">
+                {step.title}
+              </StylishText>
+              <StylishText style={styles.setupBody} unstyled variant="caption">
+                {step.body}
+              </StylishText>
+            </View>
+          ))}
+        </View>
+      </DashboardCard>
+    </View>
+  );
+}
+
+function SkeletonLines({ widths }: { widths: (number | `${number}%`)[] }) {
+  return (
+    <View style={styles.skeletonLines}>
+      {widths.map((width, index) => (
+        <DashboardSkeleton key={`${width}-${index}`} style={{ width }} />
+      ))}
+    </View>
   );
 }
 
@@ -239,17 +343,28 @@ export function DashboardLoadingState() {
       <StylishText style={styles.srOnly} unstyled variant="caption">
         Loading your merchant dashboard.
       </StylishText>
-      <DashboardSkeleton style={styles.skeletonHero} />
+      <DashboardCard style={styles.skeletonHeroCard}>
+        <SkeletonLines widths={[160, 260, 320]} />
+      </DashboardCard>
       <View style={styles.skeletonRow}>
         {[0, 1, 2, 3].map((item) => (
-          <DashboardSkeleton key={item} style={styles.skeletonMetric} />
+          <DashboardCard key={item} style={styles.skeletonMetricCard}>
+            <SkeletonLines widths={[90, 140, "100%"]} />
+          </DashboardCard>
         ))}
       </View>
       <View style={styles.skeletonPair}>
-        <DashboardSkeleton style={styles.skeletonLarge} />
-        <DashboardSkeleton style={styles.skeletonLarge} />
+        {[0, 1].map((item) => (
+          <DashboardCard key={item} style={styles.skeletonLargeCard}>
+            <SkeletonLines widths={[item === 0 ? 150 : 130, "100%"]} />
+          </DashboardCard>
+        ))}
       </View>
-      <DashboardSkeleton style={styles.skeletonTable} />
+      <DashboardCard style={styles.skeletonTableCard}>
+        <SkeletonLines
+          widths={[160, "100%", "100%", "100%", "100%", "100%", "100%"]}
+        />
+      </DashboardCard>
     </View>
   );
 }
@@ -261,74 +376,95 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.sm,
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 14,
   },
   bannerBody: {
     color: colors.neutral[550],
     fontFamily: "Montserrat_400Regular",
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 13,
+    lineHeight: 20,
   },
-  bannerCopy: { flex: 1, gap: spacing.xxs },
+  bannerBodyWarning: { color: "rgba(138,90,0,0.85)" },
+  bannerCopy: { flex: 1, gap: spacing.xxs, minWidth: 0 },
   bannerInfo: {
-    backgroundColor: colors.feedback.infoSoft,
+    backgroundColor: "rgba(207,226,252,0.35)",
     borderColor: colors.brand.blueSoft,
   },
   bannerTitle: {
     color: colors.ink.primary,
     fontFamily: "Montserrat_600SemiBold",
-    fontSize: 13,
+    fontSize: 14,
     lineHeight: 20,
   },
+  bannerTitleWarning: { color: colors.feedback.warning },
   bannerWarning: {
     backgroundColor: colors.feedback.warningSoft,
-    borderColor: colors.feedback.warningSoft,
+    borderColor: "#F3DFB5",
   },
   blockingActions: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: spacing.sm,
+    gap: 10,
     justifyContent: "center",
   },
   blockingBody: {
     color: colors.neutral[550],
     fontFamily: "Montserrat_400Regular",
-    fontSize: 14,
-    lineHeight: 22,
+    fontSize: 15,
+    lineHeight: 24,
     textAlign: "center",
   },
   blockingCard: {
     alignItems: "center",
-    gap: spacing.lg,
-    maxWidth: 680,
+    gap: spacing.md,
+    justifyContent: "center",
+    minHeight: 342,
     padding: spacing.xl,
     width: "100%",
   },
-  blockingContainer: {
-    alignItems: "center",
-    flex: 1,
-    justifyContent: "center",
-    minHeight: 520,
-    padding: spacing.lg,
-  },
+  blockingContainer: { alignItems: "center", width: "100%" },
   blockingCopy: { alignItems: "center", gap: spacing.xs, maxWidth: 520 },
   blockingTitle: {
     color: colors.ink.primary,
     fontFamily: "Montserrat_700Bold",
-    fontSize: 24,
-    letterSpacing: -0.24,
-    lineHeight: 32,
+    fontSize: 22,
+    letterSpacing: -0.22,
+    lineHeight: 30,
     textAlign: "center",
   },
-  loadingLayout: { gap: spacing.lg },
-  setupLabel: {
-    color: colors.ink.primary,
-    flex: 1,
-    fontFamily: "Montserrat_600SemiBold",
-    fontSize: 13,
-    lineHeight: 20,
+  emptyCard: {
+    alignItems: "center",
+    gap: spacing.lg,
+    minHeight: 500,
+    padding: spacing.xl,
+    width: "100%",
   },
-  setupList: { gap: spacing.xs, maxWidth: 460, width: "100%" },
+  loadingLayout: { gap: spacing.md, width: "100%" },
+  setupBody: {
+    color: colors.neutral[550],
+    fontFamily: "Montserrat_400Regular",
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  setupCard: {
+    backgroundColor: colors.neutral[50],
+    borderColor: colors.neutral[200],
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    flexBasis: 220,
+    flexGrow: 1,
+    gap: spacing.xs,
+    minWidth: 0,
+    padding: spacing.md,
+  },
+  setupGrid: {
+    alignItems: "stretch",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.md,
+    width: "100%",
+  },
   setupNumber: {
     alignItems: "center",
     backgroundColor: colors.brand.socialSurface,
@@ -343,23 +479,38 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 16,
   },
-  setupStep: {
+  setupStepHeader: {
     alignItems: "center",
-    backgroundColor: colors.neutral[50],
-    borderColor: colors.neutral[200],
-    borderRadius: borderRadius.input,
-    borderWidth: 1,
     flexDirection: "row",
-    gap: spacing.sm,
-    minHeight: 56,
-    paddingHorizontal: spacing.sm,
+    justifyContent: "space-between",
   },
-  skeletonHero: { height: 166 },
-  skeletonLarge: { flex: 1, height: 420, minWidth: 260 },
-  skeletonMetric: { flex: 1, height: 150, minWidth: 180 },
-  skeletonPair: { flexDirection: "row", flexWrap: "wrap", gap: spacing.lg },
-  skeletonRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
-  skeletonTable: { height: 480 },
+  setupTitle: {
+    color: colors.ink.primary,
+    fontFamily: "Montserrat_600SemiBold",
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  skeletonHeroCard: {
+    height: 144,
+    justifyContent: "center",
+    padding: spacing.lg,
+  },
+  skeletonLargeCard: {
+    flex: 1,
+    height: 358,
+    minWidth: 260,
+    padding: spacing.lg,
+  },
+  skeletonLines: { gap: spacing.sm, width: "100%" },
+  skeletonMetricCard: {
+    flex: 1,
+    height: 156,
+    minWidth: 180,
+    padding: spacing.lg,
+  },
+  skeletonPair: { flexDirection: "row", flexWrap: "wrap", gap: 20 },
+  skeletonRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
+  skeletonTableCard: { height: 392, padding: spacing.lg },
   srOnly: {
     height: 1,
     left: -10000,
@@ -370,10 +521,19 @@ const styles = StyleSheet.create({
   stateIcon: {
     alignItems: "center",
     backgroundColor: colors.feedback.dangerSoft,
-    borderRadius: borderRadius.pill,
-    height: 68,
+    borderColor: colors.brand.pinkSoft,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    height: 64,
     justifyContent: "center",
-    width: 68,
+    width: 64,
   },
-  stateIconWarning: { backgroundColor: colors.feedback.warningSoft },
+  stateIconInfo: {
+    backgroundColor: "rgba(207,226,252,0.6)",
+    borderColor: colors.brand.blueSoft,
+  },
+  stateIconWarning: {
+    backgroundColor: colors.feedback.warningSoft,
+    borderColor: "#F3DFB5",
+  },
 });
