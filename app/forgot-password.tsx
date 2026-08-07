@@ -23,7 +23,7 @@ import {
   type AuthAlertTone,
 } from "@/components/auth/auth-alert-banner";
 import { AuthFormField } from "@/components/auth/auth-form-field";
-import { StylishLogo } from "@/components/brand/stylish-logo";
+import { VeloriLogo } from "@/components/brand/velori-logo";
 import { StylishText } from "@/components/typography/stylish-text";
 import { colors, typography } from "@/constants/design-tokens";
 import { AuthRequestError, forgotPassword } from "@/services/auth/auth-api";
@@ -183,7 +183,7 @@ export default function ForgotPasswordScreen() {
             style={[styles.content, { gap: compact ? 16 : desktop ? 32 : 24 }]}
             testID="auth-forgot-password-content"
           >
-            <StylishLogo testID="auth-forgot-password-logo" width={logoWidth} />
+            <VeloriLogo testID="auth-forgot-password-logo" width={logoWidth} />
 
             <View
               style={[styles.card, { padding: cardPadding }]}

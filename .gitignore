@@ -47,3 +47,8 @@ backend/.email-previews/
 backend/node_modules/
 backend/dist/
 backend/certs/
+
+# Local Claude task specifications
+docs/merchant-*.md
+docs/velori-*.md
+

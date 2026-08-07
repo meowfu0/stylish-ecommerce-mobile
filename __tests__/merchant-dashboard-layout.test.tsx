@@ -1,6 +1,8 @@
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import { Animated, StyleSheet } from "react-native";
 
+import { VELORI_LOGO_ASPECT_RATIO } from "@/components/brand/velori-logo";
+import { colors } from "@/constants/design-tokens";
 import { rolePermissions } from "@/features/merchant-dashboard/dashboard-access";
 import { DashboardOverviewContent } from "@/features/merchant-dashboard/dashboard-overview-content";
 import {
@@ -110,6 +112,78 @@ describe("merchant dashboard layout regressions", () => {
     expect(
       screen.getByTestId("chart-series-revenue-area").props.children.length,
     ).toBeGreaterThan(7);
+  });
+
+  it("sizes the expanded brand lockup fluidly rather than at a fixed width", () => {
+    const screen = render(
+      <MerchantSidebar
+        onToggleRail={jest.fn()}
+        rail={false}
+        session={ownerSession}
+      />,
+    );
+    const logo = StyleSheet.flatten(
+      screen.getByTestId("merchant-sidebar-brand-logo").props.style,
+    );
+
+    // A cap plus the artwork's own ratio, so the lockup tracks the sidebar
+    // width instead of restating a pixel size copied from a screenshot.
+    expect(logo.width).toBe("100%");
+    expect(logo.maxWidth).toBe(144);
+    expect(logo.aspectRatio).toBeCloseTo(VELORI_LOGO_ASPECT_RATIO, 4);
+    expect(logo.flexShrink).toBe(1);
+    expect(logo.height).toBeUndefined();
+  });
+
+  it("shows only the compact mark in the rail and keeps it inside the header", () => {
+    const screen = render(
+      <MerchantSidebar onToggleRail={jest.fn()} rail session={ownerSession} />,
+    );
+
+    expect(screen.queryByTestId("merchant-sidebar-brand-logo")).toBeNull();
+    const region = StyleSheet.flatten(
+      screen.getByTestId("merchant-sidebar-brand-region").props.style,
+    );
+    const mark = StyleSheet.flatten(
+      screen.getByTestId("merchant-sidebar-brand-mark").props.style,
+    );
+    const collapse = StyleSheet.flatten(
+      screen.getByLabelText("Expand sidebar").props.style,
+    );
+
+    expect(region.flexDirection).toBe("column");
+    expect(region.justifyContent).toBe("center");
+    // The stacked mark, gap and collapse control have to fit the header height
+    // the rail shares with the expanded sidebar, or the mark reads as clipped.
+    expect(mark.height + region.gap + collapse.height).toBeLessThanOrEqual(
+      region.height,
+    );
+  });
+
+  it("outlines the workspace card only while the cursor is over it", () => {
+    const screen = render(
+      <MerchantSidebar
+        onToggleRail={jest.fn()}
+        rail={false}
+        session={ownerSession}
+      />,
+    );
+    const card = screen.getByTestId("merchant-sidebar-workspace-card");
+    const resting = StyleSheet.flatten(card.props.style);
+
+    expect(resting.borderColor).toBe("transparent");
+    expect(resting.backgroundColor).toBe(colors.neutral[50]);
+
+    fireEvent(card, "hoverIn");
+    const hovered = StyleSheet.flatten(
+      screen.getByTestId("merchant-sidebar-workspace-card").props.style,
+    );
+
+    expect(hovered.borderColor).toBe(colors.neutral[200]);
+    expect(hovered.backgroundColor).toBe(colors.neutral[0]);
+    // The resting card reserves the border width, so revealing the outline
+    // must not change the box and nudge the navigation below it.
+    expect(hovered.borderWidth).toBe(resting.borderWidth);
   });
 
   it("keeps expanded sidebar rows horizontal", () => {
