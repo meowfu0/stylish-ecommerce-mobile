@@ -83,7 +83,7 @@ export const pipelineStages: PipelineStage[] = [
   { count: 18, key: "new", label: "New", tone: "pink" },
   { count: 24, key: "confirmed", label: "Confirmed", tone: "blue" },
   { count: 31, key: "processing", label: "Processing", tone: "blue" },
-  { count: 12, key: "ready", label: "Ready to ship", tone: "warning" },
+  { count: 12, key: "ready", label: "Ready to Ship", tone: "warning" },
   { count: 46, key: "shipped", label: "Shipped", tone: "blue" },
   { count: 182, key: "delivered", label: "Delivered", tone: "green" },
   { count: 5, key: "cancelled", label: "Cancelled", tone: "neutral" },

@@ -19,7 +19,7 @@ const dashboardStateDetails: Record<
     name: "Data refreshing",
     note: "Existing data remains visible behind a non-blocking refresh notice.",
     trigger:
-      "Triggered when some figures are delayed but the workspace remains safe to use.",
+      "Triggered when already-loaded data is being brought up to date without blocking the workspace.",
   },
   empty: {
     name: "New merchant / Empty",
@@ -40,9 +40,9 @@ const dashboardStateDetails: Record<
   },
   partial: {
     name: "Partial data",
-    note: "The populated overview stays useful while low-stock warnings are surfaced.",
+    note: "Regions that loaded stay usable while the ones that failed are named instead of faked.",
     trigger:
-      "Triggered when core data is available and inventory needs attention.",
+      "Triggered when some dashboard requests succeed and others fail.",
   },
   "permission-denied": {
     name: "Permission denied",
@@ -157,12 +157,13 @@ export const responsiveRules = [
     frame: "1366×768",
   },
   {
-    behavior: "Two-column grid, nav drawer, tables as compact lists",
+    behavior:
+      "Two-column grid, nav drawer, metric cards two-up, tables as compact lists",
     frame: "768–1024",
   },
   {
     behavior:
-      "Single column, nav drawer, metric cards as a snap carousel, tables as stacked cards, bottom-safe padding, vertical scrolling only",
+      "Single column, nav drawer, metric cards stacked full width, tables as stacked cards, bottom-safe padding, vertical scrolling only",
     frame: "~390",
   },
 ];
