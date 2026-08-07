@@ -49,13 +49,13 @@ describe("authentication API contracts", () => {
     );
 
     await register({
-      displayName: "  Stylish Customer  ",
+      displayName: "  Velori Customer  ",
       email: " Customer@Example.com ",
       password: "StrongPassword123!",
     });
 
     expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
-      displayName: "Stylish Customer",
+      displayName: "Velori Customer",
       email: "customer@example.com",
       password: "StrongPassword123!",
     });

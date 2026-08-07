@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "stylish-ecommerce-mobile",
+    "name": "Velori",
     "slug": "stylish-ecommerce-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/velori-icon.png",
     "scheme": ["stylishecommercemobile", "stylish"],
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -13,7 +13,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -24,7 +24,7 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/stylish-auth-logo-mark.png"
+      "favicon": "./assets/images/velori-mark.png"
     },
     "plugins": [
       "expo-router",
@@ -34,13 +34,13 @@
         {
           "cameraPermission": false,
           "microphonePermission": false,
-          "photosPermission": "Allow Stylish to access your photos so you can choose a profile picture."
+          "photosPermission": "Allow Velori to access your photos so you can choose a profile picture."
         }
       ],
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/stylish-auth-logo-mark.png",
+          "image": "./assets/images/velori-mark.png",
           "imageWidth": 104,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",

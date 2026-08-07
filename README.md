@@ -51,10 +51,10 @@ Join our community of developers creating universal apps.
 
 ## Project overview
 
-Stylish is a cross-platform e-commerce mobile application built with Expo, React Native, TypeScript, Expo Router, and NativeWind.
+Velori is a cross-platform e-commerce mobile application built with Expo, React Native, TypeScript, Expo Router, and NativeWind.
 
 The frontend currently includes onboarding, authentication interfaces, product browsing, shopping, checkout, payment selection, and payment confirmation flows based on the project’s Figma design.
 
 ## Accessibility and responsive design
 
-Stylish uses accessible labels, responsive layouts, and keyboard-aware forms to provide a consistent shopping experience across supported phone sizes.
+Velori uses accessible labels, responsive layouts, and keyboard-aware forms to provide a consistent shopping experience across supported phone sizes.
