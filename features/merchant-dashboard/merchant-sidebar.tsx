@@ -18,7 +18,7 @@ import {
   View,
 } from "react-native";
 
-import { StylishLogo } from "@/components/brand/stylish-logo";
+import { VeloriLogo, VeloriMark } from "@/components/brand/velori-logo";
 import { StylishText } from "@/components/typography/stylish-text";
 import {
   borderRadius,
@@ -37,6 +37,7 @@ import {
   resolveMerchantNavigationAccess,
 } from "@/features/merchant-dashboard/merchant-navigation";
 import { SidebarPressable } from "@/features/merchant-dashboard/sidebar-pressable";
+import { useReducedMotion } from "@/features/merchant-dashboard/use-reduced-motion";
 import type { MerchantSession } from "@/features/merchant-dashboard/dashboard-types";
 import { signOutCurrentSession } from "@/services/auth/auth-session";
 
@@ -52,6 +53,23 @@ const inactiveStoreTitle =
   "Selling is paused for this merchant, so this section is unavailable";
 const pressedRowBackground = `${colors.brand.pinkSoft}59`;
 
+/**
+ * Brand region sizing. The expanded lockup is capped rather than fixed so it
+ * scales with the sidebar and always keeps `brandRegion`'s gap between itself
+ * and the collapse control. The rail mark is sized so the stacked mark, gap and
+ * control still fit inside the shared header height with room to breathe.
+ */
+const SIDEBAR_LOGO_MAX_WIDTH = 144;
+const SIDEBAR_MARK_HEIGHT = 22;
+
+/**
+ * The sidebar's two resting widths. The shell owns the element that actually
+ * carries the width so it can animate between them, which is why the sidebar
+ * itself simply fills whatever it is given.
+ */
+export const MERCHANT_SIDEBAR_WIDTH = 272;
+export const MERCHANT_SIDEBAR_RAIL_WIDTH = 84;
+
 function sidebarItemId(label: string) {
   return label.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 }
@@ -62,35 +80,6 @@ function childListId(groupId: string) {
 
 function groupTriggerId(groupId: string) {
   return `merchant-sidebar-${groupId}-trigger`;
-}
-
-function useReducedMotion() {
-  const [reducedMotion, setReducedMotion] = useState(false);
-  const reducedMotionRef = useRef(false);
-
-  useEffect(() => {
-    let mounted = true;
-    const updateReducedMotion = (enabled: boolean) => {
-      if (!mounted || reducedMotionRef.current === enabled) return;
-      reducedMotionRef.current = enabled;
-      setReducedMotion(enabled);
-    };
-
-    void AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
-      updateReducedMotion(enabled);
-    });
-    const subscription = AccessibilityInfo.addEventListener(
-      "reduceMotionChanged",
-      updateReducedMotion,
-    );
-
-    return () => {
-      mounted = false;
-      subscription.remove();
-    };
-  }, []);
-
-  return reducedMotion;
 }
 
 function webTitle(label: string, enabled: boolean) {
@@ -523,6 +512,129 @@ function SidebarNavItem({
   );
 }
 
+/**
+ * The single brand region for both sidebar states: the full lockup while the
+ * sidebar is expanded, and only the compact mark once it collapses to the rail.
+ * Keeping both in one place means the collapse control is declared once and can
+ * never drift out of alignment with whichever piece of artwork sits beside it.
+ */
+function SidebarBrand({
+  onToggleRail,
+  rail,
+}: {
+  onToggleRail: () => void;
+  rail: boolean;
+}) {
+  return (
+    <View
+      style={[styles.brandRegion, rail && styles.brandRegionRail]}
+      testID="merchant-sidebar-brand-region"
+    >
+      {rail ? (
+        <VeloriMark
+          size={SIDEBAR_MARK_HEIGHT}
+          testID="merchant-sidebar-brand-mark"
+        />
+      ) : (
+        <VeloriLogo
+          maxWidth={SIDEBAR_LOGO_MAX_WIDTH}
+          style={styles.brandLogo}
+          testID="merchant-sidebar-brand-logo"
+        />
+      )}
+      <SidebarPressable
+        {...webTitle(rail ? "Expand sidebar" : "Collapse sidebar", rail)}
+        accessibilityLabel={rail ? "Expand sidebar" : "Collapse sidebar"}
+        accessibilityRole="button"
+        className={sidebarActionClass}
+        onPress={onToggleRail}
+        style={styles.collapseButton}
+      >
+        <DashboardIcon
+          name={rail ? "chevron-double-right" : "chevron-double-left"}
+          size={20}
+        />
+      </SidebarPressable>
+    </View>
+  );
+}
+
+/**
+ * Current-workspace card. It rests as a plain filled tile and only draws its
+ * outline under the cursor, so hover reads as the card lifting off the sidebar
+ * rather than as a colour wash. The resting border is transparent rather than
+ * absent, which keeps the 1px reserved and stops the row shifting on hover.
+ *
+ * Hover is tracked here rather than with a `hover:` utility class because the
+ * web pressable flattens these styles inline, and an inline declaration always
+ * outranks a class.
+ */
+function SidebarWorkspaceCard({
+  onPress,
+  rail,
+  session,
+}: {
+  onPress: () => void;
+  rail: boolean;
+  session: MerchantSession;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const [pressed, setPressed] = useState(false);
+  const outlined = hovered || pressed;
+
+  return (
+    <SidebarPressable
+      {...webTitle(`${session.merchantName} · ${session.role}`, rail)}
+      accessibilityLabel={`Current workspace ${session.merchantName}, ${session.role}`}
+      accessibilityRole="button"
+      className={`${focusRingClass} ${interactiveTransitionClass} cursor-pointer`}
+      onHoverIn={() => setHovered(true)}
+      onHoverOut={() => setHovered(false)}
+      onPress={onPress}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      style={[
+        styles.workspaceCard,
+        rail && styles.workspaceCardRail,
+        outlined && !rail && styles.workspaceCardHovered,
+        outlined && rail && styles.workspaceCardRailHovered,
+      ]}
+      testID="merchant-sidebar-workspace-card"
+    >
+      <View style={[styles.merchantAvatar, rail && styles.merchantAvatarRail]}>
+        <StylishText style={styles.avatarLabel} unstyled variant="label">
+          {session.merchantName.charAt(0).toUpperCase()}
+        </StylishText>
+      </View>
+      {!rail ? (
+        <>
+          <View style={styles.workspaceCopy}>
+            <StylishText
+              numberOfLines={1}
+              style={styles.workspaceName}
+              unstyled
+              variant="label"
+            >
+              {session.merchantName}
+            </StylishText>
+            <StylishText
+              numberOfLines={1}
+              style={styles.workspaceRole}
+              unstyled
+              variant="caption"
+            >
+              {session.role}
+            </StylishText>
+          </View>
+          <View style={styles.workspaceAccessory}>
+            <DashboardIcon name="chevron-down" size={16} />
+          </View>
+        </>
+      ) : null}
+    </SidebarPressable>
+  );
+}
+
 export function MerchantSidebar({
   activeItemLabel = "Overview",
   onClose,
@@ -609,74 +721,17 @@ export function MerchantSidebar({
     .join(" ");
 
   return (
-    <View style={[styles.sidebar, rail && styles.sidebarRail]}>
-      <View style={[styles.brandRegion, rail && styles.brandRegionRail]}>
-        {rail ? (
-          <Image
-            accessibilityLabel="Stylish"
-            contentFit="contain"
-            source={require("@/assets/images/stylish-mark.svg")}
-            style={styles.brandMark}
-          />
-        ) : (
-          <StylishLogo width={165} />
-        )}
-        <SidebarPressable
-          {...webTitle(rail ? "Expand sidebar" : "Collapse sidebar", rail)}
-          accessibilityLabel={rail ? "Expand sidebar" : "Collapse sidebar"}
-          accessibilityRole="button"
-          className={sidebarActionClass}
-          onPress={onToggleRail}
-          style={styles.collapseButton}
-        >
-          <DashboardIcon name={rail ? "chevron-right" : "chevron-left"} />
-        </SidebarPressable>
-      </View>
+    <View style={styles.sidebar}>
+      <SidebarBrand onToggleRail={onToggleRail} rail={rail} />
 
       <View
         style={[styles.workspaceRegion, rail && styles.workspaceRegionRail]}
       >
-        <SidebarPressable
-          {...webTitle(`${session.merchantName} · ${session.role}`, rail)}
-          accessibilityLabel={`Current workspace ${session.merchantName}, ${session.role}`}
-          accessibilityRole="button"
-          className={sidebarActionClass}
+        <SidebarWorkspaceCard
           onPress={() => router.push("/auth/choose-workspace")}
-          style={[styles.workspaceCard, rail && styles.workspaceCardRail]}
-        >
-          <View
-            style={[styles.merchantAvatar, rail && styles.merchantAvatarRail]}
-          >
-            <StylishText style={styles.avatarLabel} unstyled variant="label">
-              {session.merchantName.charAt(0).toUpperCase()}
-            </StylishText>
-          </View>
-          {!rail ? (
-            <>
-              <View style={styles.workspaceCopy}>
-                <StylishText
-                  numberOfLines={1}
-                  style={styles.workspaceName}
-                  unstyled
-                  variant="label"
-                >
-                  {session.merchantName}
-                </StylishText>
-                <StylishText
-                  numberOfLines={1}
-                  style={styles.workspaceRole}
-                  unstyled
-                  variant="caption"
-                >
-                  {session.role}
-                </StylishText>
-              </View>
-              <View style={styles.workspaceAccessory}>
-                <DashboardIcon name="chevron-down" size={16} />
-              </View>
-            </>
-          ) : null}
-        </SidebarPressable>
+          rail={rail}
+          session={session}
+        />
       </View>
 
       <ScrollView
@@ -836,16 +891,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     flexShrink: 0,
-    gap: spacing.xs,
+    // Minimum clearance between the lockup and the collapse control; the logo's
+    // own cap leaves more than this at the sidebar's normal width.
+    gap: spacing.md,
     height: 75,
     justifyContent: "space-between",
     paddingHorizontal: 20,
   },
-  brandMark: { height: 32, width: 32 },
+  // No minimum width: while the sidebar animates open the lockup scales up with
+  // it, and a floor here would push the collapse control out of the clipped box.
+  brandLogo: { flexShrink: 1 },
   brandRegionRail: {
     alignItems: "center",
     flexDirection: "column",
-    gap: 6,
+    gap: spacing.xs,
+    // The rail keeps the expanded header height so the navigation below starts
+    // at the same place in both states. Centring the stack inside it is what
+    // stops the mark sitting flush against the top edge and reading as clipped.
+    justifyContent: "center",
     paddingHorizontal: spacing.sm,
   },
   collapseButton: {
@@ -877,6 +940,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brand.primary,
     borderColor: colors.neutral[0],
     borderRadius: borderRadius.pill,
+    // `borderStyle` is required alongside an all-sides `borderWidth`: on web
+    // these serialise to the `border` shorthand, which resets the omitted style
+    // to `none` and silently collapses the rendered width to zero.
+    borderStyle: "solid",
     borderWidth: 1,
     height: 8,
     position: "absolute",
@@ -898,6 +965,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.neutral[0],
     borderColor: colors.neutral[200],
     borderRadius: borderRadius.pill,
+    borderStyle: "solid",
     borderWidth: 1,
     height: 44,
     justifyContent: "center",
@@ -1006,9 +1074,10 @@ const styles = StyleSheet.create({
     height: "100%",
     minHeight: 0,
     overflow: "hidden",
-    width: 272,
+    // Fills whatever width the shell gives it, so collapsing can be animated
+    // from the outside without the sidebar fighting it with a fixed width.
+    width: "100%",
   },
-  sidebarRail: { width: 84 },
   subnav: {
     borderLeftColor: colors.neutral[200],
     borderLeftWidth: 1,
@@ -1071,14 +1140,21 @@ const styles = StyleSheet.create({
   workspaceCard: {
     alignItems: "center",
     backgroundColor: colors.neutral[50],
-    borderColor: colors.neutral[200],
+    // Reserved, not absent: the outline appears on hover, and keeping the width
+    // here means only the colour changes so the row never shifts.
+    borderColor: "transparent",
     borderRadius: borderRadius.md,
+    borderStyle: "solid",
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.sm,
     height: 65,
     minHeight: 65,
     padding: 12,
+  },
+  workspaceCardHovered: {
+    backgroundColor: colors.neutral[0],
+    borderColor: colors.neutral[200],
   },
   workspaceCardRail: {
     alignSelf: "center",
@@ -1090,6 +1166,9 @@ const styles = StyleSheet.create({
     padding: 2,
     width: 44,
   },
+  // The rail has no room for an outline, so it takes the same tinted hover the
+  // rest of the rail's icon buttons use.
+  workspaceCardRailHovered: { backgroundColor: colors.brand.socialSurface },
   workspaceCopy: { flex: 1, gap: 2, minWidth: 0 },
   workspaceAccessory: {
     alignItems: "center",

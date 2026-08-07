@@ -1,7 +1,9 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
+  Animated,
+  Easing,
   Platform,
   Pressable,
   ScrollView,
@@ -33,7 +35,12 @@ import {
   findMerchantNavigationTarget,
   navigationRequiresActiveStore,
 } from "@/features/merchant-dashboard/merchant-navigation";
-import { MerchantSidebar } from "@/features/merchant-dashboard/merchant-sidebar";
+import {
+  MERCHANT_SIDEBAR_RAIL_WIDTH,
+  MERCHANT_SIDEBAR_WIDTH,
+  MerchantSidebar,
+} from "@/features/merchant-dashboard/merchant-sidebar";
+import { useReducedMotion } from "@/features/merchant-dashboard/use-reduced-motion";
 import { NotificationDrawer } from "@/features/merchant-dashboard/notification-drawer";
 import { useMerchantDashboardData } from "@/features/merchant-dashboard/use-merchant-dashboard-data";
 import { useAuthSessionStore } from "@/stores/auth-session-store";
@@ -41,8 +48,8 @@ import { useAuthWorkspaceStore } from "@/stores/auth-workspace-store";
 
 function contactSupport() {
   Alert.alert(
-    "Contact Stylish partner support",
-    "The Stylish partner team will be connected here when backend support services are available.",
+    "Contact Velori partner support",
+    "The Velori partner team will be connected here when backend support services are available.",
   );
 }
 
@@ -83,10 +90,33 @@ export function MerchantDashboardScreen() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [rail, setRail] = useState(false);
+  const reducedMotion = useReducedMotion();
+  const sidebarWidth = useRef(
+    new Animated.Value(rail ? MERCHANT_SIDEBAR_RAIL_WIDTH : MERCHANT_SIDEBAR_WIDTH),
+  ).current;
 
   useEffect(() => {
     if (mobileNavigation) setRail(false);
   }, [mobileNavigation]);
+
+  useEffect(() => {
+    const target = rail ? MERCHANT_SIDEBAR_RAIL_WIDTH : MERCHANT_SIDEBAR_WIDTH;
+    if (reducedMotion) {
+      sidebarWidth.setValue(target);
+      return;
+    }
+    // Width has to be laid out every frame, so this stays off the native
+    // driver; the main column is flex-sized and reflows with it, which is what
+    // makes the dashboard beside the sidebar settle instead of jumping.
+    const animation = Animated.timing(sidebarWidth, {
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+      toValue: target,
+      useNativeDriver: false,
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [rail, reducedMotion, sidebarWidth]);
 
   useEffect(() => {
     // Restoring is still a valid session, and clearing an expired one empties
@@ -182,7 +212,11 @@ export function MerchantDashboardScreen() {
   const contentPadding = mobileContent ? spacing.md : spacing.lg;
   const mainAvailableWidth =
     width -
-    (mobileNavigation ? 0 : rail ? 84 : 272) -
+    (mobileNavigation
+      ? 0
+      : rail
+        ? MERCHANT_SIDEBAR_RAIL_WIDTH
+        : MERCHANT_SIDEBAR_WIDTH) -
     (dockNotifications ? 320 : 0);
   // Metric cards pick their own column count from their measured row width.
   const paired = mainAvailableWidth >= 820;
@@ -192,16 +226,14 @@ export function MerchantDashboardScreen() {
     <SafeAreaView edges={["top", "bottom"]} style={styles.page}>
       <View style={[styles.shell, { minHeight: height }]}>
         {!mobileNavigation ? (
-          <View
-            style={[styles.desktopSidebar, rail && styles.desktopSidebarRail]}
-          >
+          <Animated.View style={[styles.desktopSidebar, { width: sidebarWidth }]}>
             <MerchantSidebar
               activeItemLabel={navigationTarget.label}
               onToggleRail={() => setRail((current) => !current)}
               rail={rail}
               session={session}
             />
-          </View>
+          </Animated.View>
         ) : null}
 
         <View style={styles.mainColumn}>
@@ -315,8 +347,9 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   contentContainer: { flexGrow: 1, paddingBottom: spacing.xxl },
-  desktopSidebar: { flexShrink: 0, width: 272 },
-  desktopSidebarRail: { width: 84 },
+  // Width is supplied by the collapse animation, and the sidebar clips its own
+  // content while that width changes.
+  desktopSidebar: { flexShrink: 0, overflow: "hidden" },
   mainColumn: { flex: 1, minWidth: 0 },
   mainScroll: { backgroundColor: colors.neutral[50], flex: 1 },
   mobileSidebar: {
