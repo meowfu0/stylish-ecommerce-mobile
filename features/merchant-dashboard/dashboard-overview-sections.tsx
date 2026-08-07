@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  type StyleProp,
+  View,
+  type ViewStyle,
+} from "react-native";
 
 import { StylishText } from "@/components/typography/stylish-text";
 import { borderRadius, colors, spacing } from "@/constants/design-tokens";
@@ -10,6 +17,14 @@ import {
   dashboardMetrics,
   pipelineStages,
 } from "@/features/merchant-dashboard/dashboard-data";
+import { useResponsiveGrid } from "@/features/merchant-dashboard/dashboard-grid";
+import {
+  buildMonotoneLinePoints,
+  type ChartPoint,
+  DashboardLineChart,
+  defaultCurveSamplesPerSegment,
+  projectValue,
+} from "@/features/merchant-dashboard/dashboard-line-chart";
 import {
   DashboardButton,
   DashboardCard,
@@ -21,6 +36,7 @@ import type {
   ChartCadence,
   MerchantSession,
   Metric,
+  PipelineStage,
 } from "@/features/merchant-dashboard/dashboard-types";
 import {
   formatPeso,
@@ -89,38 +105,46 @@ export function WelcomeBanner({
   );
 }
 
-export function MetricsSection({ mobile }: { mobile: boolean }) {
-  if (mobile) {
-    return (
-      <ScrollView
-        accessibilityLabel="Merchant performance metrics"
-        bounces={false}
-        contentContainerStyle={styles.metricCarouselContent}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        snapToAlignment="start"
-      >
-        {dashboardMetrics.map((metric) => (
-          <MetricCard
-            key={metric.key}
-            metric={metric}
-            style={styles.metricMobile}
-          />
-        ))}
-      </ScrollView>
-    );
-  }
+const metricGridGap = spacing.sm;
+/** Below this a card can no longer show a compact peso value in full. */
+const metricMinCardWidth = 250;
+
+export function MetricsSection({
+  metrics = dashboardMetrics,
+}: {
+  metrics?: readonly Metric[];
+}) {
+  const grid = useResponsiveGrid({
+    count: metrics.length,
+    gap: metricGridGap,
+    minItemWidth: metricMinCardWidth,
+  });
 
   return (
-    <View style={styles.metricsGrid}>
-      {dashboardMetrics.map((metric) => (
-        <MetricCard key={metric.key} metric={metric} />
+    <View
+      accessibilityLabel="Merchant performance metrics"
+      onLayout={grid.onLayout}
+      style={styles.metricsGrid}
+      testID="dashboard-metrics-grid"
+    >
+      {metrics.map((metric) => (
+        <MetricCard
+          key={metric.key}
+          metric={metric}
+          style={grid.itemStyle}
+        />
       ))}
     </View>
   );
 }
 
-function MetricCard({ metric, style }: { metric: Metric; style?: object }) {
+function MetricCard({
+  metric,
+  style,
+}: {
+  metric: Metric;
+  style?: StyleProp<ViewStyle>;
+}) {
   const positive = metric.changePercent >= 0;
   const [comparisonValue, ...comparisonWords] = metric.comparison.split(" ");
   const displayValue =
@@ -180,44 +204,55 @@ function MetricCard({ metric, style }: { metric: Metric; style?: object }) {
             </StylishText>
           </View>
         </View>
-        <Sparkline data={metric.sparkline} positive={positive} />
+        <Sparkline
+          data={metric.sparkline}
+          metricKey={metric.key}
+          positive={positive}
+        />
       </View>
     </DashboardCard>
   );
 }
 
-function Sparkline({ data, positive }: { data: number[]; positive: boolean }) {
+/**
+ * Trend line for one metric card. It measures its own box and normalizes the
+ * series against its own range, so any unit the analytics API returns —
+ * centavos, order counts, percentages — plots correctly without tuning.
+ */
+function Sparkline({
+  data,
+  metricKey,
+  positive,
+}: {
+  data: readonly number[];
+  metricKey: string;
+  positive: boolean;
+}) {
+  const [size, setSize] = useState({ height: 0, width: 0 });
+  const values = data.filter((value) => Number.isFinite(value));
+
   return (
     <View
-      accessibilityLabel={`${positive ? "Positive" : "Negative"} seven point trend`}
+      accessibilityLabel={
+        values.length > 0
+          ? `${positive ? "Upward" : "Downward"} trend across ${values.length} points`
+          : "Trend data unavailable"
+      }
       accessibilityRole="image"
+      onLayout={(event) => {
+        const { height, width } = event.nativeEvent.layout;
+        setSize({ height, width });
+      }}
       style={styles.sparkline}
+      testID={`metric-sparkline-${metricKey}`}
     >
-      {data.map((value, index) => {
-        if (index === data.length - 1) return null;
-        const next = data[index + 1];
-        const delta = next - value;
-        const width = 16;
-        const angle = Math.atan2(-delta, width) * (180 / Math.PI);
-        const length = Math.sqrt(width * width + delta * delta);
-        return (
-          <View
-            key={`${value}-${index}`}
-            style={[
-              styles.sparkSegment,
-              {
-                backgroundColor: positive
-                  ? colors.feedback.success
-                  : colors.feedback.danger,
-                left: index * width,
-                top: 54 - value * 0.58,
-                transform: [{ rotate: `${angle}deg` }],
-                width: length,
-              },
-            ]}
-          />
-        );
-      })}
+      <DashboardLineChart
+        color={positive ? colors.feedback.success : colors.feedback.danger}
+        height={size.height}
+        testID={`metric-sparkline-line-${metricKey}`}
+        values={[...values]}
+        width={size.width}
+      />
     </View>
   );
 }
@@ -226,32 +261,16 @@ type SalesChartDataKey = "orders" | "refunds" | "revenue";
 
 const chartPlotBottom = 150;
 const chartPlotHeight = 140;
-const chartCurveSamplesPerSegment = 12;
+const chartCurveSamplesPerSegment = defaultCurveSamplesPerSegment;
 
 function chartPointY(value: number, maximum: number) {
-  return chartPlotBottom - (value / maximum) * chartPlotHeight;
-}
-
-type ChartPoint = { x: number; y: number };
-
-function monotoneTangents(values: number[]) {
-  const slopes = values.slice(0, -1).map((value, index) => {
-    return values[index + 1] - value;
+  return projectValue({
+    bottom: chartPlotBottom,
+    height: chartPlotHeight,
+    maximum,
+    minimum: 0,
+    value,
   });
-  const tangents = new Array<number>(values.length).fill(0);
-
-  tangents[0] = slopes[0];
-  tangents[tangents.length - 1] = slopes[slopes.length - 1];
-
-  for (let index = 1; index < values.length - 1; index += 1) {
-    const previous = slopes[index - 1];
-    const next = slopes[index];
-
-    tangents[index] =
-      previous * next <= 0 ? 0 : (2 * previous * next) / (previous + next);
-  }
-
-  return tangents;
 }
 
 function buildMonotoneChartPoints({
@@ -265,46 +284,15 @@ function buildMonotoneChartPoints({
   maximum: number;
   samplesPerSegment?: number;
 }): ChartPoint[] {
-  if (chartWidth <= 0) return [];
-
-  const values = chartSeries.map((point) => point[dataKey]);
-  const tangents = monotoneTangents(values);
-  const sourceStep = chartWidth / (values.length - 1);
-  const points: ChartPoint[] = [];
-
-  for (let index = 0; index < values.length - 1; index += 1) {
-    const start = values[index];
-    const end = values[index + 1];
-    const minimum = Math.min(start, end);
-    const maximumForSegment = Math.max(start, end);
-
-    for (let sample = 0; sample < samplesPerSegment; sample += 1) {
-      const progress = sample / samplesPerSegment;
-      const progressSquared = progress * progress;
-      const progressCubed = progressSquared * progress;
-      const interpolated =
-        (2 * progressCubed - 3 * progressSquared + 1) * start +
-        (progressCubed - 2 * progressSquared + progress) * tangents[index] +
-        (-2 * progressCubed + 3 * progressSquared) * end +
-        (progressCubed - progressSquared) * tangents[index + 1];
-      const value = Math.min(
-        maximumForSegment,
-        Math.max(minimum, interpolated),
-      );
-
-      points.push({
-        x: (index + progress) * sourceStep,
-        y: chartPointY(value, maximum),
-      });
-    }
-  }
-
-  points.push({
-    x: chartWidth,
-    y: chartPointY(values[values.length - 1], maximum),
+  return buildMonotoneLinePoints({
+    bottom: chartPlotBottom,
+    height: chartPlotHeight,
+    maximum,
+    minimum: 0,
+    samplesPerSegment,
+    values: chartSeries.map((point) => point[dataKey]),
+    width: chartWidth,
   });
-
-  return points;
 }
 
 function ChartSeriesLine({
@@ -700,12 +688,48 @@ export function ActionRequired({ session }: { session: MerchantSession }) {
   );
 }
 
-export function OrderPipeline() {
+/** Resolved at render time; `styles` is created at the end of this module. */
+function pipelineToneStyle(tone: PipelineStage["tone"]) {
+  return {
+    blue: styles.pipelineBlue,
+    green: styles.pipelineGreen,
+    neutral: undefined,
+    pink: styles.pipelinePink,
+    warning: styles.pipelineWarning,
+  }[tone];
+}
+
+/** Smallest width that still shows "Ready to Ship" and a four-digit count. */
+const pipelineMinStageWidth = 112;
+const pipelineGap = spacing.xs;
+
+export function pipelineTotal(stages: readonly PipelineStage[]) {
+  return stages.reduce((total, stage) => total + stage.count, 0);
+}
+
+export function OrderPipeline({
+  onViewAllOrders,
+  stages = pipelineStages,
+}: {
+  onViewAllOrders?: () => void;
+  stages?: readonly PipelineStage[];
+}) {
+  const grid = useResponsiveGrid({
+    count: stages.length,
+    gap: pipelineGap,
+    minItemWidth: pipelineMinStageWidth,
+  });
+  const total = pipelineTotal(stages);
+
   return (
     <DashboardCard testID="dashboard-order-pipeline">
       <SectionHeading
         action={
-          <Pressable accessibilityRole="button" style={styles.headingAction}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={onViewAllOrders}
+            style={styles.headingAction}
+          >
             <StylishText
               style={styles.headingActionLabel}
               unstyled
@@ -716,39 +740,49 @@ export function OrderPipeline() {
             <DashboardIcon name="arrow-right" size={16} />
           </Pressable>
         }
-        description="318 orders in the current range"
+        description={`${total.toLocaleString("en-PH")} ${
+          total === 1 ? "order" : "orders"
+        } in the current range`}
         title="Order pipeline"
       />
-      <ScrollView
-        bounces={false}
-        contentContainerStyle={styles.pipelineContent}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-      >
-        {pipelineStages.map((stage) => (
-          <View
-            key={stage.key}
-            style={[
-              styles.pipelineStage,
-              stage.tone === "pink" && styles.pipelinePink,
-              stage.tone === "blue" && styles.pipelineBlue,
-              stage.tone === "warning" && styles.pipelineWarning,
-              stage.tone === "green" && styles.pipelineGreen,
-            ]}
-          >
-            <StylishText
-              style={styles.pipelineLabel}
-              unstyled
-              variant="caption"
+      {/* Padding lives on the wrapper so the measured row is the content box;
+          measuring a padded view would size tiles against the wrong width. */}
+      <View style={styles.pipelineContent}>
+        <View
+          onLayout={grid.onLayout}
+          style={styles.pipelineRow}
+          testID="dashboard-order-pipeline-grid"
+        >
+          {stages.map((stage) => (
+            <View
+              key={stage.key}
+              style={[
+                styles.pipelineStage,
+                pipelineToneStyle(stage.tone),
+                grid.itemStyle,
+              ]}
+              testID={`pipeline-stage-${stage.key}`}
             >
-              {stage.label}
-            </StylishText>
-            <StylishText style={styles.pipelineCount} unstyled variant="price">
-              {stage.count}
-            </StylishText>
-          </View>
-        ))}
-      </ScrollView>
+              <StylishText
+                numberOfLines={1}
+                style={styles.pipelineLabel}
+                unstyled
+                variant="caption"
+              >
+                {stage.label}
+              </StylishText>
+              <StylishText
+                numberOfLines={1}
+                style={styles.pipelineCount}
+                unstyled
+                variant="price"
+              >
+                {stage.count.toLocaleString("en-PH")}
+              </StylishText>
+            </View>
+          ))}
+        </View>
+      </View>
     </DashboardCard>
   );
 }
@@ -982,8 +1016,12 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     justifyContent: "space-between",
   },
-  metricCard: { flex: 1, gap: spacing.sm, minWidth: 0, padding: spacing.lg },
-  metricCarouselContent: { gap: spacing.sm, paddingRight: spacing.md },
+  metricCard: {
+    flexGrow: 1,
+    gap: spacing.sm,
+    minWidth: 0,
+    padding: spacing.lg,
+  },
   metricChange: {
     color: colors.feedback.success,
     fontFamily: "Montserrat_600SemiBold",
@@ -1024,8 +1062,12 @@ const styles = StyleSheet.create({
     letterSpacing: 1.1,
     lineHeight: 16,
   },
-  metricMobile: { flex: 0, width: 268 },
-  metricsGrid: { flexDirection: "row", gap: spacing.sm },
+  metricsGrid: {
+    alignItems: "stretch",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: metricGridGap,
+  },
   metricValue: {
     color: colors.ink.primary,
     flexShrink: 0,
@@ -1036,7 +1078,7 @@ const styles = StyleSheet.create({
     lineHeight: 34,
   },
   pipelineBlue: { backgroundColor: colors.feedback.infoSoft },
-  pipelineContent: { gap: spacing.xs, padding: spacing.lg },
+  pipelineContent: { padding: spacing.lg },
   pipelineCount: {
     color: colors.ink.primary,
     fontFamily: "Montserrat_700Bold",
@@ -1051,13 +1093,22 @@ const styles = StyleSheet.create({
     lineHeight: 15,
   },
   pipelinePink: { backgroundColor: colors.feedback.dangerSoft },
+  pipelineRow: {
+    alignItems: "stretch",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: pipelineGap,
+  },
   pipelineStage: {
     backgroundColor: colors.neutral[100],
     borderColor: colors.neutral[200],
     borderRadius: borderRadius.input,
     borderWidth: 1,
+    // Shares the measured row with its siblings rather than sitting at a
+    // natural width inside a horizontally scrolling strip.
+    flexGrow: 1,
     gap: spacing.xs,
-    minWidth: 112,
+    minWidth: 0,
     padding: spacing.sm,
   },
   pipelineWarning: { backgroundColor: colors.feedback.warningSoft },
@@ -1095,15 +1146,16 @@ const styles = StyleSheet.create({
     fontFamily: "Montserrat_600SemiBold",
   },
   sparkline: {
+    // Yields to the metric value rather than competing with it: never grows
+    // past its basis, shrinks when the card is tight, and the trend line
+    // reprojects itself onto whatever box it ends up with.
+    flexBasis: 112,
+    flexGrow: 0,
+    flexShrink: 1,
     height: 62,
+    minWidth: 56,
     overflow: "hidden",
     position: "relative",
-    width: 112,
-  },
-  sparkSegment: {
-    height: 2,
-    position: "absolute",
-    transformOrigin: "left center",
   },
   welcomeActions: {
     alignItems: "center",

@@ -18,17 +18,23 @@ import {
 } from "@/features/merchant-dashboard/dashboard-overview-sections";
 import {
   DashboardBlockingState,
+  DashboardSectionUnavailable,
   DashboardStateBanner,
 } from "@/features/merchant-dashboard/dashboard-states";
 import type {
+  DashboardSectionKey,
   DashboardState,
   MerchantSession,
+  Metric,
   Permission,
+  PipelineStage,
 } from "@/features/merchant-dashboard/dashboard-types";
 
 export function DashboardOverviewContent({
-  compactMetrics,
   compactOrders,
+  failedSections = [],
+  hasSalesHistory = true,
+  metrics,
   mobile,
   deniedSection,
   onContactSupport,
@@ -38,13 +44,18 @@ export function DashboardOverviewContent({
   onReturnToOverview,
   onReviewMerchantProfile,
   onSignInAgain,
+  onViewAllOrders,
   paired,
+  pipelineStages,
   session,
   state,
   requiredPermission,
 }: {
-  compactMetrics: boolean;
   compactOrders: boolean;
+  failedSections?: readonly DashboardSectionKey[];
+  hasSalesHistory?: boolean;
+  /** Omitted only in previews; the screen supplies loaded analytics. */
+  metrics?: readonly Metric[];
   mobile: boolean;
   deniedSection?: string;
   onContactSupport?: () => void;
@@ -54,16 +65,25 @@ export function DashboardOverviewContent({
   onReturnToOverview?: () => void;
   onReviewMerchantProfile?: () => void;
   onSignInAgain?: () => void | Promise<void>;
+  onViewAllOrders?: () => void;
   paired: boolean;
+  /** Omitted only in previews; the screen supplies loaded pipeline counts. */
+  pipelineStages?: readonly PipelineStage[];
   session: MerchantSession;
   state: DashboardState;
   requiredPermission?: Permission;
 }) {
   const renderOverview = ["ready", "partial", "refreshing"].includes(state);
+  const unavailable = (section: DashboardSectionKey) =>
+    failedSections.includes(section);
 
   return (
     <View style={styles.contentColumn}>
-      <DashboardStateBanner state={state} />
+      <DashboardStateBanner
+        failedSections={failedSections}
+        onRetry={onRetry}
+        state={state}
+      />
       <DashboardBlockingState
         deniedSection={deniedSection}
         onContactSupport={onContactSupport}
@@ -81,22 +101,69 @@ export function DashboardOverviewContent({
       {renderOverview ? (
         <>
           <WelcomeBanner mobile={mobile} session={session} />
-          <MetricsSection mobile={compactMetrics} />
+          {unavailable("metrics") ? (
+            <DashboardSectionUnavailable onRetry={onRetry} section="metrics" />
+          ) : (
+            <MetricsSection metrics={metrics} />
+          )}
           <View style={[styles.pairedGrid, !paired && styles.stackedGrid]}>
-            <SalesPerformance empty={state === "partial"} />
+            {unavailable("sales") ? (
+              <DashboardSectionUnavailable
+                onRetry={onRetry}
+                section="sales"
+                tall
+              />
+            ) : (
+              <SalesPerformance empty={!hasSalesHistory} />
+            )}
             <ActionRequired session={session} />
           </View>
-          <OrderPipeline />
+          {unavailable("orders") ? (
+            <DashboardSectionUnavailable onRetry={onRetry} section="orders" />
+          ) : (
+            <OrderPipeline
+              onViewAllOrders={onViewAllOrders}
+              stages={pipelineStages}
+            />
+          )}
           <View style={[styles.pairedGrid, !paired && styles.stackedGrid]}>
-            <InventoryOverview session={session} />
-            <TopProducts />
+            {unavailable("inventory") ? (
+              <DashboardSectionUnavailable
+                onRetry={onRetry}
+                section="inventory"
+                tall
+              />
+            ) : (
+              <InventoryOverview session={session} />
+            )}
+            {unavailable("catalog") ? (
+              <DashboardSectionUnavailable
+                onRetry={onRetry}
+                section="catalog"
+                tall
+              />
+            ) : (
+              <TopProducts />
+            )}
           </View>
-          <RecentOrders compact={compactOrders} />
-          <View style={[styles.pairedGrid, !paired && styles.stackedGrid]}>
-            <CatalogSummary session={session} />
-            <LowStockAlerts session={session} />
-          </View>
-          <RecentActivity />
+          {unavailable("orders") ? null : (
+            <RecentOrders compact={compactOrders} />
+          )}
+          {unavailable("catalog") && unavailable("inventory") ? null : (
+            <View style={[styles.pairedGrid, !paired && styles.stackedGrid]}>
+              {unavailable("catalog") ? null : (
+                <CatalogSummary session={session} />
+              )}
+              {unavailable("inventory") ? null : (
+                <LowStockAlerts session={session} />
+              )}
+            </View>
+          )}
+          {unavailable("activity") ? (
+            <DashboardSectionUnavailable onRetry={onRetry} section="activity" />
+          ) : (
+            <RecentActivity />
+          )}
         </>
       ) : null}
     </View>

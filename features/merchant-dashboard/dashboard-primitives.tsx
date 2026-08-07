@@ -307,11 +307,14 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.neutral[200],
     borderBottomWidth: 1,
     flexDirection: "row",
+    // The action sits beside the copy while there is room and drops onto its
+    // own line once the heading gets tight, instead of squeezing both.
+    flexWrap: "wrap",
     gap: spacing.md,
     justifyContent: "space-between",
     padding: spacing.lg,
   },
-  sectionHeadingCopy: { flex: 1, gap: 4 },
+  sectionHeadingCopy: { flex: 1, gap: 4, minWidth: 220 },
   sectionTitle: {
     color: colors.ink.primary,
     fontFamily: "Montserrat_700Bold",
