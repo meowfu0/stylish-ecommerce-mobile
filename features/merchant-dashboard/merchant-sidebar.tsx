@@ -26,7 +26,6 @@ import {
   spacing,
   typography,
 } from "@/constants/design-tokens";
-import { can } from "@/features/merchant-dashboard/dashboard-access";
 import {
   DashboardIcon,
   StatusChip,
@@ -34,7 +33,8 @@ import {
 } from "@/features/merchant-dashboard/dashboard-primitives";
 import {
   type MerchantNavigationItem,
-  visibleMerchantNavigationItems,
+  navigationRequiresActiveStore,
+  resolveMerchantNavigationAccess,
 } from "@/features/merchant-dashboard/merchant-navigation";
 import { SidebarPressable } from "@/features/merchant-dashboard/sidebar-pressable";
 import type { MerchantSession } from "@/features/merchant-dashboard/dashboard-types";
@@ -48,6 +48,8 @@ const interactiveTransitionClass =
   "transition-colors duration-150 ease-out motion-reduce:transition-none";
 const sidebarActionClass = `${focusRingClass} ${interactiveTransitionClass} cursor-pointer hover:bg-brand-socialSurface active:bg-brand-pinkSoft/35`;
 const disabledTitle = "Your role doesn't include access to this section";
+const inactiveStoreTitle =
+  "Selling is paused for this merchant, so this section is unavailable";
 const pressedRowBackground = `${colors.brand.pinkSoft}59`;
 
 function sidebarItemId(label: string) {
@@ -122,6 +124,7 @@ function SidebarNavRow({
   child = false,
   controlsId,
   disabled = false,
+  disabledHint = disabledTitle,
   expanded = false,
   icon,
   label,
@@ -136,6 +139,7 @@ function SidebarNavRow({
   child?: boolean;
   controlsId?: string;
   disabled?: boolean;
+  disabledHint?: string;
   expanded?: boolean;
   icon?: DashboardIconName;
   label: string;
@@ -158,12 +162,12 @@ function SidebarNavRow({
 
   return (
     <SidebarPressable
-      {...webTitle(disabled ? disabledTitle : label, rail || disabled)}
+      {...webTitle(disabled ? disabledHint : label, rail || disabled)}
       aria-controls={controlsId}
       aria-current={active ? "page" : undefined}
       aria-disabled={disabled}
       aria-expanded={controlsId ? expanded : undefined}
-      accessibilityHint={disabled ? disabledTitle : undefined}
+      accessibilityHint={disabled ? disabledHint : undefined}
       accessibilityLabel={label}
       accessibilityRole="button"
       accessibilityState={{
@@ -455,6 +459,7 @@ const webSubnavItemStyle: CSSProperties = {
 function SidebarNavItem({
   activeItemLabel,
   disabled,
+  disabledHint,
   expanded,
   item,
   onNavigate,
@@ -465,6 +470,7 @@ function SidebarNavItem({
 }: {
   activeItemLabel: string;
   disabled: boolean;
+  disabledHint: string;
   expanded: boolean;
   item: MerchantNavigationItem;
   onNavigate: (route: MerchantNavigationItem["route"]) => void;
@@ -490,6 +496,7 @@ function SidebarNavItem({
         badge={item.badge}
         controlsId={!rail && hasChildren ? childListId(groupId) : undefined}
         disabled={disabled}
+        disabledHint={disabledHint}
         expanded={expanded}
         icon={item.icon}
         label={item.label}
@@ -588,9 +595,7 @@ export function MerchantSidebar({
     navigationContentHeight > navigationViewportHeight + 1;
   const navigationCanScroll = navigationOverflows || Boolean(scrollDemo);
   const navigationShowsScrollbar = navigationCanScroll && !rail;
-  const visibleNavigationItems = visibleMerchantNavigationItems(
-    session.permissions,
-  );
+  const navigationAccess = resolveMerchantNavigationAccess(session);
   const scrollClass = [
     "merchant-sidebar-nav",
     navigationCanScroll
@@ -699,16 +704,17 @@ export function MerchantSidebar({
         style={styles.navRegion}
         tabIndex={navigationCanScroll ? 0 : -1}
       >
-        {visibleNavigationItems.map((item) => {
+        {navigationAccess.map(({ disabled, item }) => {
           const groupId = sidebarItemId(item.label);
-          const disabled = Boolean(
-            item.permission && !can(session, item.permission),
-          );
+          const blockedByStore =
+            session.storeStatus !== "active" &&
+            navigationRequiresActiveStore(item);
 
           return (
             <SidebarNavItem
               activeItemLabel={activeItemLabel}
               disabled={disabled}
+              disabledHint={blockedByStore ? inactiveStoreTitle : disabledTitle}
               expanded={openGroupIds.has(groupId)}
               item={item}
               key={item.label}
@@ -901,8 +907,11 @@ const styles = StyleSheet.create({
     width: 44,
   },
   navContent: {
-    gap: 2,
-    paddingBottom: spacing.sm,
+    // No trailing padding and no inter-row gap: each row already carries its
+    // own 44px target and vertical padding, and the utility region below
+    // supplies the separating border and its own top padding. Spacing here
+    // would only add scroll range that holds nothing, which is what made the
+    // collapsed sidebar report an overflow it did not have.
     paddingHorizontal: spacing.sm,
   },
   navContentRail: {
