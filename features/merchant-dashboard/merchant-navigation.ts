@@ -1,7 +1,10 @@
 import type { Href } from "expo-router";
 
 import type { DashboardIconName } from "@/features/merchant-dashboard/dashboard-primitives";
-import type { Permission } from "@/features/merchant-dashboard/dashboard-types";
+import type {
+  MerchantSession,
+  Permission,
+} from "@/features/merchant-dashboard/dashboard-types";
 
 export type MerchantNavigationChild = {
   badge?: number;
@@ -17,6 +20,11 @@ export type MerchantNavigationItem = {
   key: string;
   label: string;
   permission?: Permission;
+  /**
+   * False for account and profile destinations, which stay reachable while a
+   * merchant is inactive. Everything else needs an active selling account.
+   */
+  requiresActiveStore?: boolean;
   route: Href;
 };
 
@@ -127,6 +135,7 @@ export const merchantNavigationItems: MerchantNavigationItem[] = [
     key: "staff-permissions",
     label: "Staff & Permissions",
     permission: "staff.manage",
+    requiresActiveStore: false,
     route: dashboardRoute("staff-permissions"),
   },
   {
@@ -141,6 +150,7 @@ export const merchantNavigationItems: MerchantNavigationItem[] = [
     key: "merchant-profile",
     label: "Merchant Profile",
     permission: "merchant.profile.update",
+    requiresActiveStore: false,
     route: dashboardRoute("merchant-profile"),
   },
   {
@@ -148,6 +158,7 @@ export const merchantNavigationItems: MerchantNavigationItem[] = [
     key: "settings",
     label: "Settings",
     permission: "settings.manage",
+    requiresActiveStore: false,
     route: dashboardRoute("settings"),
   },
 ];
@@ -155,6 +166,7 @@ export const merchantNavigationItems: MerchantNavigationItem[] = [
 export type MerchantNavigationTarget = {
   label: string;
   permission?: Permission;
+  requiresActiveStore?: boolean;
   route: Href;
 };
 
@@ -169,7 +181,11 @@ export function findMerchantNavigationTarget(
       return candidate.key === normalized;
     });
     if (child) {
-      return { ...child, permission: item.permission };
+      return {
+        ...child,
+        permission: item.permission,
+        requiresActiveStore: item.requiresActiveStore,
+      };
     }
   }
 
@@ -182,4 +198,36 @@ export function visibleMerchantNavigationItems(
   return merchantNavigationItems.filter((item) => {
     return !item.permission || permissions.includes(item.permission);
   });
+}
+
+/** True when the destination needs a merchant that is cleared to sell. */
+export function navigationRequiresActiveStore(
+  target: Pick<MerchantNavigationTarget, "requiresActiveStore">,
+) {
+  return target.requiresActiveStore !== false;
+}
+
+export type MerchantNavigationAccess = {
+  disabled: boolean;
+  item: MerchantNavigationItem;
+};
+
+/**
+ * Centralizes what the sidebar may offer: destinations the role cannot read
+ * are hidden, and selling destinations are disabled while the merchant is
+ * inactive so account and profile work stays reachable.
+ */
+export function resolveMerchantNavigationAccess(session: {
+  permissions: readonly Permission[];
+  storeStatus: MerchantSession["storeStatus"];
+}): MerchantNavigationAccess[] {
+  const sellingEnabled = session.storeStatus === "active";
+
+  return visibleMerchantNavigationItems(session.permissions).map((item) => ({
+    disabled:
+      (Boolean(item.permission) &&
+        !session.permissions.includes(item.permission as Permission)) ||
+      (!sellingEnabled && navigationRequiresActiveStore(item)),
+    item,
+  }));
 }

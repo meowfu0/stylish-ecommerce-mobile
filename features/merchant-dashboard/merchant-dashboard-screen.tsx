@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
+  Alert,
   Platform,
   Pressable,
   ScrollView,
@@ -20,6 +21,7 @@ import {
   normalizeMerchantStoreStatus,
   resolveDashboardState,
 } from "@/features/merchant-dashboard/dashboard-state-model";
+import { DashboardLoadingState } from "@/features/merchant-dashboard/dashboard-states";
 import type {
   DashboardState,
   DateRange,
@@ -27,11 +29,22 @@ import type {
 } from "@/features/merchant-dashboard/dashboard-types";
 import { DASHBOARD_STATES } from "@/features/merchant-dashboard/dashboard-types";
 import { MerchantHeader } from "@/features/merchant-dashboard/merchant-header";
-import { findMerchantNavigationTarget } from "@/features/merchant-dashboard/merchant-navigation";
+import {
+  findMerchantNavigationTarget,
+  navigationRequiresActiveStore,
+} from "@/features/merchant-dashboard/merchant-navigation";
 import { MerchantSidebar } from "@/features/merchant-dashboard/merchant-sidebar";
 import { NotificationDrawer } from "@/features/merchant-dashboard/notification-drawer";
+import { useMerchantDashboardData } from "@/features/merchant-dashboard/use-merchant-dashboard-data";
 import { useAuthSessionStore } from "@/stores/auth-session-store";
 import { useAuthWorkspaceStore } from "@/stores/auth-workspace-store";
+
+function contactSupport() {
+  Alert.alert(
+    "Contact Stylish partner support",
+    "The Stylish partner team will be connected here when backend support services are available.",
+  );
+}
 
 function parsePreviewState(
   value: string | string[] | undefined,
@@ -70,15 +83,22 @@ export function MerchantDashboardScreen() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [rail, setRail] = useState(false);
-  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     if (mobileNavigation) setRail(false);
   }, [mobileNavigation]);
 
   useEffect(() => {
-    if (authStatus === "unauthenticated" && authReason === "session-expired") {
-      router.replace("/sign-in?reason=session-expired");
+    // Restoring is still a valid session, and clearing an expired one empties
+    // the workspace first; navigating on either would bounce the merchant to
+    // workspace selection instead of the sign-in screen that explains why.
+    if (authStatus === "restoring") return;
+    if (authStatus === "unauthenticated") {
+      router.replace(
+        authReason === "session-expired"
+          ? "/sign-in?reason=session-expired"
+          : "/sign-in",
+      );
       return;
     }
     if (!workspace || workspace.kind !== "merchant") {
@@ -114,14 +134,49 @@ export function MerchantDashboardScreen() {
     };
   }, [authUser, workspace]);
 
-  if (!session) return <View style={styles.page} />;
+  const requiresActiveStore = navigationRequiresActiveStore(navigationTarget);
+  const blockedBeforeData =
+    !session ||
+    authStatus !== "authenticated" ||
+    authReason === "session-expired" ||
+    (requiresActiveStore && session.storeStatus !== "active") ||
+    (navigationTarget.permission !== undefined &&
+      !session.permissions.includes(navigationTarget.permission));
+
+  // Nothing is requested while the session, store status, or role already
+  // decides the state, so a blocked dashboard never retries failing calls.
+  const dashboard = useMerchantDashboardData({ enabled: !blockedBeforeData });
+
+  // No workspace yet: skeletons while the session is being restored, and a
+  // quiet page while the redirect above is in flight.
+  if (!session) {
+    return (
+      <SafeAreaView edges={["top", "bottom"]} style={styles.page}>
+        {authStatus === "restoring" ? (
+          <ScrollView
+            className="st-scroll"
+            contentContainerStyle={[
+              styles.contentContainer,
+              { padding: mobileContent ? spacing.md : spacing.lg },
+            ]}
+            style={styles.mainScroll}
+          >
+            <View style={styles.contentColumn}>
+              <DashboardLoadingState />
+            </View>
+          </ScrollView>
+        ) : null}
+      </SafeAreaView>
+    );
+  }
 
   const state = resolveDashboardState({
     authReason: authReason === "session-expired" ? authReason : null,
     authStatus,
-    dataState: "ready",
+    dataState: dashboard.dataState,
     previewState,
     requiredPermission: navigationTarget.permission,
+    requiresActiveStore,
     session,
   });
   const contentPadding = mobileContent ? spacing.md : spacing.lg;
@@ -129,7 +184,7 @@ export function MerchantDashboardScreen() {
     width -
     (mobileNavigation ? 0 : rail ? 84 : 272) -
     (dockNotifications ? 320 : 0);
-  const compactMetrics = mainAvailableWidth - contentPadding * 2 < 1100;
+  // Metric cards pick their own column count from their measured row width.
   const paired = mainAvailableWidth >= 820;
   const unreadCount = 3;
 
@@ -153,7 +208,12 @@ export function MerchantDashboardScreen() {
           <MerchantHeader
             dateRange={dateRange}
             notificationCount={unreadCount}
-            onDateRangeChange={setDateRange}
+            onDateRangeChange={(range) => {
+              setDateRange(range);
+              // A new range needs new figures, and the current ones stay on
+              // screen behind the refreshing notice while they arrive.
+              dashboard.refresh();
+            }}
             onOpenNavigation={() => setDrawerOpen(true)}
             onOpenNotifications={() => setNotificationOpen(true)}
             session={session}
@@ -166,29 +226,35 @@ export function MerchantDashboardScreen() {
               styles.contentContainer,
               { padding: contentPadding },
             ]}
-            key={retryKey}
             style={styles.mainScroll}
           >
             <View style={styles.contentColumn}>
               <DashboardOverviewContent
                 compactOrders={mobileNavigation}
-                compactMetrics={compactMetrics}
+                failedSections={dashboard.failedSections}
+                hasSalesHistory={dashboard.hasSalesHistory}
+                metrics={dashboard.metrics}
                 mobile={mobileContent}
                 deniedSection={navigationTarget.label}
+                onContactSupport={contactSupport}
                 onCreateProduct={() =>
                   router.push("/merchant/dashboard?section=products")
                 }
                 onImportCatalog={() =>
                   router.push("/merchant/dashboard?section=catalog")
                 }
-                onRetry={() => setRetryKey((current) => current + 1)}
+                onRetry={dashboard.retry}
                 onReturnToOverview={() =>
                   router.replace("/merchant/dashboard?section=overview")
                 }
                 onReviewMerchantProfile={() =>
                   router.push("/merchant/dashboard?section=merchant-profile")
                 }
+                onViewAllOrders={() =>
+                  router.push("/merchant/dashboard?section=orders")
+                }
                 paired={paired}
+                pipelineStages={dashboard.pipelineStages}
                 requiredPermission={navigationTarget.permission}
                 session={session}
                 state={state}
