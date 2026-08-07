@@ -49,7 +49,7 @@ SMTP_PASSWORD=replace_with_google_app_password
 SMTP_CONNECTION_TIMEOUT_MS=10000
 
 EMAIL_FROM_ADDRESS=your.sender@gmail.com
-EMAIL_FROM_NAME=Stylish
+EMAIL_FROM_NAME=Velori
 EMAIL_REPLY_TO=your.sender@gmail.com
 AUTH_FRONTEND_URL=stylish://auth
 ```
