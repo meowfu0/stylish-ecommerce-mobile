@@ -117,7 +117,7 @@ export function SplashLoadingDots({
 
   return (
     <View
-      accessibilityLabel="Loading Stylish"
+      accessibilityLabel="Loading Velori"
       accessibilityRole="progressbar"
       accessibilityValue={{ text: "Loading" }}
       accessible

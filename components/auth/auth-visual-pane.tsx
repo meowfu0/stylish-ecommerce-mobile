@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
 import { Platform, StyleSheet, type DimensionValue, View } from "react-native";
 
-import { StylishLogo } from "@/components/brand/stylish-logo";
+import { VeloriLogo } from "@/components/brand/velori-logo";
 import { StylishText } from "@/components/typography/stylish-text";
 import { colors, typography } from "@/constants/design-tokens";
 
@@ -95,7 +95,7 @@ export function AuthVisualPane({
         testID="auth-photo-fade"
       />
 
-      <StylishLogo
+      <VeloriLogo
         style={[
           styles.logo,
           {
@@ -134,7 +134,7 @@ export function AuthVisualPane({
             variant="body"
           >
             Discover products you&apos;ll love and manage every part of your
-            Stylish experience in one secure place.
+            Velori experience in one secure place.
           </StylishText>
           <View
             accessibilityLabel="First of three highlights"
@@ -154,7 +154,7 @@ export function AuthVisualPane({
           unstyled
           variant="helper"
         >
-          Stylish — multi-vendor fashion marketplace
+          Velori — multi-vendor fashion marketplace
         </StylishText>
       ) : null}
     </View>
