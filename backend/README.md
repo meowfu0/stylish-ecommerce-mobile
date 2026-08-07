@@ -68,7 +68,7 @@ secret, service-role key, password, or token in Expo `EXPO_PUBLIC_*` variables.
 | `SMTP_PASSWORD`                 | Conditional | Server-only App Password or SMTP credential                |
 | `SMTP_CONNECTION_TIMEOUT_MS`    | Yes         | SMTP connection timeout                                    |
 | `EMAIL_FROM_ADDRESS`            | Conditional | Sender address; equal to `SMTP_USER` for Gmail             |
-| `EMAIL_FROM_NAME`               | Yes         | Safe display name, normally `Stylish`                      |
+| `EMAIL_FROM_NAME`               | Yes         | Safe display name, normally `Velori`                       |
 | `EMAIL_REPLY_TO`                | No          | Optional monitored reply-to address                        |
 | `REDIS_ENABLED`                 | Yes         | Enables the official Node.js Redis client                  |
 | `REDIS_REQUIRED`                | Yes         | Fails startup when enabled Redis is unavailable            |
