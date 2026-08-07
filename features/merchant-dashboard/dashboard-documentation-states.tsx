@@ -16,6 +16,7 @@ import { SalesPerformance } from "@/features/merchant-dashboard/dashboard-overvi
 import {
   DashboardBlockingState,
   DashboardLoadingState,
+  DashboardSectionUnavailable,
   DashboardStateBanner,
 } from "@/features/merchant-dashboard/dashboard-states";
 import type { DashboardState } from "@/features/merchant-dashboard/dashboard-types";
@@ -46,7 +47,22 @@ export function DashboardStatesSection() {
 function DashboardStatePreview({ state }: { state: DashboardState }) {
   if (state === "loading") return <DashboardLoadingState />;
   if (state === "partial" || state === "refreshing") {
-    return <DashboardStateBanner state={state} />;
+    return (
+      <View style={styles.statePreviewStack}>
+        <DashboardStateBanner
+          failedSections={state === "partial" ? ["sales", "activity"] : []}
+          onRetry={state === "partial" ? () => undefined : undefined}
+          state={state}
+        />
+        {state === "partial" ? (
+          <DashboardSectionUnavailable
+            onRetry={() => undefined}
+            section="sales"
+            tall
+          />
+        ) : null}
+      </View>
+    );
   }
 
   return (
@@ -162,4 +178,5 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   stateFrames: { gap: 40 },
+  statePreviewStack: { gap: spacing.md, width: "100%" },
 });
