@@ -230,7 +230,7 @@ export default function SettingsScreen() {
     Alert.alert(
       "Sign out?",
       allSessions
-        ? "This signs you out from every active Stylish session."
+        ? "This signs you out from every active Velori session."
         : "This signs you out from this device.",
       [
         { style: "cancel", text: "Cancel" },
@@ -404,11 +404,11 @@ export default function SettingsScreen() {
                 accessibilityHint="Shows the current app version"
                 detail="Version 1.0.0"
                 icon="info-outline"
-                label="About Stylish"
+                label="About Velori"
                 onPress={() =>
                   showInformation(
-                    "About Stylish",
-                    "Stylish is a responsive Expo e-commerce frontend demo.",
+                    "About Velori",
+                    "Velori is a responsive Expo e-commerce frontend demo.",
                   )
                 }
                 showDivider={false}

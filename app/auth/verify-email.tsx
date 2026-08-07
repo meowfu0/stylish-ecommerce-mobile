@@ -19,7 +19,7 @@ import {
   AuthAlertBanner,
   type AuthAlertTone,
 } from "@/components/auth/auth-alert-banner";
-import { StylishLogo } from "@/components/brand/stylish-logo";
+import { VeloriLogo } from "@/components/brand/velori-logo";
 import { StylishText } from "@/components/typography/stylish-text";
 import { colors, typography } from "@/constants/design-tokens";
 import {
@@ -550,7 +550,7 @@ export default function VerifyEmailScreen() {
           style={[styles.content, { gap: compact ? 16 : desktop ? 32 : 24 }]}
           testID="auth-verify-email-content"
         >
-          <StylishLogo testID="auth-verify-email-logo" width={logoWidth} />
+          <VeloriLogo testID="auth-verify-email-logo" width={logoWidth} />
 
           <View
             style={[styles.card, { padding: cardPadding }]}

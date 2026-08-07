@@ -124,7 +124,7 @@ function noticeForRegistrationError(
       return {
         kind: error.kind,
         message:
-          "We couldn't connect to Stylish. Check your connection and try again.",
+          "We couldn't connect to Velori. Check your connection and try again.",
         tone: "error",
       };
     case "server":
@@ -375,7 +375,7 @@ export default function SignUpScreen() {
                     unstyled
                     variant="body"
                   >
-                    Start shopping and unlock your Stylish experience.
+                    Start shopping and unlock your Velori experience.
                   </StylishText>
 
                   {notice ? (

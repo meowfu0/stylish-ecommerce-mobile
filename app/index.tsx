@@ -14,9 +14,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { SplashLoadingDots } from "@/components/animated/splash-loading-dots";
 import {
-  STYLISH_LOGO_ASPECT_RATIO,
-  StylishLogo,
-} from "@/components/brand/stylish-logo";
+  VELORI_LOGO_ASPECT_RATIO,
+  VeloriLogo,
+} from "@/components/brand/velori-logo";
 import { colors, spacing } from "@/constants/design-tokens";
 import { hasCompletedOnboarding } from "@/stores/onboarding-storage";
 import {
@@ -129,7 +129,7 @@ export default function SplashScreen() {
     ? Math.min(MAX_DESKTOP_LOGO_WIDTH, width * 0.18)
     : Math.min(MAX_MOBILE_LOGO_WIDTH, Math.max(0, width - spacing.xxl));
   const logoWidth = Math.max(0, responsiveLogoWidth);
-  const logoHeight = logoWidth / STYLISH_LOGO_ASPECT_RATIO;
+  const logoHeight = logoWidth / VELORI_LOGO_ASPECT_RATIO;
   const contentGap = isDesktopWeb
     ? Math.min(spacing.xxl, Math.max(spacing.xl, height * 0.054))
     : spacing.xl;
@@ -196,7 +196,7 @@ export default function SplashScreen() {
                 logoAnimatedStyle,
               ]}
             >
-              <StylishLogo testID="splash-brand-logo" width={logoWidth} />
+              <VeloriLogo testID="splash-brand-logo" width={logoWidth} />
             </Animated.View>
             <SplashLoadingDots gap={dotGap} size={dotSize} />
           </View>

@@ -24,7 +24,7 @@ import {
   type AuthAlertTone,
 } from "@/components/auth/auth-alert-banner";
 import { AuthFormField } from "@/components/auth/auth-form-field";
-import { StylishLogo } from "@/components/brand/stylish-logo";
+import { VeloriLogo } from "@/components/brand/velori-logo";
 import { StylishText } from "@/components/typography/stylish-text";
 import { colors, typography } from "@/constants/design-tokens";
 import {
@@ -377,7 +377,7 @@ export default function SignInScreen() {
                 testID="auth-photo-fade"
               />
 
-              <StylishLogo
+              <VeloriLogo
                 style={[
                   styles.logo,
                   {
@@ -415,7 +415,7 @@ export default function SignInScreen() {
                     variant="body"
                   >
                     Discover products you&apos;ll love and manage every part of
-                    your Stylish experience in one secure place.
+                    your Velori experience in one secure place.
                   </StylishText>
                   <View
                     accessibilityLabel="First of three highlights"
@@ -438,7 +438,7 @@ export default function SignInScreen() {
                   unstyled
                   variant="helper"
                 >
-                  Stylish — multi-vendor fashion marketplace
+                  Velori — multi-vendor fashion marketplace
                 </StylishText>
               ) : null}
             </View>
@@ -487,7 +487,7 @@ export default function SignInScreen() {
                     className="mt-[8px] text-neutral-550"
                     variant="body"
                   >
-                    Sign in to continue to your Stylish account.
+                    Sign in to continue to your Velori account.
                   </StylishText>
                 </View>
 
@@ -752,7 +752,7 @@ export default function SignInScreen() {
                     unstyled
                     variant="navigation"
                   >
-                    New to Stylish?
+                    New to Velori?
                   </StylishText>
                   <Pressable
                     accessibilityHint="Opens account registration"

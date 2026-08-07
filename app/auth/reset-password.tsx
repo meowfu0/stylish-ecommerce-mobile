@@ -24,7 +24,7 @@ import {
   type AuthAlertTone,
 } from "@/components/auth/auth-alert-banner";
 import { AuthFormField } from "@/components/auth/auth-form-field";
-import { StylishLogo } from "@/components/brand/stylish-logo";
+import { VeloriLogo } from "@/components/brand/velori-logo";
 import { StylishText } from "@/components/typography/stylish-text";
 import { colors, typography } from "@/constants/design-tokens";
 import { AuthRequestError, resetPassword } from "@/services/auth/auth-api";
@@ -235,7 +235,7 @@ export default function ResetPasswordScreen() {
         ? "Password-reset links are valid for 30 minutes. Request a new one to continue."
         : status === "invalid-link"
           ? "This password-reset link is invalid or has already been used. Request a new one to continue."
-          : "Choose a password you haven’t used on Stylish before.";
+          : "Choose a password you haven’t used on Velori before.";
 
   return (
     <KeyboardAvoidingView
@@ -295,7 +295,7 @@ export default function ResetPasswordScreen() {
             style={[styles.content, { gap: compact ? 16 : desktop ? 32 : 24 }]}
             testID="auth-reset-password-content"
           >
-            <StylishLogo testID="auth-reset-password-logo" width={logoWidth} />
+            <VeloriLogo testID="auth-reset-password-logo" width={logoWidth} />
 
             <View
               style={[styles.card, { padding: cardPadding }]}

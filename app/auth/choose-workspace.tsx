@@ -17,8 +17,9 @@ import {
   AuthAlertBanner,
   type AuthAlertTone,
 } from "@/components/auth/auth-alert-banner";
-import { StylishLogo } from "@/components/brand/stylish-logo";
+import { VeloriLogo } from "@/components/brand/velori-logo";
 import { StylishText } from "@/components/typography/stylish-text";
+import { BRAND } from "@/constants/brand";
 import { colors, typography } from "@/constants/design-tokens";
 import { AuthRequestError } from "@/services/auth/auth-api";
 import {
@@ -324,7 +325,7 @@ export default function ChooseWorkspaceScreen() {
         >
           <View style={[styles.content, { width: contentWidth }]}>
             <View style={styles.topBar} testID="auth-workspace-header">
-              <StylishLogo testID="auth-workspace-logo" width={logoWidth} />
+              <VeloriLogo testID="auth-workspace-logo" width={logoWidth} />
 
               <Pressable
                 accessibilityLabel="Sign out"
@@ -372,7 +373,7 @@ export default function ChooseWorkspaceScreen() {
               <StylishText style={styles.eyebrow} unstyled variant="eyebrow">
                 {email
                   ? `SIGNED IN AS ${email.toUpperCase()}`
-                  : "YOUR STYLISH ACCOUNT"}
+                  : `YOUR ${BRAND.name.toUpperCase()} ACCOUNT`}
               </StylishText>
               <StylishText
                 accessibilityRole="header"
@@ -390,7 +391,7 @@ export default function ChooseWorkspaceScreen() {
                 unstyled
                 variant="body"
               >
-                Your account has access to more than one Stylish workspace. Pick
+                Your account has access to more than one Velori workspace. Pick
                 where you’d like to continue — you can switch at any time.
               </StylishText>
             </View>
@@ -412,7 +413,7 @@ export default function ChooseWorkspaceScreen() {
             {pageState === "network-error" ? (
               <StatusPanel
                 actionLabel="Try Again"
-                description="Check your connection, confirm the Stylish API is running, and try again."
+                description="Check your connection, confirm the Velori API is running, and try again."
                 onAction={() => void loadWorkspaces()}
                 title="We couldn’t load your workspaces"
               />
