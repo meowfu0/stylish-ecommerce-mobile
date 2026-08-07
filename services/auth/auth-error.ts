@@ -146,7 +146,7 @@ export function classifyApiError(
   if (status === 503) {
     return new AuthRequestError(
       "service-unavailable",
-      "Stylish is temporarily unavailable. Please try again shortly.",
+      "Velori is temporarily unavailable. Please try again shortly.",
       status,
       fieldErrors,
     );
@@ -184,7 +184,7 @@ export function classifyApiError(
   return new AuthRequestError(
     "server",
     status >= 500
-      ? "Stylish is temporarily unavailable. Please try again shortly."
+      ? "Velori is temporarily unavailable. Please try again shortly."
       : (error.message ?? "The request could not be completed."),
     status,
     fieldErrors,
@@ -195,8 +195,8 @@ export function networkAuthError() {
   return new AuthRequestError(
     "network",
     Platform.OS === "web"
-      ? "Can't reach the Stylish API. Confirm the backend is running and try again."
-      : "Can't reach the Stylish API. Check your connection and EXPO_PUBLIC_API_URL.",
+      ? "Can't reach the Velori API. Confirm the backend is running and try again."
+      : "Can't reach the Velori API. Check your connection and EXPO_PUBLIC_API_URL.",
     null,
   );
 }

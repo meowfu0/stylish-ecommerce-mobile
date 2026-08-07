@@ -27,7 +27,7 @@ export async function login(input: {
 }): Promise<LoginResult> {
   const response = await apiRequest<LoginResult>("/auth/login", {
     body: JSON.stringify({
-      deviceName: `${Platform.OS} Stylish app`,
+      deviceName: `${Platform.OS} Velori app`,
       email: input.email.trim().toLowerCase(),
       password: input.password,
     }),
