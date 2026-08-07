@@ -3,7 +3,7 @@ import { registerAs } from '@nestjs/config';
 export default registerAs('email', () => ({
   from: {
     address: process.env.EMAIL_FROM_ADDRESS,
-    name: process.env.EMAIL_FROM_NAME ?? 'Stylish',
+    name: process.env.EMAIL_FROM_NAME ?? 'Velori',
   },
   previewEnabled: process.env.EMAIL_PREVIEW_ENABLED === 'true',
   previewDirectory: process.env.EMAIL_PREVIEW_DIRECTORY ?? '.email-previews',

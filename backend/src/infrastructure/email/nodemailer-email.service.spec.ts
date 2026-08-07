@@ -7,7 +7,7 @@ const createConfigService = (): ConfigService => {
   const values: Record<string, unknown> = {
     'auth.frontendUrl': 'stylish://auth',
     'email.from.address': 'stylish.sender@gmail.com',
-    'email.from.name': 'Stylish',
+    'email.from.name': 'Velori',
     'email.replyTo': 'stylish.sender@gmail.com',
     'email.smtp.connectionTimeoutMs': 10_000,
     'email.smtp.host': 'smtp.gmail.com',
@@ -51,10 +51,10 @@ describe('NodemailerEmailService', () => {
 
     expect(sendMail).toHaveBeenCalledWith(
       expect.objectContaining({
-        from: 'Stylish <stylish.sender@gmail.com>',
+        from: 'Velori <stylish.sender@gmail.com>',
         messageId: '<auth.email_verification.43819b6c-43c4-457e-9cd0-6bc3bb1af65e@stylish.local>',
         replyTo: 'stylish.sender@gmail.com',
-        subject: 'Verify your Stylish email',
+        subject: 'Verify your Velori email',
         to: 'customer@example.com',
       }),
     );

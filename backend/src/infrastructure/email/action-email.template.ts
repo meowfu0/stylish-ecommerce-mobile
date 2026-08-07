@@ -1,5 +1,8 @@
 import type { ActionEmail, ActionEmailPurpose } from './email-delivery.types';
 
+/** Display name shown to recipients; the accent matches the app's brand primary. */
+const BRAND_NAME = 'Velori';
+
 export type ActionEmailContent = {
   actionLabel: string;
   html: string;
@@ -23,16 +26,16 @@ const emailCopy: Record<
     action: 'verify-email',
     actionLabel: 'Verify Email',
     expiry: 'This verification link expires in 24 hours.',
-    introduction: 'Confirm your email address to finish creating your Stylish account.',
-    subject: 'Verify your Stylish email',
+    introduction: `Confirm your email address to finish creating your ${BRAND_NAME} account.`,
+    subject: `Verify your ${BRAND_NAME} email`,
     title: 'Verify your email',
   },
   PASSWORD_RESET: {
     action: 'reset-password',
     actionLabel: 'Reset Password',
     expiry: 'This password-reset link expires in 30 minutes.',
-    introduction: 'Use the secure link below to choose a new password for your Stylish account.',
-    subject: 'Reset your Stylish password',
+    introduction: `Use the secure link below to choose a new password for your ${BRAND_NAME} account.`,
+    subject: `Reset your ${BRAND_NAME} password`,
     title: 'Create a new password',
   },
 };
@@ -84,7 +87,7 @@ export function buildActionEmailContent(
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid #e7e7eb;border-radius:16px;">
             <tr>
               <td style="padding:40px;">
-                <div style="font-size:28px;font-weight:700;color:#f83758;margin-bottom:28px;">Stylish</div>
+                <div style="font-size:28px;font-weight:700;color:#f83758;margin-bottom:28px;">${escapeHtml(BRAND_NAME)}</div>
                 <h1 style="font-size:28px;line-height:36px;margin:0 0 12px;">${escapeHtml(copy.title)}</h1>
                 <p style="font-size:15px;line-height:24px;color:#676767;margin:0 0 28px;">${escapeHtml(copy.introduction)}</p>
                 <a href="${safeLink}" style="display:block;background:#f83758;color:#ffffff;text-decoration:none;text-align:center;font-size:16px;font-weight:600;line-height:20px;padding:18px 24px;border-radius:8px;">${escapeHtml(copy.actionLabel)}</a>

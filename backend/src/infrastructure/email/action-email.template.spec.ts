@@ -12,7 +12,7 @@ describe('buildActionEmailContent', () => {
     expect(result.link).toBe(
       'stylish://auth/verify-email?token=token%20with%20reserved%3F%2Fcharacters',
     );
-    expect(result.subject).toBe('Verify your Stylish email');
+    expect(result.subject).toBe('Verify your Velori email');
     expect(result.html).toContain('Verify Email');
     expect(result.text).toContain(result.link);
   });
@@ -26,7 +26,7 @@ describe('buildActionEmailContent', () => {
     });
 
     expect(result.link).toBe('https://app.stylish.example/auth/reset-password?token=safe-token');
-    expect(result.subject).toBe('Reset your Stylish password');
+    expect(result.subject).toBe('Reset your Velori password');
     expect(result.text).toContain('expires in 30 minutes');
   });
 });

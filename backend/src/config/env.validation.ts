@@ -97,7 +97,7 @@ const baseEnvironmentSchema = z.object({
     .min(1)
     .max(100)
     .regex(/^[^\r\n]+$/, 'must not contain line breaks')
-    .default('Stylish'),
+    .default('Velori'),
   EMAIL_REPLY_TO: optionalEmailAddress,
   REDIS_ENABLED: z.enum(['true', 'false']).default('false'),
   REDIS_REQUIRED: z.enum(['true', 'false']).default('false'),
