@@ -1,6 +1,7 @@
 import { Pressable, Text, View } from "react-native";
 
-import { StylishLogo } from "@/components/brand/stylish-logo";
+import { VeloriLogo } from "@/components/brand/velori-logo";
+import { BRAND } from "@/constants/brand";
 
 type FooterLinkGroup = {
   links: readonly string[];
@@ -52,7 +53,7 @@ export function StorefrontFooter({
           }`}
         >
           <View style={{ maxWidth: compact ? contentWidth : 360 }}>
-            <StylishLogo
+            <VeloriLogo
               testID="storefront-footer-brand-logo"
               width={compact ? 140 : 160}
             />
@@ -108,7 +109,7 @@ export function StorefrontFooter({
           }`}
         >
           <Text className="font-montserrat-medium text-micro uppercase tracking-[1.2px] text-neutral-400">
-            © 2026 Stylish Studio
+            © 2026 {BRAND.legalName}
           </Text>
           <View className="flex-row gap-[20px]">
             {["Terms", "Privacy", "Accessibility"].map((link) => (

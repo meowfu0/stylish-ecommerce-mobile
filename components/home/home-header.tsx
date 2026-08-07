@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
 import { Platform, Pressable, useWindowDimensions, View } from "react-native";
 
-import { StylishLogo } from "@/components/brand/stylish-logo";
+import { VeloriLogo } from "@/components/brand/velori-logo";
 import { DESKTOP_WEB_BREAKPOINT } from "@/constants/responsive";
 
 type HomeHeaderProps = {
@@ -38,7 +38,7 @@ export function HomeHeader({ onMenuPress, onProfilePress }: HomeHeaderProps) {
         className="absolute left-1/2 items-center justify-center"
         style={{ transform: [{ translateX: -55 }] }}
       >
-        <StylishLogo testID="home-header-brand-logo" width={110} />
+        <VeloriLogo testID="home-header-brand-logo" width={110} />
       </View>
 
       <Pressable

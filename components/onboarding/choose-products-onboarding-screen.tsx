@@ -22,9 +22,9 @@ import Animated, {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
-  STYLISH_LOGO_ASPECT_RATIO,
-  StylishLogo,
-} from "@/components/brand/stylish-logo";
+  VELORI_LOGO_ASPECT_RATIO,
+  VeloriLogo,
+} from "@/components/brand/velori-logo";
 import { StylishText } from "@/components/typography/stylish-text";
 import { ProgressIndicator } from "@/components/stylish/ProgressIndicator";
 import { colors, spacing } from "@/constants/design-tokens";
@@ -173,7 +173,7 @@ export function OnboardingStepScreen({
   );
   const panelPadding = desktop ? 56 : tablet ? 28 : 24;
   const logoWidth = desktop ? 150 : tablet ? 138 : 124;
-  const logoHeight = logoWidth / STYLISH_LOGO_ASPECT_RATIO;
+  const logoHeight = logoWidth / VELORI_LOGO_ASPECT_RATIO;
   const titleSize = desktop ? 40 : tablet ? 34 : 32;
   const titleLineHeight = desktop ? 48 : tablet ? 42 : 40;
   const descriptionSize = desktop ? 16 : 15;
@@ -247,7 +247,7 @@ export function OnboardingStepScreen({
               ]}
               testID={`${animationTestIdPrefix}-header`}
             >
-              <StylishLogo testID="onboarding-brand-logo" width={logoWidth} />
+              <VeloriLogo testID="onboarding-brand-logo" width={logoWidth} />
 
               {onSkip ? (
                 <Pressable
