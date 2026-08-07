@@ -2,7 +2,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 
-import { StylishLogo } from "@/components/brand/stylish-logo";
+import { VeloriLogo } from "@/components/brand/velori-logo";
 import { colors } from "@/constants/design-tokens";
 import { selectCartQuantity, useCartStore } from "@/stores/cart-store";
 
@@ -83,7 +83,7 @@ export function DesktopWebHeader() {
         </View>
 
         <Pressable
-          accessibilityLabel="Open Stylish home"
+          accessibilityLabel="Open Velori home"
           accessibilityRole="link"
           className="absolute left-1/2 active:opacity-70"
           onPress={() => router.push("/(tabs)/home")}
@@ -92,7 +92,7 @@ export function DesktopWebHeader() {
             transform: [{ translateX: -65 }],
           }}
         >
-          <StylishLogo width={130} />
+          <VeloriLogo width={130} />
         </Pressable>
 
         <View className="flex-1 flex-row items-center justify-end gap-xs">

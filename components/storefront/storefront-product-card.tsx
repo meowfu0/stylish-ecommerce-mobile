@@ -60,7 +60,7 @@ export function StorefrontProductCard({
             </Text>
           </View>
           <View
-            accessibilityLabel="Available in the Stylish brand color"
+            accessibilityLabel="Available in the Velori brand color"
             accessibilityRole="image"
             className="mt-xxs h-[14px] w-[14px] rounded-pill bg-brand-primary"
           />

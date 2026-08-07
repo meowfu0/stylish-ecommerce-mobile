@@ -101,7 +101,7 @@ function StorefrontPageScroller({
 }: StorefrontPageScrollerProps) {
   return (
     <ScrollView
-      accessibilityLabel="Stylish storefront home"
+      accessibilityLabel="Velori storefront home"
       className="flex-1 bg-neutral-25"
       contentContainerStyle={{
         paddingBottom: desktopWeb ? 0 : 58,
@@ -779,7 +779,7 @@ export function StorefrontHome() {
                 testID="motion-image-frame"
               >
                 <Image
-                  accessibilityLabel="Behind the scenes at a Stylish fashion photo shoot"
+                  accessibilityLabel="Behind the scenes at a Velori fashion photo shoot"
                   accessibilityRole="image"
                   contentFit="cover"
                   source={STOREFRONT_EDITORIAL_IMAGE}
@@ -820,7 +820,7 @@ export function StorefrontHome() {
                 </Text>
                 <View className="mt-lg self-start">
                   <StorefrontTextLink
-                    label="Meet Stylish"
+                    label="Meet Velori"
                     light
                     onPress={() => router.push("/(tabs)/settings")}
                   />
@@ -902,7 +902,7 @@ export function StorefrontHome() {
                   lineHeight: clamp(38, layoutWidth * 0.039, 52),
                 }}
               >
-                A little note from Stylish
+                A little note from Velori
               </Text>
               <Text
                 className="mt-md text-center font-montserrat-regular text-bodyMedium text-neutral-600"
@@ -933,7 +933,7 @@ export function StorefrontHome() {
                   value={newsletterEmail}
                 />
                 <Pressable
-                  accessibilityLabel="Subscribe to the Stylish newsletter"
+                  accessibilityLabel="Subscribe to the Velori newsletter"
                   accessibilityRole="button"
                   className="h-[48px] flex-row items-center px-xs active:opacity-60"
                   onPress={submitNewsletter}

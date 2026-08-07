@@ -2,7 +2,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { type ComponentProps, useEffect, useRef, useState } from "react";
 import { Platform, Pressable, Text, View } from "react-native";
 
-import { StylishLogo } from "@/components/brand/stylish-logo";
+import { VeloriLogo } from "@/components/brand/velori-logo";
 import { colors } from "@/constants/design-tokens";
 
 const HEADER_EXPANDED_OFFSET = 24;
@@ -142,12 +142,12 @@ export function StorefrontHeader({
         </View>
 
         <View
-          accessibilityLabel="Stylish"
+          accessibilityLabel="Velori"
           accessibilityRole="header"
           className="absolute left-1/2 h-[52px] w-[130px]"
           style={{ transform: [{ translateX: -65 }] }}
         >
-          <StylishLogo
+          <VeloriLogo
             style={{
               left: 0,
               position: "absolute",
