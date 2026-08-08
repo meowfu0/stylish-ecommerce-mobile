@@ -3,25 +3,34 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   type DashboardSectionLoaders,
   type DashboardSnapshot,
+  emptyCatalogSummary,
+  emptyInventorySummary,
+  emptySalesSeries,
   loadDashboardSnapshot,
 } from "@/features/merchant-dashboard/dashboard-data-source";
 import { resolveDashboardDataState } from "@/features/merchant-dashboard/dashboard-state-model";
 import type {
+  CatalogSummaryCounts,
   DashboardDataState,
   DashboardSectionKey,
+  InventorySummary,
   Metric,
   PipelineStage,
+  SalesSeries,
 } from "@/features/merchant-dashboard/dashboard-types";
 import { DASHBOARD_SECTION_KEYS } from "@/features/merchant-dashboard/dashboard-types";
 
 export type MerchantDashboardData = {
   dataState: DashboardDataState;
   failedSections: DashboardSectionKey[];
+  catalogSummary: CatalogSummaryCounts;
   hasSalesHistory: boolean;
+  inventorySummary: InventorySummary;
   metrics: Metric[];
   pipelineStages: PipelineStage[];
   refresh: () => void;
   retry: () => void;
+  salesSeries: SalesSeries;
 };
 
 /**
@@ -95,9 +104,12 @@ export function useMerchantDashboardData({
       sectionCount: DASHBOARD_SECTION_KEYS.length,
     }),
     failedSections,
+    catalogSummary: snapshot?.catalogSummary ?? emptyCatalogSummary,
     hasSalesHistory: snapshot?.hasSalesHistory ?? false,
+    inventorySummary: snapshot?.inventorySummary ?? emptyInventorySummary,
     metrics: snapshot?.metrics ?? [],
     pipelineStages: snapshot?.pipelineStages ?? [],
+    salesSeries: snapshot?.salesSeries ?? emptySalesSeries,
     refresh: reload,
     retry: reload,
   };

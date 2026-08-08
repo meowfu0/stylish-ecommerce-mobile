@@ -17,6 +17,7 @@ import {
   useAuthSessionStore,
 } from "@/stores/auth-session-store";
 import { useAuthWorkspaceStore } from "@/stores/auth-workspace-store";
+import { readSelectedWorkspace } from "@/stores/workspace-storage";
 
 async function clearLocalSession(reason: Exclude<AuthSessionReason, null>) {
   await clearSessionTokens().catch(() => undefined);
@@ -28,17 +29,22 @@ export async function restoreAuthSession() {
   const store = useAuthSessionStore.getState();
   store.setRestoring();
 
-  const [accessToken, refreshToken] = await Promise.all([
+  const [accessToken, refreshToken, storedWorkspace] = await Promise.all([
     getAccessToken(),
     getRefreshToken(),
+    readSelectedWorkspace(),
   ]);
   if (!accessToken && !refreshToken) {
+    useAuthWorkspaceStore.getState().restoreWorkspace(null);
     store.setUnauthenticated();
     return null;
   }
 
   try {
     const user = await getAuthenticatedUser();
+    // Restored before the session is marked authenticated, so a guard that
+    // reacts to `authenticated` already sees the workspace and stays put.
+    useAuthWorkspaceStore.getState().restoreWorkspace(storedWorkspace);
     useAuthSessionStore.getState().setAuthenticated(user);
     return user;
   } catch (error) {
