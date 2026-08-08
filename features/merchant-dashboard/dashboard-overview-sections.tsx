@@ -1,3 +1,4 @@
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
   Pressable,
@@ -18,6 +19,10 @@ import {
 } from "@/features/merchant-dashboard/dashboard-data";
 import { emptySalesSeries } from "@/features/merchant-dashboard/dashboard-data-source";
 import { useResponsiveGrid } from "@/features/merchant-dashboard/dashboard-grid";
+import {
+  presentStoreStatus,
+  STOREFRONT_ROUTE,
+} from "@/features/merchant-dashboard/merchant-store-status";
 import { MetricSparkline } from "@/features/merchant-dashboard/metric-sparkline";
 import {
   SALES_SERIES,
@@ -55,6 +60,9 @@ export function WelcomeBanner({
   mobile: boolean;
   session: MerchantSession;
 }) {
+  const router = useRouter();
+  const storeStatus = presentStoreStatus(session);
+
   return (
     <DashboardCard
       style={[styles.welcomeCard, mobile && styles.welcomeCardMobile]}
@@ -74,8 +82,11 @@ export function WelcomeBanner({
             />
           ) : null}
           <StatusChip
-            label={`Store status: ${session.storeStatus}`}
-            tone={session.storeStatus === "active" ? "green" : "warning"}
+            // Label, icon and tone come from the shared status map, so the
+            // welcome card, the sidebar chip and the profile all agree.
+            icon={storeStatus.icon}
+            label={`Store status: ${storeStatus.shortLabel}`}
+            tone={storeStatus.tone}
           />
         </View>
         <StylishText
@@ -97,11 +108,19 @@ export function WelcomeBanner({
       <View
         style={[styles.welcomeActions, mobile && styles.welcomeActionsMobile]}
       >
-        <DashboardButton icon="open-in-new" label="View Storefront" />
+        <DashboardButton
+          disabled={!storeStatus.canViewStorefront}
+          label="View Storefront"
+          onPress={() => router.push(STOREFRONT_ROUTE)}
+          testID="welcome-view-storefront"
+          title={storeStatus.disabledReason}
+          trailingIcon="open-in-new"
+        />
         <DashboardButton
           disabled={!can(session, "products.write")}
           icon="plus"
           label="Add Product"
+          testID="welcome-add-product"
           title="Your role cannot create products."
           tone="primary"
         />
@@ -138,11 +157,7 @@ export function MetricsSection({
       testID="dashboard-metrics-grid"
     >
       {metrics.map((metric) => (
-        <MetricCard
-          key={metric.key}
-          metric={metric}
-          style={grid.itemStyle}
-        />
+        <MetricCard key={metric.key} metric={metric} style={grid.itemStyle} />
       ))}
     </View>
   );
@@ -893,14 +908,17 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   welcomeBadges: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
+  // Decorative only, behind everything, and clipped by the card's own
+  // `overflow: hidden`. Sits nearer the lower-right corner so it reads as a
+  // corner wash rather than a shape drifting under the heading.
   welcomeBlueGlow: {
     backgroundColor: colors.feedback.infoSoft,
     borderRadius: borderRadius.pill,
-    bottom: -80,
+    bottom: -96,
     height: 210,
     opacity: 0.85,
     position: "absolute",
-    right: 180,
+    right: 96,
     width: 210,
     zIndex: 0,
   },

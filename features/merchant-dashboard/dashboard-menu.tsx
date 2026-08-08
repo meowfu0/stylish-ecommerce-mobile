@@ -110,7 +110,12 @@ export function AnchoredPopover({
   // Visibility never depends on measurement: if `measureInWindow` has not
   // reported yet the menu still opens, pinned to the safe margin, rather than
   // leaving the trigger dead.
-  const frame = anchor ?? { height: 0, width: 0, x: MENU_MARGIN, y: MENU_MARGIN };
+  const frame = anchor ?? {
+    height: 0,
+    width: 0,
+    x: MENU_MARGIN,
+    y: MENU_MARGIN,
+  };
   const width = Math.max(minWidth, panel.width);
   // Flip to the other side of the trigger rather than hanging off the viewport.
   const rawLeft = align === "end" ? frame.x + frame.width - width : frame.x;

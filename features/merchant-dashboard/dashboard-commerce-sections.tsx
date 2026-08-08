@@ -1,8 +1,7 @@
 import { Image } from "expo-image";
-import { useMemo, useRef, useState, type ComponentProps } from "react";
+import { useMemo, useState, type ComponentProps } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
-import { StylishTextInput } from "@/components/forms/stylish-text-input";
 import { StylishText } from "@/components/typography/stylish-text";
 import { borderRadius, colors, spacing } from "@/constants/design-tokens";
 import { can } from "@/features/merchant-dashboard/dashboard-access";
@@ -19,11 +18,7 @@ import {
   formatOrderDate,
   formatPeso,
 } from "@/features/merchant-dashboard/dashboard-format";
-import {
-  DashboardMenu,
-  type DashboardMenuItem,
-  type MenuAnchor,
-} from "@/features/merchant-dashboard/dashboard-menu";
+import type { DashboardMenuItem } from "@/features/merchant-dashboard/dashboard-menu";
 import {
   DashboardButton,
   DashboardCard,
@@ -31,6 +26,16 @@ import {
   SectionHeading,
   StatusChip,
 } from "@/features/merchant-dashboard/dashboard-primitives";
+import {
+  FilterSelect,
+  paginate,
+  RowActionsButton,
+  SearchField,
+  SortHeaderCell,
+  TableCell as TableColumn,
+  TablePagination,
+  TableText,
+} from "@/features/merchant-dashboard/dashboard-table";
 import type {
   ActivityEvent,
   CatalogSummaryCounts,
@@ -109,7 +114,10 @@ export function InventoryOverview({
 
         <View
           accessibilityLabel={`Stock status: ${counts
-            .map((state) => `${formatCount(state.count)} ${state.label.toLowerCase()}`)
+            .map(
+              (state) =>
+                `${formatCount(state.count)} ${state.label.toLowerCase()}`,
+            )
             .join(", ")}`}
           accessibilityRole="image"
           style={styles.stockBar}
@@ -368,7 +376,9 @@ function NumberDatum({
                 ? colors.feedback.success
                 : colors.feedback.danger
             }
-            name={tone === "positive" ? "arrow-top-right" : "arrow-bottom-right"}
+            name={
+              tone === "positive" ? "arrow-top-right" : "arrow-bottom-right"
+            }
             size={12}
           />
         ) : null}
@@ -450,12 +460,11 @@ export function RecentOrders({
     return sortOrdersByDate(matched, sortDirection);
   }, [orders, paymentFilter, query, sortDirection, statusFilter]);
 
-  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const safePage = Math.min(page, pageCount);
-  const pageRows = filtered.slice(
-    (safePage - 1) * pageSize,
-    safePage * pageSize,
-  );
+  const {
+    pageCount,
+    rows: pageRows,
+    safePage,
+  } = paginate(filtered, page, pageSize);
   const resetPage = () => setPage(1);
 
   return (
@@ -473,25 +482,16 @@ export function RecentOrders({
         title="Recent orders"
       />
       <View style={styles.orderControls}>
-        <View style={styles.orderSearchField}>
-          <StylishText style={styles.fieldLabel} unstyled variant="caption">
-            Search orders
-          </StylishText>
-          <View style={styles.orderSearch}>
-            <DashboardIcon name="magnify" />
-            <StylishTextInput
-              accessibilityLabel="Search recent orders"
-              onChangeText={(value) => {
-                resetPage();
-                setQuery(value);
-              }}
-              placeholder="Order number or customer"
-              placeholderTextColor={colors.neutral[450]}
-              style={styles.orderSearchInput}
-              value={query}
-            />
-          </View>
-        </View>
+        <SearchField
+          accessibilityLabel="Search recent orders"
+          label="Search orders"
+          onChangeText={(value) => {
+            resetPage();
+            setQuery(value);
+          }}
+          placeholder="Order number or customer"
+          value={query}
+        />
         <FilterSelect
           label="Order status"
           onChange={(next) => {
@@ -537,6 +537,8 @@ export function RecentOrders({
               <TableCell header label="Order" width={1.1} />
               <TableCell header label="Customer" width={1.3} />
               <SortHeaderCell
+                ascendingHint="oldest first"
+                descendingHint="newest first"
                 direction={sortDirection}
                 label="Date"
                 onPress={() =>
@@ -544,6 +546,7 @@ export function RecentOrders({
                     current === "desc" ? "asc" : "desc",
                   )
                 }
+                testID="orders-sort-date"
                 width={1.1}
               />
               <TableCell header label="Items" width={0.55} />
@@ -590,153 +593,13 @@ export function RecentOrders({
         </ScrollView>
       )}
 
-      <View style={styles.pagination}>
-        <StylishText
-          accessibilityLiveRegion="polite"
-          style={styles.pageLabel}
-          unstyled
-          variant="caption"
-        >
-          Page {safePage} of {pageCount}
-        </StylishText>
-        <View style={styles.paginationButtons}>
-          <DashboardButton
-            disabled={safePage <= 1}
-            icon="chevron-left"
-            label="Previous"
-            onPress={() => setPage((current) => Math.max(1, current - 1))}
-            testID="orders-previous-page"
-            tone="quiet"
-          />
-          <DashboardButton
-            disabled={safePage >= pageCount}
-            label="Next"
-            onPress={() =>
-              setPage((current) => Math.min(pageCount, current + 1))
-            }
-            testID="orders-next-page"
-            trailingIcon="chevron-right"
-          />
-        </View>
-      </View>
+      <TablePagination
+        onChange={setPage}
+        page={safePage}
+        pageCount={pageCount}
+        testIDPrefix="orders"
+      />
     </DashboardCard>
-  );
-}
-
-/**
- * Measures its trigger so an anchored menu can sit against it. Open state is
- * tracked separately from the measurement, so a trigger still opens its menu if
- * `measureInWindow` has not reported a frame yet.
- */
-function useAnchoredMenu() {
-  const trigger = useRef<View>(null);
-  const [anchor, setAnchor] = useState<MenuAnchor | null>(null);
-  const [visible, setVisible] = useState(false);
-
-  return {
-    anchor,
-    close: () => setVisible(false),
-    open: () => {
-      setVisible(true);
-      trigger.current?.measureInWindow((x, y, width, height) => {
-        setAnchor({ height, width, x, y });
-      });
-    },
-    trigger,
-    visible,
-  };
-}
-
-function FilterSelect({
-  label,
-  onChange,
-  options,
-  testID,
-  value,
-}: {
-  label: string;
-  onChange: (value: string) => void;
-  options: readonly string[];
-  testID: string;
-  value: string;
-}) {
-  const menu = useAnchoredMenu();
-
-  return (
-    <View style={styles.filterField}>
-      <StylishText style={styles.fieldLabel} unstyled variant="caption">
-        {label}
-      </StylishText>
-      <Pressable
-        accessibilityLabel={`${label}: ${value}`}
-        accessibilityRole="button"
-        accessibilityState={{ expanded: menu.visible }}
-        className="focus-visible:ring-[3px] focus-visible:ring-brand-blue/55"
-        onPress={menu.open}
-        ref={menu.trigger}
-        style={styles.filterControl}
-        testID={testID}
-      >
-        <StylishText
-          numberOfLines={1}
-          style={styles.filterLabel}
-          unstyled
-          variant="caption"
-        >
-          {value}
-        </StylishText>
-        <DashboardIcon name="chevron-down" size={16} />
-      </Pressable>
-      <DashboardMenu
-        accessibilityLabel={`${label} options`}
-        align="start"
-        anchor={menu.anchor}
-        items={options.map((option) => ({
-          key: option,
-          label: option,
-          onPress: () => onChange(option),
-          selected: option === value,
-        }))}
-        minWidth={168}
-        onClose={menu.close}
-        testID={`${testID}-menu`}
-        visible={menu.visible}
-      />
-    </View>
-  );
-}
-
-function SortHeaderCell({
-  direction,
-  label,
-  onPress,
-  width,
-}: {
-  direction: "asc" | "desc";
-  label: string;
-  onPress: () => void;
-  width: number;
-}) {
-  return (
-    <Pressable
-      accessibilityLabel={`Sort by ${label}, currently ${
-        direction === "desc" ? "newest first" : "oldest first"
-      }`}
-      accessibilityRole="button"
-      className="focus-visible:ring-[3px] focus-visible:ring-brand-blue/55"
-      onPress={onPress}
-      style={[styles.sortHeader, { flex: width }]}
-      testID="orders-sort-date"
-    >
-      <StylishText style={styles.sortHeaderLabel} unstyled variant="caption">
-        {label.toUpperCase()}
-      </StylishText>
-      <DashboardIcon
-        color={colors.brand.primary}
-        name={direction === "desc" ? "arrow-down" : "arrow-up"}
-        size={12}
-      />
-    </Pressable>
   );
 }
 
@@ -752,9 +615,6 @@ function OrderRowActions({
   order: RecentOrder;
   session?: MerchantSession;
 }) {
-  const menu = useAnchoredMenu();
-  const [hovered, setHovered] = useState(false);
-  const open = menu.visible;
   const cancelled = order.status === "Cancelled";
   const canFulfil = session ? can(session, "orders.fulfill") : true;
 
@@ -782,37 +642,12 @@ function OrderRowActions({
   ];
 
   return (
-    <View style={styles.rowActionsCell}>
-      <Pressable
-        accessibilityLabel={`Actions for order ${order.orderNumber}`}
-        accessibilityRole="button"
-        accessibilityState={{ expanded: open }}
-        className="focus-visible:ring-[3px] focus-visible:ring-brand-blue/55"
-        onHoverIn={() => setHovered(true)}
-        onHoverOut={() => setHovered(false)}
-        onPress={menu.open}
-        ref={menu.trigger}
-        style={[
-          styles.rowActionsTrigger,
-          (hovered || open) && styles.rowActionsTriggerActive,
-        ]}
-        testID={`order-actions-${order.orderNumber}`}
-      >
-        <DashboardIcon
-          color={open ? colors.ink.primary : colors.neutral[550]}
-          name="dots-horizontal"
-          size={18}
-        />
-      </Pressable>
-      <DashboardMenu
-        accessibilityLabel={`Order ${order.orderNumber} actions`}
-        anchor={menu.anchor}
-        items={items}
-        onClose={menu.close}
-        testID={`order-actions-menu-${order.orderNumber}`}
-        visible={open}
-      />
-    </View>
+    <RowActionsButton
+      accessibilityLabel={`Actions for order ${order.orderNumber}`}
+      items={items}
+      menuLabel={`Order ${order.orderNumber} actions`}
+      testID={`order-actions-${order.orderNumber}`}
+    />
   );
 }
 
@@ -820,22 +655,24 @@ function OrderRowActions({
  * One tone per order state, shared by the payment, fulfilment and status
  * columns so a single vocabulary drives every badge in the table.
  */
-const orderStateTones: Record<string, ComponentProps<typeof StatusChip>["tone"]> =
-  {
-    Cancelled: "neutral",
-    Confirmed: "blue",
-    Delivered: "green",
-    Failed: "danger",
-    New: "pink",
-    Packing: "warning",
-    Paid: "green",
-    Pending: "warning",
-    Processing: "blue",
-    "Ready to Ship": "warning",
-    Refunded: "neutral",
-    Shipped: "blue",
-    Unfulfilled: "pink",
-  };
+const orderStateTones: Record<
+  string,
+  ComponentProps<typeof StatusChip>["tone"]
+> = {
+  Cancelled: "neutral",
+  Confirmed: "blue",
+  Delivered: "green",
+  Failed: "danger",
+  New: "pink",
+  Packing: "warning",
+  Paid: "green",
+  Pending: "warning",
+  Processing: "blue",
+  "Ready to Ship": "warning",
+  Refunded: "neutral",
+  Shipped: "blue",
+  Unfulfilled: "pink",
+};
 
 function TableCell({
   header = false,
@@ -853,25 +690,18 @@ function TableCell({
   width: number;
 }) {
   return (
-    <View style={{ flex: width, minWidth: 0 }}>
+    <TableColumn width={width}>
       {status ? (
         <StatusChip label={label} tone={orderStateTones[label] ?? "blue"} />
       ) : (
-        <StylishText
-          numberOfLines={numeric ? 1 : 2}
-          style={[
-            styles.tableText,
-            strong && styles.tableTextStrong,
-            numeric && styles.numericValue,
-            header && styles.tableHeaderText,
-          ]}
-          unstyled
-          variant="caption"
-        >
-          {header ? label.toUpperCase() : label}
-        </StylishText>
+        <TableText
+          header={header}
+          numeric={numeric}
+          strong={strong}
+          value={label}
+        />
       )}
-    </View>
+    </TableColumn>
   );
 }
 
@@ -1276,34 +1106,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
   },
-  filterControl: {
-    alignItems: "center",
-    backgroundColor: colors.neutral[150],
-    borderColor: colors.neutral[200],
-    borderRadius: borderRadius.input,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: spacing.xs,
-    justifyContent: "space-between",
-    minHeight: 44,
-    minWidth: 150,
-    paddingHorizontal: spacing.sm,
-  },
-  fieldLabel: {
-    color: colors.neutral[550],
-    fontFamily: "Montserrat_500Medium",
-    fontSize: 11,
-    lineHeight: 16,
-  },
-  // Selects stay compact; the search field takes the width that is left.
-  filterField: { flexGrow: 0, flexShrink: 0, gap: spacing.xxs, width: 168 },
-  filterLabel: {
-    color: colors.ink.primary,
-    flexShrink: 1,
-    fontFamily: "Montserrat_400Regular",
-    fontSize: 12,
-    lineHeight: 18,
-  },
   growCard: { flex: 1, minWidth: 0 },
   inventoryContent: { gap: spacing.md, padding: spacing.lg },
   inventoryGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
@@ -1477,30 +1279,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
   },
-  orderSearch: {
-    alignItems: "center",
-    backgroundColor: colors.neutral[150],
-    borderColor: colors.neutral[200],
-    borderRadius: borderRadius.input,
-    borderWidth: 1,
-    flex: 1,
-    flexDirection: "row",
-    gap: spacing.xs,
-    minHeight: 44,
-    minWidth: 220,
-    overflow: "hidden",
-    paddingHorizontal: spacing.sm,
-  },
-  orderSearchInput: {
-    color: colors.ink.primary,
-    flex: 1,
-    fontFamily: "Montserrat_400Regular",
-    fontSize: 12,
-    lineHeight: 18,
-    minWidth: 0,
-    padding: 0,
-  },
-  orderSearchField: { flexGrow: 1, flexShrink: 1, gap: spacing.xxs, minWidth: 220 },
   orderStatuses: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
   orderEmptyRow: { paddingVertical: spacing.xl },
   orderEmptyText: {
@@ -1535,50 +1313,13 @@ const styles = StyleSheet.create({
     fontVariant: ["tabular-nums"],
     lineHeight: 22,
   },
-  pageLabel: {
-    color: colors.neutral[550],
-    fontFamily: "Montserrat_400Regular",
-    fontSize: 11,
-    lineHeight: 16,
-  },
-  pagination: {
+  // The header's spacer over the row-actions column; the trigger itself lives
+  // in the shared table module.
+  rowActionsCell: {
     alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    padding: spacing.lg,
-  },
-  paginationButtons: { flexDirection: "row", gap: spacing.xs },
-  rowActionsCell: { alignItems: "center", flexBasis: 40, flexGrow: 0, flexShrink: 0 },
-  rowActionsTrigger: {
-    alignItems: "center",
-    borderRadius: borderRadius.sm,
-    height: 32,
-    justifyContent: "center",
-    // Colour-only change on hover, so the row never shifts under the cursor.
-    transitionDuration: "150ms",
-    transitionProperty: "background-color",
-    width: 32,
-  },
-  rowActionsTriggerActive: { backgroundColor: colors.neutral[150] },
-  tableHeaderText: {
-    color: colors.neutral[550],
-    fontFamily: "Montserrat_600SemiBold",
-    fontSize: 10,
-    letterSpacing: 0.4,
-    lineHeight: 14,
-  },
-  sortHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.xxs,
-    minWidth: 0,
-  },
-  sortHeaderLabel: {
-    color: colors.brand.primary,
-    fontFamily: "Montserrat_600SemiBold",
-    fontSize: 10,
-    letterSpacing: 0.4,
-    lineHeight: 14,
+    flexBasis: 40,
+    flexGrow: 0,
+    flexShrink: 0,
   },
   productBadgeRow: { alignItems: "flex-start", flexDirection: "row" },
   // Grows into whatever the metrics and action leave behind, and keeps enough
@@ -1660,16 +1401,6 @@ const styles = StyleSheet.create({
   // the list rather than each row sizing to its own digits.
   stockDatum: { alignItems: "flex-start", gap: 1, width: 62 },
   stockDatumDepleted: { color: colors.feedback.danger },
-  tableText: {
-    color: colors.neutral[550],
-    fontFamily: "Montserrat_400Regular",
-    fontSize: 10,
-    lineHeight: 15,
-  },
-  tableTextStrong: {
-    color: colors.ink.primary,
-    fontFamily: "Montserrat_600SemiBold",
-  },
   timelineLine: {
     backgroundColor: colors.neutral[200],
     bottom: 0,

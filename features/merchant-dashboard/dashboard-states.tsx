@@ -35,26 +35,45 @@ type StateActions = {
   onSignInAgain?: () => void | Promise<void>;
 };
 
-function listUnavailableSections(failedSections: readonly DashboardSectionKey[]) {
-  const labels = failedSections.map((key) => dashboardSectionLabels[key]);
-  if (labels.length === 0) return "Some sections";
-  if (labels.length === 1) return labels[0];
-  return `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]}`;
+/**
+ * Section names for the banner and the unavailable card.
+ *
+ * The map is a prop rather than a fixed import so a surface with its own
+ * vocabulary — the catalog pages name Products, Categories, Collections and
+ * Brands — can report a failure through these components instead of duplicating
+ * them. Without it a catalog failure read as the raw key, in lower case.
+ */
+export type SectionLabels = Readonly<Record<string, string>>;
+
+function sectionLabel(section: string, labels: SectionLabels) {
+  return labels[section] ?? section;
+}
+
+function listUnavailableSections(
+  failedSections: readonly string[],
+  labels: SectionLabels,
+) {
+  const named = failedSections.map((key) => sectionLabel(key, labels));
+  if (named.length === 0) return "Some sections";
+  if (named.length === 1) return named[0];
+  return `${named.slice(0, -1).join(", ")} and ${named[named.length - 1]}`;
 }
 
 export function DashboardStateBanner({
   failedSections = [],
   onRetry,
+  sectionLabels = dashboardSectionLabels,
   state,
 }: {
-  failedSections?: readonly DashboardSectionKey[];
+  failedSections?: readonly string[];
   onRetry?: () => void;
+  sectionLabels?: SectionLabels;
   state: DashboardState;
 }) {
   if (state !== "partial" && state !== "refreshing") return null;
 
   const partial = state === "partial";
-  const unavailable = listUnavailableSections(failedSections);
+  const unavailable = listUnavailableSections(failedSections, sectionLabels);
 
   return (
     <View
@@ -361,12 +380,17 @@ function NewMerchantState({
  * layout, and it never falls back to stale or invented figures.
  */
 export function DashboardSectionUnavailable({
+  body = "The rest of your dashboard is unaffected. Try loading this section again in a moment.",
   onRetry,
   section,
+  sectionLabels = dashboardSectionLabels,
   tall = false,
 }: {
+  /** Overridden by surfaces whose neighbours are not the overview's sections. */
+  body?: string;
   onRetry?: () => void;
-  section: DashboardSectionKey;
+  section: DashboardSectionKey | string;
+  sectionLabels?: SectionLabels;
   tall?: boolean;
 }) {
   return (
@@ -380,11 +404,10 @@ export function DashboardSectionUnavailable({
         size={24}
       />
       <StylishText style={styles.unavailableTitle} unstyled variant="label">
-        {dashboardSectionLabels[section]} couldn’t be loaded
+        {sectionLabel(section, sectionLabels)} couldn’t be loaded
       </StylishText>
       <StylishText style={styles.unavailableBody} unstyled variant="caption">
-        The rest of your dashboard is unaffected. Try loading this section
-        again in a moment.
+        {body}
       </StylishText>
       {onRetry ? (
         <DashboardButton icon="refresh" label="Try Again" onPress={onRetry} />
@@ -463,7 +486,9 @@ export function DashboardLoadingState({
         Loading your merchant dashboard.
       </StylishText>
 
-      <DashboardCard style={[styles.skeletonHeroCard, { height: heights.hero }]}>
+      <DashboardCard
+        style={[styles.skeletonHeroCard, { height: heights.hero }]}
+      >
         <SkeletonLines widths={[160, 260, 320]} />
       </DashboardCard>
 
@@ -638,7 +663,12 @@ const styles = StyleSheet.create({
   // Height is supplied per width class; only padding is fixed here.
   skeletonHeroCard: { justifyContent: "center", padding: spacing.lg },
   // Height comes from the chart at render time, so only padding is fixed here.
-  skeletonChartCard: { flex: 1, gap: spacing.md, minWidth: 0, padding: spacing.lg },
+  skeletonChartCard: {
+    flex: 1,
+    gap: spacing.md,
+    minWidth: 0,
+    padding: spacing.lg,
+  },
   skeletonSideCard: {
     flex: 1,
     gap: spacing.md,

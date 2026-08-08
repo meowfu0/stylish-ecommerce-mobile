@@ -15,6 +15,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { colors, spacing } from "@/constants/design-tokens";
 import {
+  CatalogLoadingState,
+  CatalogPageContent,
+} from "@/features/merchant-dashboard/catalog-page-content";
+import {
   normalizeMerchantRole,
   resolveMerchantPermissions,
 } from "@/features/merchant-dashboard/dashboard-access";
@@ -30,10 +34,39 @@ import type {
   MerchantSession,
 } from "@/features/merchant-dashboard/dashboard-types";
 import { DASHBOARD_STATES } from "@/features/merchant-dashboard/dashboard-types";
-import { MerchantHeader } from "@/features/merchant-dashboard/merchant-header";
+import {
+  MerchantHeader,
+  MerchantHeaderSkeleton,
+} from "@/features/merchant-dashboard/merchant-header";
+import {
+  InventoryLoadingState,
+  InventoryPageContent,
+} from "@/features/merchant-dashboard/inventory-page-content";
+import {
+  OrdersLoadingState,
+  OrdersPageContent,
+} from "@/features/merchant-dashboard/orders-page-content";
+import {
+  PromotionsLoadingState,
+  PromotionsPageContent,
+} from "@/features/merchant-dashboard/promotions-page-content";
+import {
+  StaffLoadingState,
+  StaffPageContent,
+} from "@/features/merchant-dashboard/staff-page-content";
+import {
+  ProfileLoadingState,
+  ProfilePageContent,
+} from "@/features/merchant-dashboard/profile-page-content";
 import {
   findMerchantNavigationTarget,
   navigationRequiresActiveStore,
+  resolveCatalogSection,
+  resolveInventorySection,
+  resolveOrdersSection,
+  resolveProfileSection,
+  resolvePromotionsSection,
+  resolveStaffSection,
 } from "@/features/merchant-dashboard/merchant-navigation";
 import {
   MERCHANT_SIDEBAR_RAIL_WIDTH,
@@ -84,6 +117,37 @@ export function MerchantDashboardScreen() {
   const navigationTarget = findMerchantNavigationTarget(
     Array.isArray(params.section) ? params.section[0] : params.section,
   );
+  // Non-undefined for Products, Categories, Collections and Brands, which render
+  // catalog content inside this same shell rather than the overview.
+  const catalogSection = resolveCatalogSection(navigationTarget.key);
+  // Non-undefined for Stock Levels, Locations, Movements and Low Stock, which
+  // render inventory content inside this same shell.
+  const inventorySection = resolveInventorySection(navigationTarget.key);
+  // Orders and Fulfillment render their own workspace in this same shell.
+  const ordersSection = resolveOrdersSection(navigationTarget.key);
+  const promotionsSection = resolvePromotionsSection(navigationTarget.key);
+  const staffSection = resolveStaffSection(navigationTarget.key);
+  // Merchant Profile and Settings render their own workspace in this same shell.
+  const profileSection = resolveProfileSection(navigationTarget.key);
+  const [reviewCount, setReviewCount] = useState<number | undefined>(undefined);
+  const [orderCounts, setOrderCounts] = useState<{
+    fulfillment: number;
+    orders: number;
+  } | null>(null);
+  // Reported by the inventory pages once they load, so the sidebar's Low Stock
+  // badge shows a real count instead of a number baked into the navigation.
+  const [lowStockCount, setLowStockCount] = useState<number | undefined>(
+    undefined,
+  );
+  const sidebarBadges = useMemo(
+    () => ({
+      fulfillment: orderCounts?.fulfillment,
+      "low-stock": lowStockCount,
+      orders: orderCounts?.orders,
+      reviews: reviewCount,
+    }),
+    [lowStockCount, orderCounts, reviewCount],
+  );
   const mobileNavigation = width < 1024;
   const mobileContent = width <= 768;
   const dockNotifications = Platform.OS === "web" && width >= 1536;
@@ -93,7 +157,9 @@ export function MerchantDashboardScreen() {
   const [rail, setRail] = useState(false);
   const reducedMotion = useReducedMotion();
   const sidebarWidth = useRef(
-    new Animated.Value(rail ? MERCHANT_SIDEBAR_RAIL_WIDTH : MERCHANT_SIDEBAR_WIDTH),
+    new Animated.Value(
+      rail ? MERCHANT_SIDEBAR_RAIL_WIDTH : MERCHANT_SIDEBAR_WIDTH,
+    ),
   ).current;
   // Softens the hand-off from the skeleton to the real sections.
   const contentFade = useRef(new Animated.Value(0)).current;
@@ -101,7 +167,6 @@ export function MerchantDashboardScreen() {
   useEffect(() => {
     if (mobileNavigation) setRail(false);
   }, [mobileNavigation]);
-
 
   useEffect(() => {
     const target = rail ? MERCHANT_SIDEBAR_RAIL_WIDTH : MERCHANT_SIDEBAR_WIDTH;
@@ -160,6 +225,7 @@ export function MerchantDashboardScreen() {
       displayName,
       email: authUser?.email ?? "",
       merchantHandle: workspace.key,
+      merchantId: workspace.merchantId,
       merchantName,
       permissions: resolveMerchantPermissions(
         workspace.permissions,
@@ -199,8 +265,19 @@ export function MerchantDashboardScreen() {
       !session.permissions.includes(navigationTarget.permission));
 
   // Nothing is requested while the session, store status, or role already
-  // decides the state, so a blocked dashboard never retries failing calls.
-  const dashboard = useMerchantDashboardData({ enabled: !blockedBeforeData });
+  // decides the state, so a blocked dashboard never retries failing calls. Only
+  // the surface actually on screen loads: a merchant on Products never pays for
+  // sales, orders and activity, and vice versa.
+  const dashboard = useMerchantDashboardData({
+    enabled:
+      !blockedBeforeData &&
+      catalogSection === undefined &&
+      inventorySection === undefined &&
+      ordersSection === undefined &&
+      promotionsSection === undefined &&
+      profileSection === undefined &&
+      staffSection === undefined,
+  });
 
   const mainAvailableWidth =
     width -
@@ -226,18 +303,55 @@ export function MerchantDashboardScreen() {
     return (
       <SafeAreaView edges={["top", "bottom"]} style={styles.page}>
         {restoring ? (
-          <ScrollView
-            className="st-scroll"
-            contentContainerStyle={[
-              styles.contentContainer,
-              { padding: mobileContent ? spacing.md : spacing.lg },
-            ]}
-            style={styles.mainScroll}
-          >
-            <View style={styles.contentColumn}>
-              <DashboardLoadingState paired={paired} />
-            </View>
-          </ScrollView>
+          // The header placeholder sits in the same column position the real
+          // header takes, so nothing is pushed down when the session lands.
+          <View style={styles.mainColumn}>
+            <MerchantHeaderSkeleton />
+            <ScrollView
+              className="st-scroll"
+              contentContainerStyle={[
+                styles.contentContainer,
+                { padding: mobileContent ? spacing.md : spacing.lg },
+              ]}
+              style={styles.mainScroll}
+            >
+              <View style={styles.contentColumn}>
+                {catalogSection !== undefined ? (
+                  <CatalogLoadingState
+                    compact={mobileContent}
+                    section={catalogSection}
+                  />
+                ) : inventorySection !== undefined ? (
+                  <InventoryLoadingState
+                    compact={mobileContent}
+                    section={inventorySection}
+                  />
+                ) : ordersSection !== undefined ? (
+                  <OrdersLoadingState
+                    compact={mobileContent}
+                    section={ordersSection}
+                  />
+                ) : promotionsSection !== undefined ? (
+                  <PromotionsLoadingState
+                    compact={mobileContent}
+                    section={promotionsSection}
+                  />
+                ) : staffSection !== undefined ? (
+                  <StaffLoadingState
+                    compact={mobileContent}
+                    section={staffSection}
+                  />
+                ) : profileSection !== undefined ? (
+                  <ProfileLoadingState
+                    compact={mobileContent}
+                    section={profileSection}
+                  />
+                ) : (
+                  <DashboardLoadingState paired={paired} />
+                )}
+              </View>
+            </ScrollView>
+          </View>
         ) : null}
       </SafeAreaView>
     );
@@ -253,14 +367,19 @@ export function MerchantDashboardScreen() {
     session,
   });
   const contentPadding = mobileContent ? spacing.md : spacing.lg;
+  const createProduct = () =>
+    router.push("/merchant/dashboard?section=products");
 
   return (
     <SafeAreaView edges={["top", "bottom"]} style={styles.page}>
       <View style={[styles.shell, { minHeight: height }]}>
         {!mobileNavigation ? (
-          <Animated.View style={[styles.desktopSidebar, { width: sidebarWidth }]}>
+          <Animated.View
+            style={[styles.desktopSidebar, { width: sidebarWidth }]}
+          >
             <MerchantSidebar
               activeItemLabel={navigationTarget.label}
+              badges={sidebarBadges}
               onToggleRail={() => setRail((current) => !current)}
               rail={rail}
               session={session}
@@ -296,40 +415,219 @@ export function MerchantDashboardScreen() {
             <Animated.View
               style={[styles.contentColumn, { opacity: contentFade }]}
             >
-              <DashboardOverviewContent
-                catalogSummary={dashboard.catalogSummary}
-                compactOrders={mobileNavigation}
-                dateRange={dateRange}
-                failedSections={dashboard.failedSections}
-                inventorySummary={dashboard.inventorySummary}
-                salesSeries={dashboard.salesSeries}
-                hasSalesHistory={dashboard.hasSalesHistory}
-                metrics={dashboard.metrics}
-                mobile={mobileContent}
-                deniedSection={navigationTarget.label}
-                onContactSupport={contactSupport}
-                onCreateProduct={() =>
-                  router.push("/merchant/dashboard?section=products")
-                }
-                onImportCatalog={() =>
-                  router.push("/merchant/dashboard?section=catalog")
-                }
-                onRetry={dashboard.retry}
-                onReturnToOverview={() =>
-                  router.replace("/merchant/dashboard?section=overview")
-                }
-                onReviewMerchantProfile={() =>
-                  router.push("/merchant/dashboard?section=merchant-profile")
-                }
-                onViewAllOrders={() =>
-                  router.push("/merchant/dashboard?section=orders")
-                }
-                paired={paired}
-                pipelineStages={dashboard.pipelineStages}
-                requiredPermission={navigationTarget.permission}
-                session={session}
-                state={state}
-              />
+              {profileSection !== undefined ? (
+                <ProfilePageContent
+                  compact={mobileContent}
+                  deniedSection={navigationTarget.label}
+                  onContactSupport={contactSupport}
+                  onOpenProfile={() =>
+                    router.push("/merchant/dashboard?section=merchant-profile")
+                  }
+                  onReturnToOverview={() =>
+                    router.replace("/merchant/dashboard?section=overview")
+                  }
+                  onReviewMerchantProfile={() =>
+                    router.push("/merchant/dashboard?section=merchant-profile")
+                  }
+                  paired={paired}
+                  requiredPermission={navigationTarget.permission}
+                  resolveState={(dataState) =>
+                    resolveDashboardState({
+                      authReason:
+                        authReason === "session-expired" ? authReason : null,
+                      authStatus,
+                      dataState,
+                      previewState,
+                      requiredPermission: navigationTarget.permission,
+                      requiresActiveStore,
+                      session,
+                    })
+                  }
+                  section={profileSection}
+                  session={session}
+                />
+              ) : staffSection !== undefined ? (
+                <StaffPageContent
+                  compact={mobileContent}
+                  deniedSection={navigationTarget.label}
+                  onContactSupport={contactSupport}
+                  onReturnToOverview={() =>
+                    router.replace("/merchant/dashboard?section=overview")
+                  }
+                  onReviewMerchantProfile={() =>
+                    router.push("/merchant/dashboard?section=merchant-profile")
+                  }
+                  paired={paired}
+                  requiredPermission={navigationTarget.permission}
+                  resolveState={(dataState) =>
+                    resolveDashboardState({
+                      authReason:
+                        authReason === "session-expired" ? authReason : null,
+                      authStatus,
+                      dataState,
+                      previewState,
+                      requiredPermission: navigationTarget.permission,
+                      requiresActiveStore,
+                      session,
+                    })
+                  }
+                  section={staffSection}
+                  session={session}
+                />
+              ) : promotionsSection !== undefined ? (
+                <PromotionsPageContent
+                  compact={mobileContent}
+                  deniedSection={navigationTarget.label}
+                  onContactSupport={contactSupport}
+                  onReturnToOverview={() =>
+                    router.replace("/merchant/dashboard?section=overview")
+                  }
+                  onReviewCountChange={setReviewCount}
+                  onReviewMerchantProfile={() =>
+                    router.push("/merchant/dashboard?section=merchant-profile")
+                  }
+                  paired={paired}
+                  requiredPermission={navigationTarget.permission}
+                  resolveState={(dataState) =>
+                    resolveDashboardState({
+                      authReason:
+                        authReason === "session-expired" ? authReason : null,
+                      authStatus,
+                      dataState,
+                      previewState,
+                      requiredPermission: navigationTarget.permission,
+                      requiresActiveStore,
+                      session,
+                    })
+                  }
+                  section={promotionsSection}
+                  session={session}
+                />
+              ) : ordersSection !== undefined ? (
+                <OrdersPageContent
+                  compact={mobileContent}
+                  deniedSection={navigationTarget.label}
+                  onContactSupport={contactSupport}
+                  onCountsChange={setOrderCounts}
+                  onReturnToOverview={() =>
+                    router.replace("/merchant/dashboard?section=overview")
+                  }
+                  onReviewMerchantProfile={() =>
+                    router.push("/merchant/dashboard?section=merchant-profile")
+                  }
+                  paired={paired}
+                  requiredPermission={navigationTarget.permission}
+                  resolveState={(dataState) =>
+                    resolveDashboardState({
+                      authReason:
+                        authReason === "session-expired" ? authReason : null,
+                      authStatus,
+                      dataState,
+                      previewState,
+                      requiredPermission: navigationTarget.permission,
+                      requiresActiveStore,
+                      session,
+                    })
+                  }
+                  section={ordersSection}
+                  session={session}
+                />
+              ) : inventorySection !== undefined ? (
+                <InventoryPageContent
+                  compact={mobileContent}
+                  deniedSection={navigationTarget.label}
+                  onContactSupport={contactSupport}
+                  onLowStockCount={setLowStockCount}
+                  onReturnToOverview={() =>
+                    router.replace("/merchant/dashboard?section=overview")
+                  }
+                  onReviewMerchantProfile={() =>
+                    router.push("/merchant/dashboard?section=merchant-profile")
+                  }
+                  paired={paired}
+                  requiredPermission={navigationTarget.permission}
+                  resolveState={(dataState) =>
+                    resolveDashboardState({
+                      authReason:
+                        authReason === "session-expired" ? authReason : null,
+                      authStatus,
+                      dataState,
+                      previewState,
+                      requiredPermission: navigationTarget.permission,
+                      requiresActiveStore,
+                      session,
+                    })
+                  }
+                  section={inventorySection}
+                  session={session}
+                />
+              ) : catalogSection === undefined ? (
+                <DashboardOverviewContent
+                  catalogSummary={dashboard.catalogSummary}
+                  compactOrders={mobileNavigation}
+                  dateRange={dateRange}
+                  failedSections={dashboard.failedSections}
+                  inventorySummary={dashboard.inventorySummary}
+                  salesSeries={dashboard.salesSeries}
+                  hasSalesHistory={dashboard.hasSalesHistory}
+                  metrics={dashboard.metrics}
+                  mobile={mobileContent}
+                  deniedSection={navigationTarget.label}
+                  onContactSupport={contactSupport}
+                  onCreateProduct={createProduct}
+                  onImportCatalog={() =>
+                    router.push("/merchant/dashboard?section=catalog")
+                  }
+                  onRetry={dashboard.retry}
+                  onReturnToOverview={() =>
+                    router.replace("/merchant/dashboard?section=overview")
+                  }
+                  onReviewMerchantProfile={() =>
+                    router.push("/merchant/dashboard?section=merchant-profile")
+                  }
+                  onViewAllOrders={() =>
+                    router.push("/merchant/dashboard?section=orders")
+                  }
+                  paired={paired}
+                  pipelineStages={dashboard.pipelineStages}
+                  requiredPermission={navigationTarget.permission}
+                  session={session}
+                  state={state}
+                />
+              ) : (
+                <CatalogPageContent
+                  compact={mobileContent}
+                  deniedSection={navigationTarget.label}
+                  onContactSupport={contactSupport}
+                  onImportCatalog={() =>
+                    router.push("/merchant/dashboard?section=catalog")
+                  }
+                  onReturnToOverview={() =>
+                    router.replace("/merchant/dashboard?section=overview")
+                  }
+                  onReviewMerchantProfile={() =>
+                    router.push("/merchant/dashboard?section=merchant-profile")
+                  }
+                  paired={paired}
+                  requiredPermission={navigationTarget.permission}
+                  // The catalog owns its own loading, so the shell only folds
+                  // the result into its auth, store-status and role rules.
+                  resolveState={(dataState) =>
+                    resolveDashboardState({
+                      authReason:
+                        authReason === "session-expired" ? authReason : null,
+                      authStatus,
+                      dataState,
+                      previewState,
+                      requiredPermission: navigationTarget.permission,
+                      requiresActiveStore,
+                      session,
+                    })
+                  }
+                  section={catalogSection}
+                  session={session}
+                />
+              )}
             </Animated.View>
           </ScrollView>
         </View>
@@ -349,6 +647,7 @@ export function MerchantDashboardScreen() {
             <View style={styles.mobileSidebar}>
               <MerchantSidebar
                 activeItemLabel={navigationTarget.label}
+                badges={sidebarBadges}
                 onClose={() => setDrawerOpen(false)}
                 onToggleRail={() => undefined}
                 rail={false}

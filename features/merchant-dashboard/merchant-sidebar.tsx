@@ -32,10 +32,17 @@ import {
   type DashboardIconName,
 } from "@/features/merchant-dashboard/dashboard-primitives";
 import {
+  findMerchantNavigationGroupLabel,
   type MerchantNavigationItem,
   navigationRequiresActiveStore,
   resolveMerchantNavigationAccess,
 } from "@/features/merchant-dashboard/merchant-navigation";
+import { HelpSupportDialog } from "@/features/merchant-dashboard/help-support-dialog";
+import {
+  presentStoreStatus,
+  STOREFRONT_ROUTE,
+  type StoreStatusPresentation,
+} from "@/features/merchant-dashboard/merchant-store-status";
 import { SidebarPressable } from "@/features/merchant-dashboard/sidebar-pressable";
 import { useReducedMotion } from "@/features/merchant-dashboard/use-reduced-motion";
 import type { MerchantSession } from "@/features/merchant-dashboard/dashboard-types";
@@ -59,8 +66,35 @@ const pressedRowBackground = `${colors.brand.pinkSoft}59`;
  * and the collapse control. The rail mark is sized so the stacked mark, gap and
  * control still fit inside the shared header height with room to breathe.
  */
-const SIDEBAR_LOGO_MAX_WIDTH = 144;
+export const SIDEBAR_LOGO_MAX_WIDTH = 112;
 const SIDEBAR_MARK_HEIGHT = 22;
+const COLLAPSE_CONTROL_SIZE = 36;
+const MERCHANT_AVATAR_SIZE = 38;
+
+/**
+ * The sidebar's vertical rhythm, derived from tokens rather than measured off a
+ * screenshot.
+ *
+ * The brand band is the rail's stack — mark, gap, collapse control — plus even
+ * clearance, and the expanded sidebar centres its lockup in the same band. Both
+ * states therefore share a header height, which is what stops the navigation
+ * jumping while the sidebar animates between them. The breathing room above the
+ * brand comes from the sidebar's own top padding instead of inflating this
+ * band, because growing the band would push the merchant card further from the
+ * logo at exactly the moment the design wants it closer.
+ */
+const SIDEBAR_BRAND_HEIGHT =
+  SIDEBAR_MARK_HEIGHT + spacing.xs + COLLAPSE_CONTROL_SIZE + spacing.xs;
+
+/** The avatar plus the card's own padding: the card sizes itself to content. */
+const MERCHANT_CARD_HEIGHT = MERCHANT_AVATAR_SIZE + spacing.sm * 2;
+
+/**
+ * The card plus the gap before the first navigation row. Fixed so the rail's
+ * smaller avatar block still hands the navigation off at the same height the
+ * expanded card does.
+ */
+const SIDEBAR_WORKSPACE_HEIGHT = MERCHANT_CARD_HEIGHT + spacing.xs;
 
 /**
  * The sidebar's two resting widths. The shell owns the element that actually
@@ -294,6 +328,7 @@ function SidebarChevron({
 
 function SidebarChildList({
   activeItemLabel,
+  badges,
   disabled,
   expanded,
   groupId,
@@ -303,6 +338,7 @@ function SidebarChildList({
   reducedMotion,
 }: {
   activeItemLabel: string;
+  badges: SidebarBadges;
   disabled: boolean;
   expanded: boolean;
   groupId: string;
@@ -348,7 +384,7 @@ function SidebarChildList({
     const contents = (
       <SidebarNavRow
         active={active}
-        badge={item.badge}
+        badge={badges[item.key] ?? item.badge}
         child
         disabled={disabled}
         label={item.label}
@@ -447,6 +483,7 @@ const webSubnavItemStyle: CSSProperties = {
 
 function SidebarNavItem({
   activeItemLabel,
+  badges,
   disabled,
   disabledHint,
   expanded,
@@ -458,6 +495,7 @@ function SidebarNavItem({
   reducedMotion,
 }: {
   activeItemLabel: string;
+  badges: SidebarBadges;
   disabled: boolean;
   disabledHint: string;
   expanded: boolean;
@@ -499,6 +537,7 @@ function SidebarNavItem({
       {!rail && item.children ? (
         <SidebarChildList
           activeItemLabel={activeItemLabel}
+          badges={badges}
           disabled={disabled}
           expanded={expanded}
           groupId={groupId}
@@ -601,7 +640,10 @@ function SidebarWorkspaceCard({
       ]}
       testID="merchant-sidebar-workspace-card"
     >
-      <View style={[styles.merchantAvatar, rail && styles.merchantAvatarRail]}>
+      <View
+        style={[styles.merchantAvatar, rail && styles.merchantAvatarRail]}
+        testID="merchant-sidebar-merchant-avatar"
+      >
         <StylishText style={styles.avatarLabel} unstyled variant="label">
           {session.merchantName.charAt(0).toUpperCase()}
         </StylishText>
@@ -635,8 +677,15 @@ function SidebarWorkspaceCard({
   );
 }
 
+/**
+ * Live counts keyed by navigation key, so a badge shows what the database
+ * reports rather than a number baked into the navigation model.
+ */
+export type SidebarBadges = Readonly<Record<string, number | undefined>>;
+
 export function MerchantSidebar({
   activeItemLabel = "Overview",
+  badges = {},
   onClose,
   onToggleRail,
   rail,
@@ -644,6 +693,7 @@ export function MerchantSidebar({
   session,
 }: {
   activeItemLabel?: string;
+  badges?: SidebarBadges;
   onClose?: () => void;
   onToggleRail: () => void;
   rail: boolean;
@@ -653,12 +703,22 @@ export function MerchantSidebar({
   const router = useRouter();
   const reducedMotion = useReducedMotion();
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
+  // Label, tone, icon and whether the storefront can be opened all come from one
+  // shared map, so the sidebar never decides how a status reads.
+  const storeStatus = presentStoreStatus(session);
   const [isScrolling, setIsScrolling] = useState(false);
   const [navigationContentHeight, setNavigationContentHeight] = useState(0);
   const [navigationViewportHeight, setNavigationViewportHeight] = useState(0);
+  // The group that owns the page the merchant is on, if any.
+  const activeGroupLabel = findMerchantNavigationGroupLabel(activeItemLabel);
+  const activeGroupId = activeGroupLabel
+    ? sidebarItemId(activeGroupLabel)
+    : undefined;
   const [openGroupIds, setOpenGroupIds] = useState<Set<string>>(
-    () => new Set(),
+    () => new Set(activeGroupId ? [activeGroupId] : []),
   );
+  const lastActiveGroupId = useRef(activeGroupId);
 
   useEffect(
     () => () => {
@@ -666,6 +726,17 @@ export function MerchantSidebar({
     },
     [],
   );
+
+  useEffect(() => {
+    // Opens the group when the merchant arrives at one of its children, and
+    // when they move between them. It deliberately does not re-open on every
+    // render: a merchant who collapses the group while still on its page keeps
+    // it collapsed.
+    if (activeGroupId && activeGroupId !== lastActiveGroupId.current) {
+      setOpenGroupIds(new Set([activeGroupId]));
+    }
+    lastActiveGroupId.current = activeGroupId;
+  }, [activeGroupId]);
 
   const noteScrollActivity = () => {
     setIsScrolling(true);
@@ -721,11 +792,12 @@ export function MerchantSidebar({
     .join(" ");
 
   return (
-    <View style={styles.sidebar}>
+    <View style={styles.sidebar} testID="merchant-sidebar">
       <SidebarBrand onToggleRail={onToggleRail} rail={rail} />
 
       <View
         style={[styles.workspaceRegion, rail && styles.workspaceRegionRail]}
+        testID="merchant-sidebar-workspace-region"
       >
         <SidebarWorkspaceCard
           onPress={() => router.push("/auth/choose-workspace")}
@@ -768,6 +840,7 @@ export function MerchantSidebar({
           return (
             <SidebarNavItem
               activeItemLabel={activeItemLabel}
+              badges={badges}
               disabled={disabled}
               disabledHint={blockedByStore ? inactiveStoreTitle : disabledTitle}
               expanded={openGroupIds.has(groupId)}
@@ -787,26 +860,58 @@ export function MerchantSidebar({
       </ScrollView>
 
       <View style={[styles.utilityRegion, rail && styles.utilityRegionRail]}>
-        {!rail ? (
-          <View style={styles.storeStatusRow}>
+        {/* The rail has no room for a chip, so the status becomes an icon that
+            still carries the full label to assistive technology and to the
+            native tooltip — never a bare colour. */}
+        <View
+          accessibilityLabel={`Store status: ${storeStatus.shortLabel}`}
+          accessibilityRole="text"
+          style={[styles.storeStatusRow, rail && styles.storeStatusRowRail]}
+          testID="sidebar-store-status"
+          {...webTitle(storeStatus.label, rail)}
+        >
+          {rail ? (
+            <View style={styles.storeStatusRail}>
+              <DashboardIcon
+                color={storeStatusRailColor(storeStatus.tone)}
+                name={storeStatus.icon}
+                size={18}
+              />
+            </View>
+          ) : (
             <StatusChip
-              label={`Store ${session.storeStatus}`}
-              tone={session.storeStatus === "active" ? "green" : "warning"}
+              icon={storeStatus.icon}
+              label={storeStatus.label}
+              tone={storeStatus.tone}
             />
-          </View>
-        ) : null}
+          )}
+        </View>
         <SidebarUtility
+          disabled={!storeStatus.canViewStorefront}
+          disabledHint={storeStatus.disabledReason}
           icon="open-in-new"
           label="View Storefront"
+          onPress={() => {
+            router.push(STOREFRONT_ROUTE);
+            onClose?.();
+          }}
           rail={rail}
         />
         <SidebarUtility
           icon="swap-horizontal"
           label="Switch Workspace"
-          onPress={() => router.push("/auth/choose-workspace")}
+          onPress={() => {
+            router.push("/auth/choose-workspace");
+            onClose?.();
+          }}
           rail={rail}
         />
-        <SidebarUtility icon="lifebuoy" label="Help & Support" rail={rail} />
+        <SidebarUtility
+          icon="lifebuoy"
+          label="Help & Support"
+          onPress={() => setHelpOpen(true)}
+          rail={rail}
+        />
         <SidebarUtility
           icon="logout"
           label="Sign Out"
@@ -814,6 +919,11 @@ export function MerchantSidebar({
           rail={rail}
         />
       </View>
+
+      <HelpSupportDialog
+        onClose={() => setHelpOpen(false)}
+        visible={helpOpen}
+      />
 
       {onClose ? (
         <SidebarPressable
@@ -831,11 +941,15 @@ export function MerchantSidebar({
 }
 
 function SidebarUtility({
+  disabled = false,
+  disabledHint,
   icon,
   label,
   onPress,
   rail,
 }: {
+  disabled?: boolean;
+  disabledHint?: string;
   icon: DashboardIconName;
   label: string;
   onPress?: () => void;
@@ -843,38 +957,59 @@ function SidebarUtility({
 }) {
   const [hovered, setHovered] = useState(false);
   const [pressed, setPressed] = useState(false);
+  const emphasized = hovered && !disabled;
+  // A disabled row keeps its tooltip at every width — the rail relies on one to
+  // name the action at all, and a blocked action needs to say why.
+  const tooltip = disabled ? (disabledHint ?? label) : label;
 
   return (
     <SidebarPressable
-      {...webTitle(label, rail)}
+      {...webTitle(tooltip, rail || disabled)}
+      aria-disabled={disabled}
+      accessibilityHint={disabled ? disabledHint : undefined}
       accessibilityLabel={label}
       accessibilityRole="button"
-      className={`${focusRingClass} ${interactiveTransitionClass} cursor-pointer`}
-      onHoverIn={() => setHovered(true)}
+      accessibilityState={{ disabled }}
+      className={`${focusRingClass} ${interactiveTransitionClass} ${
+        disabled ? "cursor-not-allowed" : "cursor-pointer"
+      }`}
+      disabled={disabled}
+      onHoverIn={() => {
+        if (!disabled) setHovered(true);
+      }}
       onHoverOut={() => setHovered(false)}
-      onPress={onPress}
-      onPressIn={() => setPressed(true)}
+      onPress={disabled ? undefined : onPress}
+      onPressIn={() => {
+        if (!disabled) setPressed(true);
+      }}
       onPressOut={() => setPressed(false)}
       style={[
         styles.utilityItem,
         rail && styles.utilityItemRail,
-        hovered && styles.navItemHovered,
-        pressed && styles.navItemPressed,
+        emphasized && styles.navItemHovered,
+        pressed && !disabled && styles.navItemPressed,
+        disabled && styles.navItemDisabled,
       ]}
+      testID={`sidebar-utility-${sidebarItemId(label)}`}
     >
       <DashboardIcon
-        color={hovered ? colors.brand.primary : colors.neutral[550]}
+        color={emphasized ? colors.brand.primary : colors.neutral[550]}
         name={icon}
       />
       {!rail ? (
         <StylishText
           numberOfLines={1}
-          style={[styles.utilityLabel, hovered && styles.navLabelHovered]}
+          style={[styles.utilityLabel, emphasized && styles.navLabelHovered]}
           unstyled
           variant="navigation"
         >
           {label}
         </StylishText>
+      ) : null}
+      {disabled && !rail ? (
+        <View pointerEvents="none" style={styles.navLock}>
+          <DashboardIcon name="lock-outline" size={14} />
+        </View>
       ) : null}
     </SidebarPressable>
   );
@@ -894,7 +1029,7 @@ const styles = StyleSheet.create({
     // Minimum clearance between the lockup and the collapse control; the logo's
     // own cap leaves more than this at the sidebar's normal width.
     gap: spacing.md,
-    height: 75,
+    height: SIDEBAR_BRAND_HEIGHT,
     justifyContent: "space-between",
     paddingHorizontal: 20,
   },
@@ -915,9 +1050,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: borderRadius.input,
     flexShrink: 0,
-    height: 36,
+    height: COLLAPSE_CONTROL_SIZE,
     justifyContent: "center",
-    width: 36,
+    width: COLLAPSE_CONTROL_SIZE,
   },
   countBadge: {
     alignSelf: "center",
@@ -955,9 +1090,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.brand.socialSurface,
     borderRadius: borderRadius.input,
-    height: 38,
+    height: MERCHANT_AVATAR_SIZE,
     justifyContent: "center",
-    width: 38,
+    width: MERCHANT_AVATAR_SIZE,
   },
   merchantAvatarRail: { height: 40, width: 40 },
   mobileClose: {
@@ -1074,6 +1209,9 @@ const styles = StyleSheet.create({
     height: "100%",
     minHeight: 0,
     overflow: "hidden",
+    // Clearance above the logo, in both states, without changing the brand
+    // band the two layouts share.
+    paddingTop: spacing.sm,
     // Fills whatever width the shell gives it, so collapsing can be animated
     // from the outside without the sidebar fighting it with a fixed width.
     width: "100%",
@@ -1148,9 +1286,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.sm,
-    height: 65,
-    minHeight: 65,
-    padding: 12,
+    minHeight: MERCHANT_CARD_HEIGHT,
+    padding: spacing.sm,
   },
   workspaceCardHovered: {
     backgroundColor: colors.neutral[0],
@@ -1185,11 +1322,16 @@ const styles = StyleSheet.create({
   },
   workspaceRegion: {
     flexShrink: 0,
-    height: 81,
-    paddingBottom: spacing.md,
+    height: SIDEBAR_WORKSPACE_HEIGHT,
+    paddingBottom: spacing.xs,
     paddingHorizontal: spacing.md,
   },
-  workspaceRegionRail: { paddingHorizontal: spacing.sm },
+  // Centres the rail's shorter avatar block in the band the expanded card
+  // fills, so the avatar keeps the same centre line in both states.
+  workspaceRegionRail: {
+    justifyContent: "center",
+    paddingHorizontal: spacing.sm,
+  },
   workspaceRole: {
     color: colors.neutral[550],
     fontFamily: typography.fontFamily.montserratMedium,
@@ -1200,4 +1342,23 @@ const styles = StyleSheet.create({
     height: 34,
     justifyContent: "center",
   },
+  storeStatusRail: {
+    alignItems: "center",
+    height: 34,
+    justifyContent: "center",
+    width: 34,
+  },
+  // The rail keeps the same 34px band the chip occupies, so collapsing the
+  // sidebar does not shift the four actions below it.
+  storeStatusRowRail: { alignItems: "center" },
 });
+
+/** The rail shows the status as a tinted icon, using the chip's own tones. */
+function storeStatusRailColor(tone: StoreStatusPresentation["tone"]) {
+  return {
+    danger: colors.feedback.danger,
+    green: colors.feedback.success,
+    neutral: colors.neutral[550],
+    warning: colors.feedback.warning,
+  }[tone];
+}

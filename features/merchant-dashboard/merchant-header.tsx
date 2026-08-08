@@ -1,12 +1,6 @@
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
-import {
-  Modal,
-  Pressable,
-  StyleSheet,
-  useWindowDimensions,
-  View,
-} from "react-native";
+import { Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
 
 import { StylishTextInput } from "@/components/forms/stylish-text-input";
 import { StylishText } from "@/components/typography/stylish-text";
@@ -14,6 +8,7 @@ import { borderRadius, colors, spacing } from "@/constants/design-tokens";
 import {
   DashboardIcon,
   type DashboardIconName,
+  DashboardSkeleton,
 } from "@/features/merchant-dashboard/dashboard-primitives";
 import type {
   DashboardNotification,
@@ -26,15 +21,96 @@ import {
   DashboardMenu,
   type MenuAnchor,
 } from "@/features/merchant-dashboard/dashboard-menu";
+import { HelpSupportDialog } from "@/features/merchant-dashboard/help-support-dialog";
 import { NotificationMenu } from "@/features/merchant-dashboard/notification-menu";
+import {
+  presentStoreStatus,
+  STOREFRONT_ROUTE,
+} from "@/features/merchant-dashboard/merchant-store-status";
 import { signOutCurrentSession } from "@/services/auth/auth-session";
 
 const DATE_LABELS = DATE_RANGE_LABELS;
 
-type HeaderMenu = "account" | null;
+/**
+ * The topbar's icon controls.
+ *
+ * One box size and one glyph size for the bell and the Help control, so the
+ * pair reads as a matched set rather than two buttons that happen to sit next
+ * to each other. The box comfortably clears the 44px touch-target minimum.
+ */
+export const ICON_BUTTON_SIZE = 46;
+export const HEADER_ICON_SIZE = 24;
+
+/**
+ * Every popover the header owns, in one piece of state.
+ *
+ * They were three independent flags, which meant the bell panel and the account
+ * menu could be on screen at the same time. A single value makes them mutually
+ * exclusive by construction rather than by remembering to close the others.
+ */
+type HeaderMenu = "account" | "date" | "help" | "notifications" | null;
 
 /** Ordered as the design lists them; the labels come from the shared map. */
 const DATE_RANGES = Object.keys(DATE_LABELS) as DateRange[];
+
+/**
+ * Where each Help entry lands.
+ *
+ * A section id opens the shared Help & Support dialog at that section;
+ * `"contact"` opens it with the contact channels first. Every destination is
+ * real content that already exists, so no entry is a dead row waiting on a
+ * route that has not been built.
+ */
+type HelpDestination = "catalog" | "common" | "contact" | "orders";
+
+const HELP_ITEMS: {
+  destination: HelpDestination;
+  icon: DashboardIconName;
+  key: string;
+  label: string;
+}[] = [
+  {
+    destination: "common",
+    icon: "lifebuoy",
+    key: "help-center",
+    label: "Help Center",
+  },
+  {
+    destination: "common",
+    icon: "rocket-launch-outline",
+    key: "getting-started",
+    label: "Getting Started",
+  },
+  {
+    destination: "orders",
+    icon: "truck-outline",
+    key: "orders-help",
+    label: "Orders & Fulfillment Help",
+  },
+  {
+    destination: "catalog",
+    icon: "package-variant-closed",
+    key: "catalog-help",
+    label: "Catalog & Inventory Help",
+  },
+  {
+    destination: "contact",
+    icon: "email-outline",
+    key: "contact-support",
+    label: "Contact Support",
+  },
+];
+
+/** Counts past 9 would stretch the badge and shift the bell's optical centre. */
+export function badgeCount(count: number) {
+  return count > 9 ? "9+" : String(count);
+}
+
+/** Reads as a sentence rather than "1 unread notifications". */
+export function notificationLabel(count: number) {
+  if (count === 0) return "Notifications, none unread";
+  return `Notifications, ${count} unread`;
+}
 
 export function MerchantHeader({
   dateRange,
@@ -55,38 +131,48 @@ export function MerchantHeader({
   const router = useRouter();
   const { width } = useWindowDimensions();
   const [menu, setMenu] = useState<HeaderMenu>(null);
+  const [help, setHelp] = useState<HelpDestination | null>(null);
   const compact = width < 1280;
   const mobile = width < 1024;
+  // The header runs out of room for a fifth control on a phone, where the
+  // navigation drawer already carries Help & Support. Tablets upward keep it.
+  const phone = width < 768;
   // Derived, so the badge can never disagree with the panel it opens.
   const notificationCount = notifications.filter((item) => item.unread).length;
 
-  // The date menu anchors to its own trigger rather than floating in the
-  // header's corner, so it opens directly beneath the button that owns it.
+  // Every menu anchors to its own trigger rather than floating in the header's
+  // corner, so it opens directly beneath the control that owns it.
   const dateTrigger = useRef<View>(null);
-  const [dateAnchor, setDateAnchor] = useState<MenuAnchor | null>(null);
-  const [dateOpen, setDateOpen] = useState(false);
+  const bellTrigger = useRef<View>(null);
+  const helpTrigger = useRef<View>(null);
+  const accountTrigger = useRef<View>(null);
+  const [anchor, setAnchor] = useState<MenuAnchor | null>(null);
 
-  const openDateMenu = () => {
-    setDateOpen(true);
-    dateTrigger.current?.measureInWindow((x, y, triggerWidth, height) => {
-      setDateAnchor({ height, width: triggerWidth, x, y });
+  /**
+   * Opens one popover and, because there is a single `menu` value, closes
+   * whichever was open. Pressing the same trigger again closes it.
+   *
+   * The anchor is measured on every open rather than cached per trigger: one
+   * menu is visible at a time, so one measurement is all that can be in use,
+   * and re-measuring keeps a menu anchored after the header reflows.
+   */
+  const toggleMenu = (
+    key: Exclude<HeaderMenu, null>,
+    trigger: typeof dateTrigger,
+  ) => {
+    if (menu === key) {
+      setMenu(null);
+      return;
+    }
+    setMenu(key);
+    trigger.current?.measureInWindow((x, y, triggerWidth, height) => {
+      setAnchor({ height, width: triggerWidth, x, y });
     });
   };
 
-  const bellTrigger = useRef<View>(null);
-  const [bellAnchor, setBellAnchor] = useState<MenuAnchor | null>(null);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
-
-  // A second press on the bell closes the panel it opened.
-  const toggleNotifications = () => {
-    if (notificationsOpen) {
-      setNotificationsOpen(false);
-      return;
-    }
-    setNotificationsOpen(true);
-    bellTrigger.current?.measureInWindow((x, y, triggerWidth, height) => {
-      setBellAnchor({ height, width: triggerWidth, x, y });
-    });
+  const openHelp = (destination: HelpDestination) => {
+    setMenu(null);
+    setHelp(destination);
   };
 
   const signOut = async () => {
@@ -97,7 +183,10 @@ export function MerchantHeader({
 
   return (
     <View style={styles.header}>
-      <View style={[styles.headerRow, mobile && styles.headerRowMobile]}>
+      <View
+        style={[styles.headerRow, mobile && styles.headerRowMobile]}
+        testID="merchant-header-row"
+      >
         {mobile ? (
           <HeaderIconButton
             icon="menu"
@@ -130,9 +219,9 @@ export function MerchantHeader({
         <Pressable
           accessibilityLabel={`Date range ${DATE_LABELS[dateRange]}`}
           accessibilityRole="button"
-          accessibilityState={{ expanded: dateOpen }}
+          accessibilityState={{ expanded: menu === "date" }}
           className="focus-visible:ring-[3px] focus-visible:ring-brand-blue/55"
-          onPress={openDateMenu}
+          onPress={() => toggleMenu("date", dateTrigger)}
           ref={dateTrigger}
           style={styles.dateButton}
           testID="header-date-range"
@@ -147,7 +236,7 @@ export function MerchantHeader({
 
         <DashboardMenu
           accessibilityLabel="Date range options"
-          anchor={dateAnchor}
+          anchor={anchor}
           items={DATE_RANGES.map((range) => ({
             // The selected row shows a check in place of its calendar icon.
             icon: "calendar-blank-outline",
@@ -157,49 +246,91 @@ export function MerchantHeader({
             selected: range === dateRange,
           }))}
           minWidth={200}
-          onClose={() => setDateOpen(false)}
+          onClose={() => setMenu(null)}
           testID="header-date-range-menu"
-          visible={dateOpen}
+          visible={menu === "date"}
         />
-        <View ref={bellTrigger}>
+
+        {/* The badge is absolutely positioned inside this wrapper, so it never
+            adds to the button's width and the bell stays the same size as the
+            Help control beside it. */}
+        <View
+          ref={bellTrigger}
+          style={styles.iconButtonSlot}
+          testID="header-notifications-slot"
+        >
           <HeaderIconButton
-            expanded={notificationsOpen}
+            expanded={menu === "notifications"}
             icon="bell-outline"
-            label={`${notificationCount} unread notifications`}
-            onPress={toggleNotifications}
+            label={notificationLabel(notificationCount)}
+            onPress={() => toggleMenu("notifications", bellTrigger)}
             testID="header-notifications"
           />
           {notificationCount ? (
-            <View pointerEvents="none" style={styles.notificationBadge}>
+            <View
+              pointerEvents="none"
+              style={styles.notificationBadge}
+              testID="header-notifications-badge"
+            >
               <StylishText
+                numberOfLines={1}
                 style={styles.notificationBadgeText}
                 unstyled
                 variant="caption"
               >
-                {notificationCount}
+                {badgeCount(notificationCount)}
               </StylishText>
             </View>
           ) : null}
         </View>
 
         <NotificationMenu
-          anchor={bellAnchor}
+          anchor={anchor}
           notifications={notifications}
-          onClose={() => setNotificationsOpen(false)}
+          onClose={() => setMenu(null)}
           onSeeAll={onOpenNotifications}
-          visible={notificationsOpen}
+          visible={menu === "notifications"}
         />
-        {!mobile ? (
-          <HeaderIconButton
-            icon="help-circle-outline"
-            label="Help and support"
-          />
+
+        {!phone ? (
+          <View
+            ref={helpTrigger}
+            style={styles.iconButtonSlot}
+            testID="header-help-slot"
+          >
+            <HeaderIconButton
+              expanded={menu === "help"}
+              icon="help-circle-outline"
+              label="Open help menu"
+              onPress={() => toggleMenu("help", helpTrigger)}
+              testID="header-help"
+            />
+          </View>
         ) : null}
+
+        <DashboardMenu
+          accessibilityLabel="Help and support options"
+          anchor={anchor}
+          items={HELP_ITEMS.map((item) => ({
+            icon: item.icon,
+            key: item.key,
+            label: item.label,
+            onPress: () => openHelp(item.destination),
+          }))}
+          minWidth={232}
+          onClose={() => setMenu(null)}
+          testID="header-help-menu"
+          visible={menu === "help"}
+        />
         <Pressable
           accessibilityLabel={`Account menu for ${session.displayName}`}
           accessibilityRole="button"
-          onPress={() => setMenu("account")}
+          accessibilityState={{ expanded: menu === "account" }}
+          className="focus-visible:ring-[3px] focus-visible:ring-brand-blue/55"
+          onPress={() => toggleMenu("account", accountTrigger)}
+          ref={accountTrigger}
           style={styles.accountButton}
+          testID="header-account"
         >
           <View style={styles.avatar}>
             <StylishText style={styles.avatarText} unstyled variant="caption">
@@ -234,41 +365,56 @@ export function MerchantHeader({
         </View>
       ) : null}
 
-      <Modal
-        animationType="fade"
-        onRequestClose={() => setMenu(null)}
-        transparent
-        visible={menu !== null}
-      >
-        <Pressable
-          accessibilityLabel="Close menu"
-          accessibilityRole="button"
-          onPress={() => setMenu(null)}
-          style={styles.modalBackdrop}
-        >
-          <View style={[styles.popover, mobile && styles.popoverMobile]}>
-            {menu === "account" ? (
-              <>
-                <PopoverItem icon="account-outline" label="Account profile" />
-                <PopoverItem
-                  icon="swap-horizontal"
-                  label="Switch workspace"
-                  onPress={() => {
-                    setMenu(null);
-                    router.push("/auth/choose-workspace");
-                  }}
-                />
-                <PopoverItem icon="open-in-new" label="View storefront" />
-                <PopoverItem
-                  icon="logout"
-                  label="Sign out"
-                  onPress={() => void signOut()}
-                />
-              </>
-            ) : null}
-          </View>
-        </Pressable>
-      </Modal>
+      {/* The same anchored popover the date-range and notification menus use,
+          so there is one dropdown system in the header rather than two. It
+          carries no profile summary: the trigger beside it already shows the
+          name and role, and repeating them cost the menu a header, a divider
+          and the compact height the design asks for. */}
+      <DashboardMenu
+        accessibilityLabel={`Account options for ${session.displayName}`}
+        anchor={anchor}
+        items={[
+          {
+            icon: "account-outline",
+            key: "account-profile",
+            label: "Account profile",
+          },
+          {
+            icon: "swap-horizontal",
+            key: "switch-workspace",
+            label: "Switch workspace",
+            onPress: () => router.push("/auth/choose-workspace"),
+          },
+          {
+            disabled: !presentStoreStatus(session).canViewStorefront,
+            icon: "open-in-new",
+            key: "view-storefront",
+            label: "View storefront",
+            // The same route the sidebar footer and the welcome card use, so
+            // there is one definition of where the storefront lives.
+            onPress: () => router.push(STOREFRONT_ROUTE),
+          },
+          {
+            icon: "logout",
+            key: "sign-out",
+            label: "Sign out",
+            onPress: () => void signOut(),
+          },
+        ]}
+        minWidth={216}
+        onClose={() => setMenu(null)}
+        testID="header-account-menu"
+        visible={menu === "account"}
+      />
+
+      {/* The sidebar's Help & Support experience, not a second one. Each menu
+          entry opens it at the part it names. */}
+      <HelpSupportDialog
+        contactFirst={help === "contact"}
+        initialSectionId={help && help !== "contact" ? help : undefined}
+        onClose={() => setHelp(null)}
+        visible={help !== null}
+      />
     </View>
   );
 }
@@ -287,9 +433,60 @@ function HeaderSearch() {
   );
 }
 
+/**
+ * Header placeholder for the loading state. It reuses the header's own row,
+ * paddings and control sizes, so the real header lands exactly where this
+ * stood — no strip appearing and pushing the dashboard down.
+ *
+ * Nothing here stands in for user data: the avatar and name are neutral blocks,
+ * never a fake identity.
+ */
+export function MerchantHeaderSkeleton() {
+  const { width } = useWindowDimensions();
+  const compact = width < 1280;
+  const mobile = width < 1024;
+
+  return (
+    <View style={styles.header} testID="merchant-header-skeleton">
+      <View style={[styles.headerRow, mobile && styles.headerRowMobile]}>
+        {mobile ? (
+          <DashboardSkeleton style={styles.skeletonIconButton} />
+        ) : null}
+        <View style={styles.titleBlock}>
+          <DashboardSkeleton style={styles.skeletonTitle} />
+          <DashboardSkeleton style={styles.skeletonSubtitle} />
+        </View>
+        {!compact ? <DashboardSkeleton style={styles.skeletonSearch} /> : null}
+        <DashboardSkeleton style={styles.skeletonDateButton} />
+        <DashboardSkeleton style={styles.skeletonIconButton} />
+        {!mobile ? (
+          <DashboardSkeleton style={styles.skeletonIconButton} />
+        ) : null}
+        <View style={styles.accountButton}>
+          <DashboardSkeleton style={styles.skeletonAvatar} />
+          {!mobile ? (
+            <View style={styles.accountCopy}>
+              <DashboardSkeleton style={styles.skeletonAccountName} />
+              <DashboardSkeleton style={styles.skeletonAccountRole} />
+            </View>
+          ) : null}
+        </View>
+      </View>
+      {/* Below 1280 the real header drops its search onto a second row; the
+          placeholder has to do the same or the strip is 35px short. */}
+      {compact ? (
+        <View style={styles.compactSearchRow}>
+          <DashboardSkeleton style={styles.skeletonCompactSearch} />
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 function HeaderIconButton({
   expanded,
   icon,
+  iconSize = HEADER_ICON_SIZE,
   label,
   onPress,
   testID,
@@ -297,6 +494,8 @@ function HeaderIconButton({
   /** Set when the button owns a popover, so its state is announced. */
   expanded?: boolean;
   icon: DashboardIconName;
+  /** Escape hatch for a glyph that needs optical tuning; the box never moves. */
+  iconSize?: number;
   label: string;
   onPress?: () => void;
   testID?: string;
@@ -311,30 +510,7 @@ function HeaderIconButton({
       style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
       testID={testID}
     >
-      <DashboardIcon color={colors.ink.primary} name={icon} size={20} />
-    </Pressable>
-  );
-}
-
-function PopoverItem({
-  icon,
-  label,
-  onPress,
-}: {
-  icon: DashboardIconName;
-  label: string;
-  onPress?: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [styles.popoverItem, pressed && styles.pressed]}
-    >
-      <DashboardIcon name={icon} />
-      <StylishText style={styles.popoverLabel} unstyled variant="navigation">
-        {label}
-      </StylishText>
+      <DashboardIcon color={colors.ink.primary} name={icon} size={iconSize} />
     </Pressable>
   );
 }
@@ -406,7 +582,9 @@ const styles = StyleSheet.create({
   headerRow: {
     alignItems: "center",
     flexDirection: "row",
-    gap: spacing.xs,
+    // One gap for every pair in the action area: date range, bell, help and
+    // the owner block are all separated by the same step.
+    gap: spacing.sm,
     minHeight: 76,
     paddingHorizontal: spacing.xl,
   },
@@ -414,64 +592,68 @@ const styles = StyleSheet.create({
     gap: spacing.xxs,
     paddingHorizontal: spacing.xs,
   },
+  // Slightly larger than the 44 it was, so the bell reads at the weight the
+  // design gives it. Shared by the bell, help and mobile menu buttons so the
+  // header's icon controls stay the same size as each other.
   iconButton: {
     alignItems: "center",
     borderRadius: borderRadius.input,
-    height: 44,
+    height: ICON_BUTTON_SIZE,
     justifyContent: "center",
-    width: 44,
+    width: ICON_BUTTON_SIZE,
   },
-  modalBackdrop: {
-    backgroundColor: "rgba(17,24,28,0.08)",
-    flex: 1,
-    paddingRight: spacing.lg,
-    paddingTop: 76,
+  /**
+   * The measured anchor for a header icon menu, and the badge's containing box.
+   *
+   * Pinned to the button's own square and centred on the row explicitly: the
+   * wrapper must not stretch to the row's height, or its popover would open
+   * below where the control actually sits and the badge would ride away from
+   * the bell.
+   */
+  iconButtonSlot: {
+    alignItems: "center",
+    alignSelf: "center",
+    flexShrink: 0,
+    height: ICON_BUTTON_SIZE,
+    justifyContent: "center",
+    width: ICON_BUTTON_SIZE,
   },
+  /**
+   * The badge is placed against the bell glyph, not the button box.
+   *
+   * The 24px glyph is centred in the 46px button, so it occupies 11–35 on both
+   * axes and the button's own corner sits 11px beyond it — pinning the badge
+   * there left it floating in empty padding. Inset by `spacing.xxs + 1` the
+   * badge spans 23–41 across and 5–23 down, which lands it on the bell's
+   * top-right shoulder: adjacent to the glyph, clear of its dome, and still
+   * wholly inside the button so the header row cannot clip it.
+   *
+   * Absolute, so it stays out of the layout flow and can never widen the button
+   * away from the Help control beside it.
+   */
   notificationBadge: {
     alignItems: "center",
     backgroundColor: colors.brand.primary,
+    // A heavier ring than a hairline: it is what separates the badge from the
+    // bell's stroke where the two meet.
+    borderColor: colors.neutral[0],
     borderRadius: borderRadius.pill,
+    borderStyle: "solid",
+    borderWidth: 2,
     height: 18,
     justifyContent: "center",
+    minWidth: 18,
+    paddingHorizontal: 3,
     position: "absolute",
-    right: 2,
-    top: 2,
-    width: 18,
+    right: spacing.xxs + 1,
+    top: spacing.xxs + 1,
   },
   notificationBadgeText: {
     color: colors.neutral[0],
     fontFamily: "Montserrat_700Bold",
-    fontSize: 9,
-    lineHeight: 12,
+    fontSize: 10,
+    lineHeight: 13,
   },
-  popover: {
-    alignSelf: "flex-end",
-    backgroundColor: colors.neutral[0],
-    borderColor: colors.neutral[200],
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    minWidth: 240,
-    padding: spacing.xs,
-    shadowColor: colors.ink.primary,
-    shadowOffset: { height: 8, width: 0 },
-    shadowOpacity: 0.14,
-    shadowRadius: 18,
-  },
-  popoverItem: {
-    alignItems: "center",
-    borderRadius: borderRadius.sm,
-    flexDirection: "row",
-    gap: spacing.sm,
-    minHeight: 44,
-    paddingHorizontal: spacing.sm,
-  },
-  popoverLabel: {
-    color: colors.ink.primary,
-    fontFamily: "Montserrat_500Medium",
-    fontSize: 13,
-    lineHeight: 20,
-  },
-  popoverMobile: { marginLeft: spacing.lg, width: 280 },
   pressed: { backgroundColor: colors.neutral[100] },
   searchField: {
     alignItems: "center",
@@ -511,4 +693,30 @@ const styles = StyleSheet.create({
     lineHeight: 34,
   },
   titleBlock: { flex: 1, minWidth: 120 },
+  // Each placeholder carries the box of the control it stands in for, so the
+  // real header replaces it without moving anything.
+  skeletonAccountName: { height: 13, width: 92 },
+  skeletonAccountRole: { height: 11, marginTop: 4, width: 64 },
+  skeletonAvatar: { borderRadius: borderRadius.pill, height: 36, width: 36 },
+  // Matches the height the real compact search row actually renders at (34
+  // total with its padding), not the 44 the field style suggests.
+  skeletonCompactSearch: { borderRadius: borderRadius.input, height: 22 },
+  skeletonDateButton: {
+    borderRadius: borderRadius.input,
+    height: 44,
+    width: 132,
+  },
+  skeletonIconButton: {
+    borderRadius: borderRadius.input,
+    height: 46,
+    width: 46,
+  },
+  skeletonSearch: {
+    borderRadius: borderRadius.input,
+    flex: 1,
+    height: 44,
+    maxWidth: 320,
+  },
+  skeletonSubtitle: { height: 12, marginTop: 6, width: 220 },
+  skeletonTitle: { height: 20, width: 132 },
 });

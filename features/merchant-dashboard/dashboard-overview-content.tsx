@@ -155,10 +155,7 @@ export function DashboardOverviewContent({
                 tall
               />
             ) : (
-              <InventoryOverview
-                session={session}
-                summary={inventorySummary}
-              />
+              <InventoryOverview session={session} summary={inventorySummary} />
             )}
             {unavailable("catalog") ? (
               <DashboardSectionUnavailable
