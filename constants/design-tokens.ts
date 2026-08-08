@@ -51,6 +51,8 @@ export const colors = {
   },
   feedback: {
     danger: "#C81E3E",
+    /** Outline for a danger surface — reads against `dangerSoft`, not on white. */
+    dangerBorder: "#F8BCC6",
     dangerSoft: "#FFF0F3",
     info: "#1F6FD6",
     infoSoft: "#EEF5FF",
@@ -58,6 +60,8 @@ export const colors = {
     successSoft: "#E8F3E9",
     rating: "#EDB310",
     warning: "#8A5A00",
+    /** Outline for a warning surface — reads against `warningSoft`, not on white. */
+    warningBorder: "#EFD9A3",
     warningSoft: "#FFF6E6",
   },
   overlay: {

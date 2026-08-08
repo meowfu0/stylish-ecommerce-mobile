@@ -1,6 +1,6 @@
 import { Image } from "expo-image";
-import { useMemo, useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { useMemo, useRef, useState, type ComponentProps } from "react";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { StylishTextInput } from "@/components/forms/stylish-text-input";
 import { StylishText } from "@/components/typography/stylish-text";
@@ -8,11 +8,22 @@ import { borderRadius, colors, spacing } from "@/constants/design-tokens";
 import { can } from "@/features/merchant-dashboard/dashboard-access";
 import {
   activityEvents,
+  catalogSummary,
+  inventorySummary,
   lowStockAlerts,
   recentOrders,
   topProducts,
 } from "@/features/merchant-dashboard/dashboard-data";
-import { formatPeso } from "@/features/merchant-dashboard/dashboard-format";
+import {
+  formatCount,
+  formatOrderDate,
+  formatPeso,
+} from "@/features/merchant-dashboard/dashboard-format";
+import {
+  DashboardMenu,
+  type DashboardMenuItem,
+  type MenuAnchor,
+} from "@/features/merchant-dashboard/dashboard-menu";
 import {
   DashboardButton,
   DashboardCard,
@@ -22,12 +33,52 @@ import {
 } from "@/features/merchant-dashboard/dashboard-primitives";
 import type {
   ActivityEvent,
+  CatalogSummaryCounts,
+  InventoryAlert,
+  InventorySummary,
   MerchantSession,
+  OrderStatus,
+  PaymentStatus,
+  ProductRow,
   RecentOrder,
 } from "@/features/merchant-dashboard/dashboard-types";
+import {
+  ORDER_STATUSES,
+  PAYMENT_STATUSES,
+} from "@/features/merchant-dashboard/dashboard-types";
 
-export function InventoryOverview({ session }: { session: MerchantSession }) {
+/**
+ * The three tracked stock states, in the order they stack in the bar and read
+ * in the legend. Colours come from the feedback tokens so the bar segment and
+ * its legend dot can never disagree.
+ */
+const stockStates = [
+  { color: colors.feedback.success, key: "inStock", label: "In Stock" },
+  { color: colors.feedback.warning, key: "lowStock", label: "Low Stock" },
+  { color: colors.feedback.danger, key: "outOfStock", label: "Out of Stock" },
+] as const satisfies readonly {
+  color: string;
+  key: keyof InventorySummary;
+  label: string;
+}[];
+
+export function InventoryOverview({
+  session,
+  summary = inventorySummary,
+}: {
+  session: MerchantSession;
+  /** Omitted only in previews; the screen supplies loaded inventory counts. */
+  summary?: InventorySummary;
+}) {
   const allowed = can(session, "inventory.adjust");
+  const counts = stockStates.map((state) => ({
+    ...state,
+    count: Math.max(0, summary[state.key]),
+  }));
+  // The bar is proportional to what is actually tracked, so it stays truthful
+  // when the catalogue holds variants in none of the three states.
+  const tracked = counts.reduce((total, state) => total + state.count, 0);
+
   return (
     <DashboardCard
       style={styles.growCard}
@@ -39,33 +90,83 @@ export function InventoryOverview({ session }: { session: MerchantSession }) {
       />
       <View style={styles.inventoryContent}>
         <View style={styles.inventoryGrid}>
-          <InventoryStat label="Total active variants" value="486" />
-          <InventoryStat label="In stock" value="431" />
-          <InventoryStat label="Low stock" tone="warning" value="12" />
-          <InventoryStat label="Out of stock" tone="danger" value="3" />
+          <InventoryStat
+            label="Total active variants"
+            value={summary.totalActiveVariants}
+          />
+          <InventoryStat label="In stock" value={summary.inStock} />
+          <InventoryStat
+            label="Low stock"
+            tone="warning"
+            value={summary.lowStock}
+          />
+          <InventoryStat
+            label="Out of stock"
+            tone="danger"
+            value={summary.outOfStock}
+          />
         </View>
+
         <View
-          accessibilityLabel="Stock status: 431 in stock, 12 low stock, 3 out of stock"
+          accessibilityLabel={`Stock status: ${counts
+            .map((state) => `${formatCount(state.count)} ${state.label.toLowerCase()}`)
+            .join(", ")}`}
           accessibilityRole="image"
           style={styles.stockBar}
+          testID="inventory-stock-bar"
         >
-          <View style={styles.stockIn} />
-          <View style={styles.stockLow} />
-          <View style={styles.stockOut} />
+          {tracked === 0
+            ? null
+            : counts
+                .filter((state) => state.count > 0)
+                .map((state) => (
+                  <View
+                    key={state.key}
+                    style={[
+                      styles.stockSegment,
+                      {
+                        backgroundColor: state.color,
+                        // Proportional to the count, with a small floor so a
+                        // single out-of-stock variant is still visible.
+                        flexGrow: state.count,
+                        minWidth: 4,
+                      },
+                    ]}
+                    testID={`inventory-stock-segment-${state.key}`}
+                  />
+                ))}
         </View>
+
         <View style={styles.stockLegend}>
-          <LegendDot color={colors.feedback.success} label="In stock 431" />
-          <LegendDot color={colors.feedback.warning} label="Low stock 12" />
-          <LegendDot color={colors.feedback.danger} label="Out of stock 3" />
+          {counts.map((state) => (
+            <LegendDot
+              color={state.color}
+              count={state.count}
+              key={state.key}
+              label={state.label}
+              testID={`inventory-legend-dot-${state.key}`}
+            />
+          ))}
         </View>
-        <StylishText style={styles.inventoryNote} unstyled variant="caption">
-          Stock movements stay inside the Inventory section.
-        </StylishText>
+
+        <View style={styles.inventoryNoteRow}>
+          <DashboardIcon
+            color={colors.neutral[400]}
+            name="map-marker-outline"
+            size={14}
+          />
+          <StylishText style={styles.inventoryNote} unstyled variant="caption">
+            Stock movements stay inside the Inventory section.
+          </StylishText>
+        </View>
+
         <DashboardButton
           disabled={!allowed}
-          icon="arrow-right"
+          fullWidth
           label="Manage Inventory"
+          testID="inventory-manage-button"
           title="Your role cannot adjust inventory."
+          trailingIcon="arrow-right"
         />
       </View>
     </DashboardCard>
@@ -79,7 +180,7 @@ function InventoryStat({
 }: {
   label: string;
   tone?: "danger" | "neutral" | "warning";
-  value: string;
+  value: number;
 }) {
   return (
     <View
@@ -88,29 +189,65 @@ function InventoryStat({
         tone === "danger" && styles.inventoryStatDanger,
         tone === "warning" && styles.inventoryStatWarning,
       ]}
+      testID={`inventory-stat-${tone}`}
     >
-      <StylishText style={styles.inventoryStatLabel} unstyled variant="caption">
+      <StylishText
+        style={[
+          styles.inventoryStatLabel,
+          tone === "danger" && styles.inventoryStatLabelDanger,
+          tone === "warning" && styles.inventoryStatLabelWarning,
+        ]}
+        unstyled
+        variant="caption"
+      >
         {label}
       </StylishText>
       <StylishText style={styles.inventoryStatValue} unstyled variant="price">
-        {value}
+        {formatCount(value)}
       </StylishText>
     </View>
   );
 }
 
-function LegendDot({ color, label }: { color: string; label: string }) {
+function LegendDot({
+  color,
+  count,
+  label,
+  testID,
+}: {
+  color: string;
+  count: number;
+  label: string;
+  testID?: string;
+}) {
   return (
     <View style={styles.legendDotRow}>
-      <View style={[styles.legendDot, { backgroundColor: color }]} />
+      <View
+        style={[styles.legendDot, { backgroundColor: color }]}
+        testID={testID}
+      />
       <StylishText style={styles.legendText} unstyled variant="caption">
         {label}
       </StylishText>
+      <StylishText style={styles.legendCount} unstyled variant="caption">
+        {formatCount(count)}
+      </StylishText>
     </View>
   );
 }
 
-export function TopProducts() {
+const stockTones = {
+  "In stock": "green",
+  "Low stock": "warning",
+  "Out of stock": "danger",
+} as const;
+
+export function TopProducts({
+  products = topProducts,
+}: {
+  /** Omitted only in previews; the screen supplies the ranked catalogue. */
+  products?: readonly ProductRow[];
+}) {
   return (
     <DashboardCard style={styles.growCard} testID="dashboard-top-products">
       <SectionHeading
@@ -118,8 +255,17 @@ export function TopProducts() {
         title="Top-performing products"
       />
       <View style={styles.productList}>
-        {topProducts.map((product) => (
-          <View key={product.sku} style={styles.productRow}>
+        {products.map((product, index) => (
+          <View
+            key={product.sku}
+            // One surface with hairline separators rather than a card per row;
+            // the last row leaves the card's own padding as its bottom edge.
+            style={[
+              styles.productRow,
+              index < products.length - 1 && styles.productRowDivided,
+            ]}
+            testID={`top-product-${product.sku}`}
+          >
             <Image
               contentFit="cover"
               source={product.image}
@@ -140,41 +286,51 @@ export function TopProducts() {
                 unstyled
                 variant="caption"
               >
-                SKU: {product.sku}
+                SKU {product.sku}
               </StylishText>
-              <StatusChip
-                label={product.stockStatus}
-                tone={
-                  product.stockStatus === "In stock"
-                    ? "green"
-                    : product.stockStatus === "Low stock"
-                      ? "warning"
-                      : "danger"
-                }
-              />
-              <Pressable accessibilityRole="button" style={styles.viewProduct}>
-                <StylishText
-                  style={styles.viewProductLabel}
-                  unstyled
-                  variant="caption"
-                >
-                  View Product
-                </StylishText>
-              </Pressable>
+              <View style={styles.productBadgeRow}>
+                <StatusChip
+                  label={product.stockStatus}
+                  tone={stockTones[product.stockStatus]}
+                />
+              </View>
             </View>
+
             <View style={styles.productNumbers}>
-              <NumberDatum label="Units" value={String(product.units)} />
+              <NumberDatum
+                label="Units"
+                value={formatCount(product.units)}
+                width={46}
+              />
               <NumberDatum
                 label="Revenue"
                 numeric
                 value={formatPeso(product.revenueCentavos, { decimals: false })}
+                width={78}
               />
               <NumberDatum
                 label="Trend"
                 tone={product.trendPercent >= 0 ? "positive" : "negative"}
                 value={`${product.trendPercent >= 0 ? "+" : ""}${product.trendPercent}%`}
+                width={66}
               />
             </View>
+
+            <Pressable
+              accessibilityLabel={`View ${product.name}`}
+              accessibilityRole="button"
+              style={styles.viewProduct}
+              testID={`top-product-view-${product.sku}`}
+            >
+              <StylishText
+                numberOfLines={1}
+                style={styles.viewProductLabel}
+                unstyled
+                variant="caption"
+              >
+                View Product
+              </StylishText>
+            </Pressable>
           </View>
         ))}
       </View>
@@ -187,53 +343,120 @@ function NumberDatum({
   numeric = false,
   tone,
   value,
+  width,
 }: {
   label: string;
   numeric?: boolean;
   tone?: "negative" | "positive";
   value: string;
+  /**
+   * Reserves the column so Units, Revenue and Trend line up down the list
+   * instead of each row sizing its own metrics to their content.
+   */
+  width?: number;
 }) {
   return (
-    <View style={styles.numberDatum}>
+    <View style={[styles.numberDatum, width !== undefined && { width }]}>
       <StylishText style={styles.numberLabel} unstyled variant="caption">
         {label.toUpperCase()}
       </StylishText>
-      <StylishText
-        numberOfLines={numeric ? 1 : undefined}
-        style={[
-          styles.numberValue,
-          numeric && styles.numericValue,
-          tone === "positive" && styles.numberPositive,
-          tone === "negative" && styles.numberNegative,
-        ]}
-        unstyled
-        variant="caption"
-      >
-        {value}
-      </StylishText>
+      <View style={styles.numberValueRow}>
+        {tone ? (
+          <DashboardIcon
+            color={
+              tone === "positive"
+                ? colors.feedback.success
+                : colors.feedback.danger
+            }
+            name={tone === "positive" ? "arrow-top-right" : "arrow-bottom-right"}
+            size={12}
+          />
+        ) : null}
+        <StylishText
+          numberOfLines={numeric ? 1 : undefined}
+          style={[
+            styles.numberValue,
+            numeric && styles.numericValue,
+            tone === "positive" && styles.numberPositive,
+            tone === "negative" && styles.numberNegative,
+          ]}
+          unstyled
+          variant="caption"
+        >
+          {value}
+        </StylishText>
+      </View>
     </View>
   );
 }
 
-export function RecentOrders({ compact }: { compact: boolean }) {
+const ALL_STATUSES = "All statuses";
+const ALL_PAYMENTS = "All payments";
+
+type StatusFilter = OrderStatus | typeof ALL_STATUSES;
+type PaymentFilter = PaymentStatus | typeof ALL_PAYMENTS;
+
+/** Sorts on the ISO date, so ordering is exact rather than text-shaped. */
+export function sortOrdersByDate(
+  orders: readonly RecentOrder[],
+  direction: "asc" | "desc",
+) {
+  return [...orders].sort((left, right) => {
+    if (left.date === right.date) {
+      // Same-day orders keep a stable, meaningful order by their number.
+      return direction === "desc"
+        ? right.orderNumber.localeCompare(left.orderNumber)
+        : left.orderNumber.localeCompare(right.orderNumber);
+    }
+    return direction === "desc"
+      ? right.date.localeCompare(left.date)
+      : left.date.localeCompare(right.date);
+  });
+}
+
+export function RecentOrders({
+  compact,
+  orders = recentOrders,
+  session,
+}: {
+  compact: boolean;
+  /** Omitted only in previews; the screen supplies the loaded orders. */
+  orders?: readonly RecentOrder[];
+  session?: MerchantSession;
+}) {
   const [page, setPage] = useState(1);
   const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(ALL_STATUSES);
+  const [paymentFilter, setPaymentFilter] =
+    useState<PaymentFilter>(ALL_PAYMENTS);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const pageSize = 6;
+
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    if (!needle) return recentOrders;
-    return recentOrders.filter(
-      (order) =>
+    const matched = orders.filter((order) => {
+      if (statusFilter !== ALL_STATUSES && order.status !== statusFilter) {
+        return false;
+      }
+      if (paymentFilter !== ALL_PAYMENTS && order.payment !== paymentFilter) {
+        return false;
+      }
+      if (!needle) return true;
+      return (
         order.customer.toLowerCase().includes(needle) ||
-        order.orderNumber.toLowerCase().includes(needle),
-    );
-  }, [query]);
+        order.orderNumber.toLowerCase().includes(needle)
+      );
+    });
+    return sortOrdersByDate(matched, sortDirection);
+  }, [orders, paymentFilter, query, sortDirection, statusFilter]);
+
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage = Math.min(page, pageCount);
   const pageRows = filtered.slice(
     (safePage - 1) * pageSize,
     safePage * pageSize,
   );
+  const resetPage = () => setPage(1);
 
   return (
     <DashboardCard testID="dashboard-recent-orders">
@@ -246,26 +469,49 @@ export function RecentOrders({ compact }: { compact: boolean }) {
             </StylishText>
           </Pressable>
         }
-        description={`${filtered.length} of ${recentOrders.length} orders match your filters`}
+        description={`${filtered.length} of ${orders.length} orders match your filters`}
         title="Recent orders"
       />
       <View style={styles.orderControls}>
-        <View style={styles.orderSearch}>
-          <DashboardIcon name="magnify" />
-          <StylishTextInput
-            accessibilityLabel="Search recent orders"
-            onChangeText={(value) => {
-              setPage(1);
-              setQuery(value);
-            }}
-            placeholder="Order number or customer"
-            placeholderTextColor={colors.neutral[450]}
-            style={styles.orderSearchInput}
-            value={query}
-          />
+        <View style={styles.orderSearchField}>
+          <StylishText style={styles.fieldLabel} unstyled variant="caption">
+            Search orders
+          </StylishText>
+          <View style={styles.orderSearch}>
+            <DashboardIcon name="magnify" />
+            <StylishTextInput
+              accessibilityLabel="Search recent orders"
+              onChangeText={(value) => {
+                resetPage();
+                setQuery(value);
+              }}
+              placeholder="Order number or customer"
+              placeholderTextColor={colors.neutral[450]}
+              style={styles.orderSearchInput}
+              value={query}
+            />
+          </View>
         </View>
-        <FilterControl label="All statuses" />
-        <FilterControl label="All payments" />
+        <FilterSelect
+          label="Order status"
+          onChange={(next) => {
+            resetPage();
+            setStatusFilter(next as StatusFilter);
+          }}
+          options={[ALL_STATUSES, ...ORDER_STATUSES]}
+          testID="order-status-filter"
+          value={statusFilter}
+        />
+        <FilterSelect
+          label="Payment"
+          onChange={(next) => {
+            resetPage();
+            setPaymentFilter(next as PaymentFilter);
+          }}
+          options={[ALL_PAYMENTS, ...PAYMENT_STATUSES]}
+          testID="order-payment-filter"
+          value={paymentFilter}
+        />
       </View>
 
       {compact ? (
@@ -275,35 +521,73 @@ export function RecentOrders({ compact }: { compact: boolean }) {
           ))}
         </View>
       ) : (
-        <View accessibilityRole="list" style={styles.orderTable}>
-          <View style={[styles.orderTableRow, styles.orderTableHeader]}>
-            <TableCell label="Order" width={1.1} />
-            <TableCell label="Customer" width={1.3} />
-            <TableCell label="Date" width={1.1} />
-            <TableCell label="Items" width={0.55} />
-            <TableCell label="Total" width={1} />
-            <TableCell label="Payment" width={1} />
-            <TableCell label="Fulfillment" width={1.1} />
-            <TableCell label="Status" width={1} />
-          </View>
-          {pageRows.map((order) => (
-            <View key={order.orderNumber} style={styles.orderTableRow}>
-              <TableCell label={order.orderNumber} strong width={1.1} />
-              <TableCell label={order.customer} width={1.3} />
-              <TableCell label={order.date} width={1.1} />
-              <TableCell label={String(order.items)} width={0.55} />
-              <TableCell
-                label={formatPeso(order.totalCentavos, { decimals: false })}
-                numeric
-                strong
-                width={1}
+        <ScrollView
+          className="st-scroll"
+          // A horizontal scroller sizes to its content, so without this the
+          // table would sit at its minimum width and leave the rest of the card
+          // empty. `flexGrow` lets it fill the card, and the table's own
+          // minimum still forces a scroll once the card is narrower than that.
+          contentContainerStyle={styles.orderTableContent}
+          horizontal
+          showsHorizontalScrollIndicator
+          style={styles.orderTableScroll}
+        >
+          <View accessibilityRole="list" style={styles.orderTable}>
+            <View style={[styles.orderTableRow, styles.orderTableHeader]}>
+              <TableCell header label="Order" width={1.1} />
+              <TableCell header label="Customer" width={1.3} />
+              <SortHeaderCell
+                direction={sortDirection}
+                label="Date"
+                onPress={() =>
+                  setSortDirection((current) =>
+                    current === "desc" ? "asc" : "desc",
+                  )
+                }
+                width={1.1}
               />
-              <TableCell label={order.payment} status width={1} />
-              <TableCell label={order.fulfillment} status width={1.1} />
-              <TableCell label={order.status} status width={1} />
+              <TableCell header label="Items" width={0.55} />
+              <TableCell header label="Total" width={1} />
+              <TableCell header label="Payment" width={1} />
+              <TableCell header label="Fulfillment" width={1.1} />
+              <TableCell header label="Status" width={1} />
+              <View style={styles.rowActionsCell} />
             </View>
-          ))}
-        </View>
+            {pageRows.map((order) => (
+              <View
+                key={order.orderNumber}
+                style={styles.orderTableRow}
+                testID={`order-row-${order.orderNumber}`}
+              >
+                <TableCell label={order.orderNumber} strong width={1.1} />
+                <TableCell label={order.customer} width={1.3} />
+                <TableCell label={formatOrderDate(order.date)} width={1.1} />
+                <TableCell label={formatCount(order.items)} width={0.55} />
+                <TableCell
+                  label={formatPeso(order.totalCentavos, { decimals: false })}
+                  numeric
+                  strong
+                  width={1}
+                />
+                <TableCell label={order.payment} status width={1} />
+                <TableCell label={order.fulfillment} status width={1.1} />
+                <TableCell label={order.status} status width={1} />
+                <OrderRowActions order={order} session={session} />
+              </View>
+            ))}
+            {pageRows.length === 0 ? (
+              <View style={styles.orderEmptyRow}>
+                <StylishText
+                  style={styles.orderEmptyText}
+                  unstyled
+                  variant="caption"
+                >
+                  No orders match your filters.
+                </StylishText>
+              </View>
+            ) : null}
+          </View>
+        </ScrollView>
       )}
 
       <View style={styles.pagination}>
@@ -318,8 +602,10 @@ export function RecentOrders({ compact }: { compact: boolean }) {
         <View style={styles.paginationButtons}>
           <DashboardButton
             disabled={safePage <= 1}
+            icon="chevron-left"
             label="Previous"
             onPress={() => setPage((current) => Math.max(1, current - 1))}
+            testID="orders-previous-page"
             tone="quiet"
           />
           <DashboardButton
@@ -328,6 +614,8 @@ export function RecentOrders({ compact }: { compact: boolean }) {
             onPress={() =>
               setPage((current) => Math.min(pageCount, current + 1))
             }
+            testID="orders-next-page"
+            trailingIcon="chevron-right"
           />
         </View>
       </View>
@@ -335,24 +623,229 @@ export function RecentOrders({ compact }: { compact: boolean }) {
   );
 }
 
-function FilterControl({ label }: { label: string }) {
+/**
+ * Measures its trigger so an anchored menu can sit against it. Open state is
+ * tracked separately from the measurement, so a trigger still opens its menu if
+ * `measureInWindow` has not reported a frame yet.
+ */
+function useAnchoredMenu() {
+  const trigger = useRef<View>(null);
+  const [anchor, setAnchor] = useState<MenuAnchor | null>(null);
+  const [visible, setVisible] = useState(false);
+
+  return {
+    anchor,
+    close: () => setVisible(false),
+    open: () => {
+      setVisible(true);
+      trigger.current?.measureInWindow((x, y, width, height) => {
+        setAnchor({ height, width, x, y });
+      });
+    },
+    trigger,
+    visible,
+  };
+}
+
+function FilterSelect({
+  label,
+  onChange,
+  options,
+  testID,
+  value,
+}: {
+  label: string;
+  onChange: (value: string) => void;
+  options: readonly string[];
+  testID: string;
+  value: string;
+}) {
+  const menu = useAnchoredMenu();
+
   return (
-    <Pressable accessibilityRole="button" style={styles.filterControl}>
-      <StylishText style={styles.filterLabel} unstyled variant="caption">
+    <View style={styles.filterField}>
+      <StylishText style={styles.fieldLabel} unstyled variant="caption">
         {label}
       </StylishText>
-      <DashboardIcon name="chevron-down" size={16} />
+      <Pressable
+        accessibilityLabel={`${label}: ${value}`}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: menu.visible }}
+        className="focus-visible:ring-[3px] focus-visible:ring-brand-blue/55"
+        onPress={menu.open}
+        ref={menu.trigger}
+        style={styles.filterControl}
+        testID={testID}
+      >
+        <StylishText
+          numberOfLines={1}
+          style={styles.filterLabel}
+          unstyled
+          variant="caption"
+        >
+          {value}
+        </StylishText>
+        <DashboardIcon name="chevron-down" size={16} />
+      </Pressable>
+      <DashboardMenu
+        accessibilityLabel={`${label} options`}
+        align="start"
+        anchor={menu.anchor}
+        items={options.map((option) => ({
+          key: option,
+          label: option,
+          onPress: () => onChange(option),
+          selected: option === value,
+        }))}
+        minWidth={168}
+        onClose={menu.close}
+        testID={`${testID}-menu`}
+        visible={menu.visible}
+      />
+    </View>
+  );
+}
+
+function SortHeaderCell({
+  direction,
+  label,
+  onPress,
+  width,
+}: {
+  direction: "asc" | "desc";
+  label: string;
+  onPress: () => void;
+  width: number;
+}) {
+  return (
+    <Pressable
+      accessibilityLabel={`Sort by ${label}, currently ${
+        direction === "desc" ? "newest first" : "oldest first"
+      }`}
+      accessibilityRole="button"
+      className="focus-visible:ring-[3px] focus-visible:ring-brand-blue/55"
+      onPress={onPress}
+      style={[styles.sortHeader, { flex: width }]}
+      testID="orders-sort-date"
+    >
+      <StylishText style={styles.sortHeaderLabel} unstyled variant="caption">
+        {label.toUpperCase()}
+      </StylishText>
+      <DashboardIcon
+        color={colors.brand.primary}
+        name={direction === "desc" ? "arrow-down" : "arrow-up"}
+        size={12}
+      />
     </Pressable>
   );
 }
 
+/**
+ * Row menu. Only actions the order's own state allows are listed, and
+ * fulfilment is withheld from a role that cannot fulfil — nothing here calls a
+ * backend, so the menu offers exactly what the dashboard can already express.
+ */
+function OrderRowActions({
+  order,
+  session,
+}: {
+  order: RecentOrder;
+  session?: MerchantSession;
+}) {
+  const menu = useAnchoredMenu();
+  const [hovered, setHovered] = useState(false);
+  const open = menu.visible;
+  const cancelled = order.status === "Cancelled";
+  const canFulfil = session ? can(session, "orders.fulfill") : true;
+
+  const items: DashboardMenuItem[] = [
+    { icon: "receipt-text-outline", key: "view", label: "View order" },
+    ...(cancelled
+      ? []
+      : [
+          {
+            icon: "printer-outline" as const,
+            key: "packing-slip",
+            label: "Print packing slip",
+          },
+        ]),
+    ...(!cancelled && order.fulfillment !== "Delivered" && canFulfil
+      ? [
+          {
+            icon: "check-circle-outline" as const,
+            key: "fulfil",
+            label: "Mark as fulfilled",
+          },
+        ]
+      : []),
+    { icon: "email-outline", key: "contact", label: "Contact customer" },
+  ];
+
+  return (
+    <View style={styles.rowActionsCell}>
+      <Pressable
+        accessibilityLabel={`Actions for order ${order.orderNumber}`}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        className="focus-visible:ring-[3px] focus-visible:ring-brand-blue/55"
+        onHoverIn={() => setHovered(true)}
+        onHoverOut={() => setHovered(false)}
+        onPress={menu.open}
+        ref={menu.trigger}
+        style={[
+          styles.rowActionsTrigger,
+          (hovered || open) && styles.rowActionsTriggerActive,
+        ]}
+        testID={`order-actions-${order.orderNumber}`}
+      >
+        <DashboardIcon
+          color={open ? colors.ink.primary : colors.neutral[550]}
+          name="dots-horizontal"
+          size={18}
+        />
+      </Pressable>
+      <DashboardMenu
+        accessibilityLabel={`Order ${order.orderNumber} actions`}
+        anchor={menu.anchor}
+        items={items}
+        onClose={menu.close}
+        testID={`order-actions-menu-${order.orderNumber}`}
+        visible={open}
+      />
+    </View>
+  );
+}
+
+/**
+ * One tone per order state, shared by the payment, fulfilment and status
+ * columns so a single vocabulary drives every badge in the table.
+ */
+const orderStateTones: Record<string, ComponentProps<typeof StatusChip>["tone"]> =
+  {
+    Cancelled: "neutral",
+    Confirmed: "blue",
+    Delivered: "green",
+    Failed: "danger",
+    New: "pink",
+    Packing: "warning",
+    Paid: "green",
+    Pending: "warning",
+    Processing: "blue",
+    "Ready to Ship": "warning",
+    Refunded: "neutral",
+    Shipped: "blue",
+    Unfulfilled: "pink",
+  };
+
 function TableCell({
+  header = false,
   label,
   numeric = false,
   status = false,
   strong = false,
   width,
 }: {
+  header?: boolean;
   label: string;
   numeric?: boolean;
   status?: boolean;
@@ -362,20 +855,7 @@ function TableCell({
   return (
     <View style={{ flex: width, minWidth: 0 }}>
       {status ? (
-        <StatusChip
-          label={label}
-          tone={
-            ["Paid", "Delivered"].includes(label)
-              ? "green"
-              : ["Pending", "Packing"].includes(label)
-                ? "warning"
-                : ["New", "Unfulfilled"].includes(label)
-                  ? "pink"
-                  : label === "Cancelled" || label === "Refunded"
-                    ? "neutral"
-                    : "blue"
-          }
-        />
+        <StatusChip label={label} tone={orderStateTones[label] ?? "blue"} />
       ) : (
         <StylishText
           numberOfLines={numeric ? 1 : 2}
@@ -383,11 +863,12 @@ function TableCell({
             styles.tableText,
             strong && styles.tableTextStrong,
             numeric && styles.numericValue,
+            header && styles.tableHeaderText,
           ]}
           unstyled
           variant="caption"
         >
-          {label}
+          {header ? label.toUpperCase() : label}
         </StylishText>
       )}
     </View>
@@ -436,7 +917,14 @@ function OrderCard({ order }: { order: RecentOrder }) {
   );
 }
 
-export function CatalogSummary({ session }: { session: MerchantSession }) {
+export function CatalogSummary({
+  session,
+  summary = catalogSummary,
+}: {
+  session: MerchantSession;
+  /** Omitted only in previews; the screen supplies the loaded counts. */
+  summary?: CatalogSummaryCounts;
+}) {
   return (
     <DashboardCard style={styles.growCard} testID="dashboard-catalog-summary">
       <SectionHeading
@@ -445,21 +933,52 @@ export function CatalogSummary({ session }: { session: MerchantSession }) {
       />
       <View style={styles.catalogContent}>
         <View style={styles.catalogGrid}>
-          <CatalogStat label="Active products" value="214" />
-          <CatalogStat label="Draft products" value="18" />
-          <CatalogStat label="Inactive products" value="9" />
-          <CatalogStat label="Archived products" value="26" />
-          <CatalogStat attention label="Missing images" value="5" />
-          <CatalogStat attention label="Missing active variants" value="3" />
-        </View>
-        <View style={styles.catalogActions}>
-          <DashboardButton
-            disabled={!can(session, "products.write")}
-            icon="plus"
-            label="Create Product"
-            tone="primary"
+          <CatalogStat label="Active products" value={summary.activeProducts} />
+          <CatalogStat label="Draft products" value={summary.draftProducts} />
+          <CatalogStat
+            label="Inactive products"
+            value={summary.inactiveProducts}
           />
-          <DashboardButton icon="arrow-right" label="Manage Catalog" />
+          <CatalogStat
+            label="Archived products"
+            value={summary.archivedProducts}
+          />
+          {/* The two readiness gaps carry a badge, and only while non-zero —
+              a catalogue with nothing missing should not be told it needs work. */}
+          <CatalogStat
+            label="Missing images"
+            tone="warning"
+            value={summary.missingImages}
+          />
+          <CatalogStat
+            label="Missing active variants"
+            tone="danger"
+            value={summary.missingActiveVariants}
+          />
+        </View>
+        {/* Each action owns an equal share of the row and fills it, so the two
+            buttons match in width and only stack when the row cannot hold
+            both at a readable size. */}
+        <View style={styles.catalogActions}>
+          <View style={styles.catalogAction}>
+            <DashboardButton
+              disabled={!can(session, "products.write")}
+              fullWidth
+              icon="plus"
+              label="Create Product"
+              testID="catalog-create-product"
+              title="Your role cannot create products."
+              tone="primary"
+            />
+          </View>
+          <View style={styles.catalogAction}>
+            <DashboardButton
+              fullWidth
+              label="Manage Catalog"
+              testID="catalog-manage"
+              trailingIcon="arrow-right"
+            />
+          </View>
         </View>
       </View>
     </DashboardCard>
@@ -467,28 +986,56 @@ export function CatalogSummary({ session }: { session: MerchantSession }) {
 }
 
 function CatalogStat({
-  attention = false,
   label,
+  tone = "neutral",
   value,
 }: {
-  attention?: boolean;
   label: string;
-  value: string;
+  tone?: "danger" | "neutral" | "warning";
+  value: number;
 }) {
+  const flagged = tone !== "neutral" && value > 0;
+
   return (
-    <View style={styles.catalogStat}>
-      <StylishText style={styles.catalogStatLabel} unstyled variant="caption">
+    <View style={styles.catalogStat} testID={`catalog-stat-${tone}`}>
+      <StylishText
+        numberOfLines={1}
+        style={[
+          styles.catalogStatLabel,
+          flagged && tone === "warning" && styles.catalogStatLabelWarning,
+          flagged && tone === "danger" && styles.catalogStatLabelDanger,
+        ]}
+        unstyled
+        variant="caption"
+      >
         {label}
       </StylishText>
-      <StylishText style={styles.catalogStatValue} unstyled variant="price">
-        {value}
-      </StylishText>
-      {attention ? <StatusChip label="Needs work" tone="warning" /> : null}
+      {/* Value and badge share one line, as the reference shows. */}
+      <View style={styles.catalogStatValueRow}>
+        <StylishText style={styles.catalogStatValue} unstyled variant="price">
+          {formatCount(value)}
+        </StylishText>
+        {flagged ? (
+          <StatusChip
+            label="Needs work"
+            tone={tone === "danger" ? "danger" : "warning"}
+          />
+        ) : null}
+      </View>
     </View>
   );
 }
 
-export function LowStockAlerts({ session }: { session: MerchantSession }) {
+export function LowStockAlerts({
+  alerts = lowStockAlerts,
+  session,
+}: {
+  /** Omitted only in previews; the screen supplies the loaded alerts. */
+  alerts?: readonly InventoryAlert[];
+  session: MerchantSession;
+}) {
+  const canAdjust = can(session, "inventory.adjust");
+
   return (
     <DashboardCard style={styles.growCard} testID="dashboard-low-stock">
       <SectionHeading
@@ -496,48 +1043,74 @@ export function LowStockAlerts({ session }: { session: MerchantSession }) {
         title="Low-stock alerts"
       />
       <View style={styles.lowStockList}>
-        {lowStockAlerts.map((alert) => (
-          <View key={alert.sku} style={styles.lowStockRow}>
-            <Image
-              contentFit="cover"
-              source={alert.image}
-              style={styles.lowStockImage}
-            />
-            <View style={styles.lowStockCopy}>
-              <StylishText style={styles.lowStockName} unstyled variant="label">
-                {alert.name}
-              </StylishText>
-              <StylishText
-                style={styles.lowStockMeta}
-                unstyled
-                variant="caption"
-              >
-                {alert.variant} · SKU: {alert.sku}
-              </StylishText>
-              <StylishText
-                style={styles.lowStockMeta}
-                unstyled
-                variant="caption"
-              >
-                {alert.location}
-              </StylishText>
+        {alerts.map((alert, index) => (
+          <View
+            key={alert.sku}
+            // Hairline separators between rows; the last leaves the card's own
+            // padding as its bottom edge.
+            style={[
+              styles.lowStockRow,
+              index < alerts.length - 1 && styles.lowStockRowDivided,
+            ]}
+            testID={`low-stock-${alert.sku}`}
+          >
+            <View style={styles.lowStockMain}>
+              <Image
+                contentFit="cover"
+                source={alert.image}
+                style={styles.lowStockImage}
+              />
+              <View style={styles.lowStockCopy}>
+                <StylishText
+                  numberOfLines={2}
+                  style={styles.lowStockName}
+                  unstyled
+                  variant="label"
+                >
+                  {alert.name}
+                </StylishText>
+                <StylishText
+                  numberOfLines={1}
+                  style={styles.lowStockMeta}
+                  unstyled
+                  variant="caption"
+                >
+                  {alert.variant} · SKU {alert.sku}
+                </StylishText>
+                <StylishText
+                  numberOfLines={1}
+                  style={styles.lowStockLocation}
+                  unstyled
+                  variant="caption"
+                >
+                  {alert.location}
+                </StylishText>
+              </View>
+
               <View style={styles.stockNumbers}>
                 <StockDatum label="On hand" value={alert.onHand} />
                 <StockDatum label="Reserved" value={alert.reserved} />
-                <StockDatum label="Available" value={alert.available} />
+                <StockDatum
+                  // Nothing sellable left is the reason this row is here.
+                  depleted={alert.available === 0}
+                  label="Available"
+                  value={alert.available}
+                />
                 <StockDatum label="Threshold" value={alert.reorderThreshold} />
               </View>
-              <View style={styles.stockActions}>
-                <StatusChip
-                  label={alert.available === 0 ? "Out of stock" : "Low stock"}
-                  tone={alert.available === 0 ? "danger" : "warning"}
-                />
-                <DashboardButton
-                  disabled={!can(session, "inventory.adjust")}
-                  label="Adjust Stock"
-                  title="Your role cannot adjust inventory."
-                />
-              </View>
+            </View>
+
+            <View style={styles.stockActions}>
+              <StatusChip
+                label={alert.available === 0 ? "Out of stock" : "Low stock"}
+                tone={alert.available === 0 ? "danger" : "warning"}
+              />
+              <DashboardButton
+                disabled={!canAdjust}
+                label="Adjust Stock"
+                testID={`low-stock-adjust-${alert.sku}`}
+                title="Your role cannot adjust inventory."
+              />
             </View>
           </View>
         ))}
@@ -546,19 +1119,27 @@ export function LowStockAlerts({ session }: { session: MerchantSession }) {
   );
 }
 
-function StockDatum({ label, value }: { label: string; value: number }) {
+function StockDatum({
+  depleted = false,
+  label,
+  value,
+}: {
+  depleted?: boolean;
+  label: string;
+  value: number;
+}) {
   return (
-    <View>
+    <View style={styles.stockDatum}>
       <StylishText style={styles.stockDatumLabel} unstyled variant="caption">
         {label.toUpperCase()}
       </StylishText>
       <StylishText
         numberOfLines={1}
-        style={styles.stockDatumValue}
+        style={[styles.stockDatumValue, depleted && styles.stockDatumDepleted]}
         unstyled
         variant="label"
       >
-        {value}
+        {formatCount(value)}
       </StylishText>
     </View>
   );
@@ -644,6 +1225,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
   },
+  catalogAction: { flexBasis: 0, flexGrow: 1, minWidth: 150 },
   catalogActions: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   catalogContent: { gap: spacing.md, padding: spacing.lg },
   catalogGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
@@ -651,11 +1233,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.neutral[50],
     borderColor: colors.neutral[200],
     borderRadius: borderRadius.input,
+    // Required alongside an all-sides width: on web these serialise to the
+    // `border` shorthand, which resets the omitted style and hides the border.
+    borderStyle: "solid",
     borderWidth: 1,
+    // Two per row wherever the card can hold a readable pair, then one.
     flexBasis: "46%",
     flexGrow: 1,
     gap: spacing.xxs,
-    minWidth: 130,
+    minWidth: 132,
     padding: spacing.sm,
   },
   catalogStatLabel: {
@@ -663,6 +1249,14 @@ const styles = StyleSheet.create({
     fontFamily: "Montserrat_400Regular",
     fontSize: 11,
     lineHeight: 16,
+  },
+  catalogStatLabelDanger: { color: colors.feedback.danger },
+  catalogStatLabelWarning: { color: colors.feedback.warning },
+  catalogStatValueRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs,
   },
   catalogStatValue: {
     color: colors.ink.primary,
@@ -695,8 +1289,17 @@ const styles = StyleSheet.create({
     minWidth: 150,
     paddingHorizontal: spacing.sm,
   },
-  filterLabel: {
+  fieldLabel: {
     color: colors.neutral[550],
+    fontFamily: "Montserrat_500Medium",
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  // Selects stay compact; the search field takes the width that is left.
+  filterField: { flexGrow: 0, flexShrink: 0, gap: spacing.xxs, width: 168 },
+  filterLabel: {
+    color: colors.ink.primary,
+    flexShrink: 1,
     fontFamily: "Montserrat_400Regular",
     fontSize: 12,
     lineHeight: 18,
@@ -706,22 +1309,39 @@ const styles = StyleSheet.create({
   inventoryGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   inventoryNote: {
     color: colors.neutral[550],
+    flexShrink: 1,
     fontFamily: "Montserrat_400Regular",
     fontSize: 11,
     lineHeight: 16,
+  },
+  inventoryNoteRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs,
   },
   inventoryStat: {
     backgroundColor: colors.neutral[50],
     borderColor: colors.neutral[200],
     borderRadius: borderRadius.input,
+    // Required alongside an all-sides `borderWidth`: on web these serialise to
+    // the `border` shorthand, which resets the omitted style to `none` and
+    // silently collapses the border to zero width.
+    borderStyle: "solid",
     borderWidth: 1,
+    // Two per row wherever the card is wide enough for a readable pair, then
+    // one per row rather than squeezing the labels.
     flexBasis: "46%",
     flexGrow: 1,
-    gap: spacing.xs,
-    minWidth: 130,
+    gap: spacing.xxs,
+    minWidth: 132,
     padding: spacing.sm,
   },
-  inventoryStatDanger: { backgroundColor: colors.feedback.dangerSoft },
+  inventoryStatDanger: {
+    backgroundColor: colors.feedback.dangerSoft,
+    borderColor: colors.feedback.dangerBorder,
+  },
+  inventoryStatLabelDanger: { color: colors.feedback.danger },
+  inventoryStatLabelWarning: { color: colors.feedback.warning },
   inventoryStatLabel: {
     color: colors.neutral[550],
     fontFamily: "Montserrat_400Regular",
@@ -734,17 +1354,43 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 24,
   },
-  inventoryStatWarning: { backgroundColor: colors.feedback.warningSoft },
+  inventoryStatWarning: {
+    backgroundColor: colors.feedback.warningSoft,
+    borderColor: colors.feedback.warningBorder,
+  },
   legendDot: { borderRadius: borderRadius.pill, height: 8, width: 8 },
   legendDotRow: { alignItems: "center", flexDirection: "row", gap: spacing.xs },
-  legendText: {
+  // Label carries the weight, count stays visually secondary beside it.
+  legendCount: {
     color: colors.neutral[550],
     fontFamily: "Montserrat_400Regular",
-    fontSize: 10,
+    fontSize: 11,
+    fontVariant: ["tabular-nums"],
     lineHeight: 16,
   },
-  lowStockCopy: { flex: 1, gap: spacing.xxs, minWidth: 0 },
-  lowStockImage: { borderRadius: borderRadius.sm, height: 58, width: 58 },
+  legendText: {
+    color: colors.ink.primary,
+    fontFamily: "Montserrat_600SemiBold",
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  // `flexBasis: 0` so the copy claims only leftover space: sized from its text
+  // instead, a longer SKU would push the metrics onto their own line and break
+  // the column alignment down the list.
+  lowStockCopy: {
+    flexBasis: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    gap: 1,
+    minWidth: 132,
+  },
+  lowStockImage: { borderRadius: borderRadius.sm, height: 40, width: 40 },
+  lowStockLocation: {
+    color: colors.brand.blue,
+    fontFamily: "Montserrat_400Regular",
+    fontSize: 10,
+    lineHeight: 15,
+  },
   lowStockList: { paddingHorizontal: spacing.lg },
   lowStockMeta: {
     color: colors.neutral[550],
@@ -758,15 +1404,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
   },
-  lowStockRow: {
-    alignItems: "flex-start",
+  lowStockRow: { gap: spacing.xs, paddingVertical: spacing.xs },
+  lowStockRowDivided: {
     borderBottomColor: colors.neutral[200],
     borderBottomWidth: 1,
-    flexDirection: "row",
-    gap: spacing.sm,
-    paddingVertical: spacing.md,
   },
-  numberDatum: { alignItems: "flex-end", gap: spacing.xxs },
+  // Thumbnail, copy and metrics share one line; the metrics wrap beneath the
+  // product once the card can no longer hold them side by side.
+  lowStockMain: {
+    alignItems: "center",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+  },
+  numberDatum: { alignItems: "flex-start", gap: 2 },
   numberLabel: {
     color: colors.neutral[550],
     fontFamily: "Montserrat_500Medium",
@@ -781,6 +1432,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     lineHeight: 16,
   },
+  numberValueRow: { alignItems: "center", flexDirection: "row", gap: 2 },
   numericValue: { flexShrink: 0, fontVariant: ["tabular-nums"] },
   orderCard: {
     backgroundColor: colors.neutral[50],
@@ -848,16 +1500,31 @@ const styles = StyleSheet.create({
     minWidth: 0,
     padding: 0,
   },
+  orderSearchField: { flexGrow: 1, flexShrink: 1, gap: spacing.xxs, minWidth: 220 },
   orderStatuses: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
-  orderTable: { paddingHorizontal: spacing.lg },
+  orderEmptyRow: { paddingVertical: spacing.xl },
+  orderEmptyText: {
+    color: colors.neutral[550],
+    fontFamily: "Montserrat_400Regular",
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: "center",
+  },
+  // Fills the card when there is room and holds its columns readable when there
+  // is not, scrolling horizontally past that point rather than compressing
+  // them. The `st-scroll` class keeps that scrollbar thin and in the brand pink.
+  orderTable: { flexGrow: 1, minWidth: 880, paddingHorizontal: spacing.lg },
+  orderTableContent: { flexGrow: 1 },
   orderTableHeader: { backgroundColor: colors.neutral[50] },
+  orderTableScroll: { flexGrow: 0 },
   orderTableRow: {
     alignItems: "center",
     borderBottomColor: colors.neutral[200],
     borderBottomWidth: 1,
     flexDirection: "row",
     gap: spacing.xs,
-    minHeight: 60,
+    // Compact like the reference; the badges set the real floor.
+    minHeight: 48,
     paddingHorizontal: spacing.sm,
   },
   orderTotal: {
@@ -881,8 +1548,43 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   paginationButtons: { flexDirection: "row", gap: spacing.xs },
-  productCopy: { flex: 1, gap: spacing.xxs, minWidth: 0 },
-  productImage: { borderRadius: borderRadius.sm, height: 56, width: 56 },
+  rowActionsCell: { alignItems: "center", flexBasis: 40, flexGrow: 0, flexShrink: 0 },
+  rowActionsTrigger: {
+    alignItems: "center",
+    borderRadius: borderRadius.sm,
+    height: 32,
+    justifyContent: "center",
+    // Colour-only change on hover, so the row never shifts under the cursor.
+    transitionDuration: "150ms",
+    transitionProperty: "background-color",
+    width: 32,
+  },
+  rowActionsTriggerActive: { backgroundColor: colors.neutral[150] },
+  tableHeaderText: {
+    color: colors.neutral[550],
+    fontFamily: "Montserrat_600SemiBold",
+    fontSize: 10,
+    letterSpacing: 0.4,
+    lineHeight: 14,
+  },
+  sortHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xxs,
+    minWidth: 0,
+  },
+  sortHeaderLabel: {
+    color: colors.brand.primary,
+    fontFamily: "Montserrat_600SemiBold",
+    fontSize: 10,
+    letterSpacing: 0.4,
+    lineHeight: 14,
+  },
+  productBadgeRow: { alignItems: "flex-start", flexDirection: "row" },
+  // Grows into whatever the metrics and action leave behind, and keeps enough
+  // width that a long product name wraps instead of truncating to nothing.
+  productCopy: { flex: 1, gap: 2, minWidth: 128 },
+  productImage: { borderRadius: borderRadius.sm, height: 44, width: 44 },
   productList: { paddingHorizontal: spacing.lg },
   productName: {
     color: colors.ink.primary,
@@ -891,18 +1593,25 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
   productNumbers: {
-    alignItems: "flex-end",
+    alignItems: "flex-start",
     flexDirection: "row",
-    gap: spacing.md,
+    flexShrink: 0,
+    gap: spacing.xs,
   },
   productRow: {
     alignItems: "center",
+    flexDirection: "row",
+    // Wraps the metrics and action beneath the product once the row can no
+    // longer hold them, rather than crushing the columns below legibility.
+    flexWrap: "wrap",
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+  },
+  // A single-edge width serialises as a longhand on web, so unlike an
+  // all-sides border this one does not need an explicit `borderStyle`.
+  productRowDivided: {
     borderBottomColor: colors.neutral[200],
     borderBottomWidth: 1,
-    flexDirection: "row",
-    gap: spacing.sm,
-    minHeight: 112,
-    paddingVertical: spacing.sm,
   },
   productSku: {
     color: colors.neutral[550],
@@ -915,9 +1624,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.xs,
-    marginTop: spacing.xs,
   },
   stockBar: {
+    // An empty track shows through when nothing is tracked yet, so a merchant
+    // with no stock sees an empty bar rather than a missing one.
+    backgroundColor: colors.neutral[150],
     borderRadius: borderRadius.pill,
     flexDirection: "row",
     height: 10,
@@ -926,8 +1637,9 @@ const styles = StyleSheet.create({
   stockDatumLabel: {
     color: colors.neutral[550],
     fontFamily: "Montserrat_500Medium",
-    fontSize: 8,
-    lineHeight: 12,
+    fontSize: 9,
+    letterSpacing: 0.3,
+    lineHeight: 13,
   },
   stockDatumValue: {
     color: colors.ink.primary,
@@ -937,16 +1649,17 @@ const styles = StyleSheet.create({
     fontVariant: ["tabular-nums"],
     lineHeight: 16,
   },
-  stockIn: { backgroundColor: colors.feedback.success, flex: 431 },
   stockLegend: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
-  stockLow: { backgroundColor: colors.feedback.warning, flex: 12 },
+  stockSegment: { flexBasis: 0, flexShrink: 1 },
   stockNumbers: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.md,
-    marginTop: spacing.xs,
+    flexShrink: 0,
+    gap: spacing.xs,
   },
-  stockOut: { backgroundColor: colors.feedback.danger, flex: 3 },
+  // Fixed columns so On hand / Reserved / Available / Threshold line up down
+  // the list rather than each row sizing to its own digits.
+  stockDatum: { alignItems: "flex-start", gap: 1, width: 62 },
+  stockDatumDepleted: { color: colors.feedback.danger },
   tableText: {
     color: colors.neutral[550],
     fontFamily: "Montserrat_400Regular",
@@ -966,9 +1679,11 @@ const styles = StyleSheet.create({
   },
   timelineMarker: { alignItems: "center", width: 34 },
   viewProduct: {
-    alignSelf: "flex-start",
-    minHeight: 28,
-    paddingTop: spacing.xxs,
+    alignItems: "flex-end",
+    flexShrink: 0,
+    justifyContent: "center",
+    minHeight: 32,
+    minWidth: 92,
   },
   viewProductLabel: {
     color: colors.ink.primary,
