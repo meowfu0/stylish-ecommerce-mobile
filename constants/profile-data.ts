@@ -24,8 +24,4 @@ export const MOCK_PROFILE: ProfileFormValues = {
   state: "N1 2LL",
 };
 
-export const MOCK_STATE_OPTIONS = [
-  "N1 2LL",
-  "SW1A 1AA",
-  "M1 1AE",
-] as const;
+export const MOCK_STATE_OPTIONS = ["N1 2LL", "SW1A 1AA", "M1 1AE"] as const;

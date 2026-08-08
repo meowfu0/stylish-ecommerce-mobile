@@ -19,16 +19,10 @@ export type HomeProduct = {
 };
 
 export type HomeProductSort =
-  | "name-ascending"
-  | "price-ascending"
-  | "price-descending"
-  | "recommended";
+  "name-ascending" | "price-ascending" | "price-descending" | "recommended";
 
 export type HomeProductPriceFilter =
-  | "all"
-  | "from-1000-to-2000"
-  | "over-2000"
-  | "under-1000";
+  "all" | "from-1000-to-2000" | "over-2000" | "under-1000";
 
 export const HOME_PRODUCT_SORT_OPTIONS = [
   {

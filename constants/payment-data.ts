@@ -1,10 +1,6 @@
 import { formatPhilippinePeso } from "@/constants/product-details-data";
 
-export type PaymentMethodId =
-  | "apple-pay"
-  | "mastercard"
-  | "paypal"
-  | "visa";
+export type PaymentMethodId = "apple-pay" | "mastercard" | "paypal" | "visa";
 
 export type PaymentMethod = {
   endingIn: string;
