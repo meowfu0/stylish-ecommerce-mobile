@@ -4,6 +4,7 @@ import { Animated, StyleSheet } from "react-native";
 import { VELORI_LOGO_ASPECT_RATIO } from "@/components/brand/velori-logo";
 import { colors } from "@/constants/design-tokens";
 import { rolePermissions } from "@/features/merchant-dashboard/dashboard-access";
+import { salesSeries } from "@/features/merchant-dashboard/dashboard-data";
 import { DashboardOverviewContent } from "@/features/merchant-dashboard/dashboard-overview-content";
 import {
   MetricsSection,
@@ -99,7 +100,7 @@ describe("merchant dashboard layout regressions", () => {
   });
 
   it("renders revenue, orders, and refunds as separate chart series", () => {
-    const screen = render(<SalesPerformance />);
+    const screen = render(<SalesPerformance salesSeries={salesSeries} />);
 
     fireEvent(screen.getByTestId("dashboard-sales-chart"), "layout", {
       nativeEvent: { layout: { width: 640 } },
