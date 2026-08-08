@@ -30,12 +30,7 @@ export type DashboardDataState = Exclude<
 
 /** One independently loaded dashboard region. */
 export type DashboardSectionKey =
-  | "activity"
-  | "catalog"
-  | "inventory"
-  | "metrics"
-  | "orders"
-  | "sales";
+  "activity" | "catalog" | "inventory" | "metrics" | "orders" | "sales";
 
 export const DASHBOARD_SECTION_KEYS: DashboardSectionKey[] = [
   "metrics",
@@ -76,10 +71,21 @@ export type MerchantSession = {
   displayName: string;
   email: string;
   merchantHandle: string;
+  /**
+   * The merchant's real UUID, which every catalog API path is scoped by. Absent
+   * only in previews and documentation fixtures; a surface that calls the API
+   * must handle that rather than assume one.
+   */
+  merchantId?: string;
   merchantName: string;
   permissions: Permission[];
   role: MerchantRole;
-  storeStatus: "active" | "suspended" | "inactive";
+  /**
+   * `under_review` is the state a merchant sits in between applying and being
+   * approved. Every selling guard reads `!== "active"`, so it blocks the same
+   * surfaces a suspension does while carrying its own, more hopeful, copy.
+   */
+  storeStatus: "active" | "suspended" | "inactive" | "under_review";
   verified: boolean;
 };
 
@@ -163,14 +169,126 @@ export type ActionItem = {
   severity: "critical" | "review" | "warning";
 };
 
+/**
+ * The three stock states the dashboard tracks, shared by the inventory bar, the
+ * top-products list and the catalog table so one vocabulary drives every badge.
+ */
+export const CATALOG_STOCK_STATES = [
+  "In stock",
+  "Low stock",
+  "Out of stock",
+] as const;
+export type CatalogStockState = (typeof CATALOG_STOCK_STATES)[number];
+
 export type ProductRow = {
   image: ImageSourcePropType;
   name: string;
   revenueCentavos: number;
   sku: string;
-  stockStatus: "In stock" | "Low stock" | "Out of stock";
+  stockStatus: CatalogStockState;
   trendPercent: number;
   units: number;
+};
+
+/**
+ * Publication lifecycle for a product. `CatalogSummaryCounts` already reports
+ * these four buckets, so the catalog table names them identically rather than
+ * introducing a second vocabulary for the same thing.
+ */
+export const CATALOG_PRODUCT_STATUSES = [
+  "Active",
+  "Draft",
+  "Inactive",
+  "Archived",
+] as const;
+export type CatalogProductStatus = (typeof CATALOG_PRODUCT_STATUSES)[number];
+
+/**
+ * One row of the merchant's product library. Money stays in centavos like every
+ * other figure on the dashboard, and `updatedAt` stays ISO so the table can sort
+ * on it exactly instead of parsing its own display text.
+ */
+export type CatalogProduct = {
+  brandKey: string;
+  categoryKey: string;
+  collectionKeys: readonly string[];
+  id: string;
+  /** Absent for a product with no image yet — a readiness gap the page counts. */
+  image?: ImageSourcePropType;
+  name: string;
+  priceCentavos: number;
+  sku: string;
+  status: CatalogProductStatus;
+  stockOnHand: number;
+  stockStatus: CatalogStockState;
+  updatedAt: string;
+  variants: number;
+};
+
+/**
+ * The Catalog group's four destinations. Shared by the sidebar's navigation
+ * model and the catalog data source so a page, its loader and its nav entry can
+ * never drift apart.
+ */
+export const CATALOG_PAGE_KEYS = [
+  "products",
+  "categories",
+  "collections",
+  "brands",
+] as const;
+export type CatalogPageKey = (typeof CATALOG_PAGE_KEYS)[number];
+
+/**
+ * Orders and Fulfillment are top-level destinations that render their own
+ * workspace inside the shell, the same way the Catalog children do.
+ */
+export const ORDERS_SECTION_KEYS = ["orders", "fulfillment"] as const;
+export type OrdersSectionKey = (typeof ORDERS_SECTION_KEYS)[number];
+
+/** Staff & Permissions and Reports, which render their own workspace. */
+export const STAFF_SECTION_KEYS = ["staff-permissions", "reports"] as const;
+export type StaffSectionKey = (typeof STAFF_SECTION_KEYS)[number];
+
+/** Promotions and Reviews, which render their own workspace in the shell. */
+export const PROMOTIONS_SECTION_KEYS = ["promotions", "reviews"] as const;
+export type PromotionsSectionKey = (typeof PROMOTIONS_SECTION_KEYS)[number];
+
+/**
+ * Merchant Profile and Settings. They live here rather than beside their screen
+ * so `merchant-navigation` stays a pure module — importing a key from a `.tsx`
+ * would drag the icon set into every test that only wants to resolve a route.
+ */
+export const PROFILE_SECTION_KEYS = ["merchant-profile", "settings"] as const;
+export type ProfileSectionKey = (typeof PROFILE_SECTION_KEYS)[number];
+
+/**
+ * The catalog API models a brand, category or collection as active or not —
+ * there is no draft or archived state for them — so the record vocabulary
+ * matches what the endpoints can actually report.
+ */
+export const CATALOG_RECORD_STATUSES = ["Active", "Inactive"] as const;
+export type CatalogRecordStatus = (typeof CATALOG_RECORD_STATUSES)[number];
+
+/**
+ * A category, collection or brand. All three carry the same fields, so the three
+ * pages share one row component and differ only in their labels and the tone
+ * they give a status. `productCount` is reported by the record rather than
+ * counted at render time, because a page must still show a true count when the
+ * products region of the catalog fails to load.
+ */
+export type CatalogTaxonomyRecord = {
+  handle: string;
+  key: string;
+  name: string;
+  /**
+   * Optional because the API only reports it for collections, which return
+   * `productIds`. The brand and category endpoints return no count, and the
+   * page shows an em dash rather than inventing one.
+   */
+  productCount?: number;
+  status: CatalogRecordStatus;
+  /** ISO date, or empty when the endpoint does not report one. */
+  updatedAt: string;
 };
 
 export type InventoryAlert = {

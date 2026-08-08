@@ -48,7 +48,10 @@ export type DashboardSectionLoaders = Record<
 export const defaultDashboardSectionLoaders: DashboardSectionLoaders = {
   activity: async () => activityEvents,
   catalog: async () => ({ products: topProducts, summary: catalogSummary }),
-  inventory: async () => ({ alerts: lowStockAlerts, summary: inventorySummary }),
+  inventory: async () => ({
+    alerts: lowStockAlerts,
+    summary: inventorySummary,
+  }),
   metrics: async () => dashboardMetrics,
   orders: async () => ({ pipelineStages, recentOrders }),
   sales: async () => salesSeries,
@@ -202,8 +205,7 @@ function catalogProducts(value: unknown) {
 
 function asCatalogSummary(value: unknown): CatalogSummaryCounts {
   const summary = (value as { summary?: unknown } | undefined)?.summary as
-    | Partial<Record<keyof CatalogSummaryCounts, unknown>>
-    | undefined;
+    Partial<Record<keyof CatalogSummaryCounts, unknown>> | undefined;
   if (!summary || typeof summary !== "object") return emptyCatalogSummary;
 
   return {
@@ -223,8 +225,7 @@ function asCatalogSummary(value: unknown): CatalogSummaryCounts {
  */
 function asInventorySummary(value: unknown): InventorySummary {
   const summary = (value as { summary?: unknown } | undefined)?.summary as
-    | Partial<Record<keyof InventorySummary, unknown>>
-    | undefined;
+    Partial<Record<keyof InventorySummary, unknown>> | undefined;
   if (!summary || typeof summary !== "object") return emptyInventorySummary;
 
   return {

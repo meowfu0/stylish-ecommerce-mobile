@@ -63,7 +63,8 @@ export function resolveDashboardDataState({
   sectionCount,
 }: DashboardDataStateInput): DashboardDataState {
   if (loading) return hasSnapshot ? "refreshing" : "loading";
-  if (failedSectionCount >= sectionCount) return hasSnapshot ? "partial" : "error";
+  if (failedSectionCount >= sectionCount)
+    return hasSnapshot ? "partial" : "error";
   if (failedSectionCount > 0) return "partial";
   if (!hasCatalog) return "empty";
   return "ready";
@@ -83,6 +84,16 @@ export function normalizeMerchantStoreStatus(
   const normalized = value?.trim().toLowerCase();
   if (normalized === "inactive" || normalized === "suspended") {
     return normalized;
+  }
+  // The backend spells the pre-approval state several ways depending on which
+  // table the value came from, and all of them mean the same thing here.
+  if (
+    normalized === "under_review" ||
+    normalized === "in_review" ||
+    normalized === "pending" ||
+    normalized === "pending_review"
+  ) {
+    return "under_review";
   }
   return "active";
 }

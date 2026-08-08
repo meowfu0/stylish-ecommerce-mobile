@@ -41,8 +41,7 @@ const dashboardStateDetails: Record<
   partial: {
     name: "Partial data",
     note: "Regions that loaded stay usable while the ones that failed are named instead of faked.",
-    trigger:
-      "Triggered when some dashboard requests succeed and others fail.",
+    trigger: "Triggered when some dashboard requests succeed and others fail.",
   },
   "permission-denied": {
     name: "Permission denied",
