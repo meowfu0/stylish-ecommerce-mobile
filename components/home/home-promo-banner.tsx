@@ -10,16 +10,11 @@ type HomePromoBannerProps = {
 
 const FIGMA_WIDTH = 343;
 
-export function HomePromoBanner({
-  onShopNow,
-  width,
-}: HomePromoBannerProps) {
+export function HomePromoBanner({ onShopNow, width }: HomePromoBannerProps) {
   const scale = width / FIGMA_WIDTH;
 
   return (
-    <View
-      style={{ height: 220 * scale, width }}
-    >
+    <View style={{ height: 220 * scale, width }}>
       <View
         className="overflow-hidden rounded-md"
         style={{ height: 189 * scale, width }}

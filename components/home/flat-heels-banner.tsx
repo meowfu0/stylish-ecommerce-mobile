@@ -10,10 +10,7 @@ type FlatHeelsBannerProps = {
 
 const FIGMA_WIDTH = 343;
 
-export function FlatHeelsBanner({
-  onVisitNow,
-  width,
-}: FlatHeelsBannerProps) {
+export function FlatHeelsBanner({ onVisitNow, width }: FlatHeelsBannerProps) {
   const scale = width / FIGMA_WIDTH;
 
   return (

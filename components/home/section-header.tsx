@@ -19,9 +19,7 @@ export function SectionHeader({
   onViewAll,
 }: SectionHeaderProps) {
   const isDeal = tone === "deal";
-  const backgroundColor = isDeal
-    ? colors.brand.blue
-    : colors.brand.trending;
+  const backgroundColor = isDeal ? colors.brand.blue : colors.brand.trending;
 
   return (
     <View
