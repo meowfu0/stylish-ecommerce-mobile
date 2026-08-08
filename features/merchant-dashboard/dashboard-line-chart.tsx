@@ -142,6 +142,42 @@ export function toChartSegments(points: ChartPoint[]): ChartSegment[] {
   });
 }
 
+/**
+ * Rounds a raw step up to the next readable increment. The 1.5 and 2.5 rungs
+ * are what let a peso axis land on 25K and a count axis on 15 instead of
+ * jumping to the next power of ten and leaving the plot half empty.
+ */
+const tickSteps = [1, 1.5, 2, 2.5, 3, 4, 5, 10];
+
+/**
+ * Builds a zero-based axis whose top is a round number at or above the largest
+ * value. Everything is derived from the data, so a series that grows past
+ * today's numbers simply gets a taller axis instead of being clipped.
+ */
+export function niceAxis(
+  maxValue: number,
+  tickCount = 4,
+): { maximum: number; ticks: number[] } {
+  const safeMax = Number.isFinite(maxValue) ? Math.max(0, maxValue) : 0;
+  const safeCount = Math.max(1, Math.floor(tickCount));
+
+  if (safeMax <= 0) {
+    return { maximum: safeCount, ticks: rangeTicks(1, safeCount) };
+  }
+
+  const raw = safeMax / safeCount;
+  const magnitude = 10 ** Math.floor(Math.log10(raw));
+  const normalized = raw / magnitude;
+  const step =
+    magnitude * (tickSteps.find((candidate) => normalized <= candidate) ?? 10);
+
+  return { maximum: step * safeCount, ticks: rangeTicks(step, safeCount) };
+}
+
+function rangeTicks(step: number, count: number) {
+  return Array.from({ length: count + 1 }, (_value, index) => index * step);
+}
+
 /** Derives the plotted range from the data, with optional padding. */
 export function chartDomain(values: number[], padRatio = 0) {
   if (values.length === 0) return { maximum: 1, minimum: 0 };
