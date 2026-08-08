@@ -5,10 +5,7 @@ type ProgressIndicatorProps = {
   total: number;
 };
 
-export function ProgressIndicator({
-  current,
-  total,
-}: ProgressIndicatorProps) {
+export function ProgressIndicator({ current, total }: ProgressIndicatorProps) {
   return (
     <View
       aria-label={`Step ${current} of ${total}`}
@@ -22,9 +19,7 @@ export function ProgressIndicator({
           <View
             aria-hidden
             className={`h-[8px] rounded-full transition-all duration-300 ${
-              active
-                ? "w-[40px] bg-brand-primary"
-                : "w-[8px] bg-brand-pinkSoft"
+              active ? "w-[40px] bg-brand-primary" : "w-[8px] bg-brand-pinkSoft"
             }`}
             key={index}
             testID="onboarding-progress-pill"
