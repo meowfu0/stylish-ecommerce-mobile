@@ -45,7 +45,9 @@ export function PriceRow({
     >
       <Text
         className={`${
-          summary ? "font-montserrat-medium text-action" : "font-montserrat-regular text-sm"
+          summary
+            ? "font-montserrat-medium text-action"
+            : "font-montserrat-regular text-sm"
         } ${labelToneClasses[labelTone]}`}
       >
         {label}
