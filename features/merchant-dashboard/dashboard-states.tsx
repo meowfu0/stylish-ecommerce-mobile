@@ -4,6 +4,12 @@ import { StyleSheet, View } from "react-native";
 import { StylishText } from "@/components/typography/stylish-text";
 import { borderRadius, colors, spacing } from "@/constants/design-tokens";
 import { dashboardSectionLabels } from "@/features/merchant-dashboard/dashboard-data-source";
+import { useResponsiveGrid } from "@/features/merchant-dashboard/dashboard-grid";
+import {
+  metricGridGap,
+  metricMinCardWidth,
+} from "@/features/merchant-dashboard/dashboard-overview-sections";
+import { plotHeightFor } from "@/features/merchant-dashboard/sales-chart-model";
 import {
   DashboardButton,
   DashboardCard,
@@ -93,12 +99,15 @@ export function DashboardStateBanner({
 
 export function DashboardBlockingState({
   deniedSection = "This section",
+  paired = true,
   requiredPermission,
   session,
   state,
   ...actions
 }: StateActions & {
   deniedSection?: string;
+  /** Passed through so the loading skeleton uses the content's breakpoint. */
+  paired?: boolean;
   requiredPermission?: Permission;
   session: MerchantSession;
   state: DashboardState;
@@ -108,7 +117,9 @@ export function DashboardBlockingState({
   if (state === "ready" || state === "partial" || state === "refreshing") {
     return null;
   }
-  if (state === "loading") return <DashboardLoadingState />;
+  if (state === "loading") {
+    return <DashboardLoadingState paired={paired} />;
+  }
   if (state === "empty") {
     return <NewMerchantState actions={actions} session={session} />;
   }
@@ -392,7 +403,54 @@ function SkeletonLines({ widths }: { widths: (number | `${number}%`)[] }) {
   );
 }
 
-export function DashboardLoadingState() {
+/** Placeholder count matches the four metrics the dashboard always renders. */
+const SKELETON_METRIC_COUNT = 4;
+
+/**
+ * Heights measured from the real sections at each width class rather than
+ * chosen by eye — the welcome banner and metric cards grow as their copy stops
+ * wrapping, so a single constant would shift the page at two breakpoints out of
+ * three. Keyed off the same measured row width the metric grid already uses.
+ */
+function skeletonHeights(rowWidth: number) {
+  if (rowWidth > 0 && rowWidth < 420) {
+    return { hero: 296, metricCard: 160, side: 1259, table: 789 };
+  }
+  if (rowWidth > 0 && rowWidth < 900) {
+    return { hero: 204, metricCard: 160, side: 716, table: 637 };
+  }
+  // Narrower cards wrap their comparison line, so they stand taller than the
+  // widest layout does.
+  if (rowWidth > 0 && rowWidth < 1150) {
+    return { hero: 166, metricCard: 192, side: 567, table: 637 };
+  }
+  return { hero: 166, metricCard: 176, side: 516, table: 637 };
+}
+
+/**
+ * Loading placeholder for the merchant overview.
+ *
+ * Every dimension here is borrowed from the real sections rather than invented:
+ * the metric placeholders run through the same `useResponsiveGrid` with the same
+ * gap and minimum card width, the paired row uses the same `paired` breakpoint
+ * the content does, and the chart block takes its height from the chart's own
+ * `plotHeightFor`. That is what keeps the layout from shifting when the data
+ * lands. The shimmer is CSS-driven and the global reduced-motion rule already
+ * stills it.
+ */
+export function DashboardLoadingState({
+  paired = true,
+}: {
+  /** Mirrors the content's two-column breakpoint. */
+  paired?: boolean;
+}) {
+  const grid = useResponsiveGrid({
+    count: SKELETON_METRIC_COUNT,
+    gap: metricGridGap,
+    minItemWidth: metricMinCardWidth,
+  });
+  const heights = skeletonHeights(grid.rowWidth);
+
   return (
     <View
       accessibilityLabel="Loading your merchant dashboard."
@@ -404,24 +462,47 @@ export function DashboardLoadingState() {
       <StylishText style={styles.srOnly} unstyled variant="caption">
         Loading your merchant dashboard.
       </StylishText>
-      <DashboardCard style={styles.skeletonHeroCard}>
+
+      <DashboardCard style={[styles.skeletonHeroCard, { height: heights.hero }]}>
         <SkeletonLines widths={[160, 260, 320]} />
       </DashboardCard>
-      <View style={styles.skeletonRow}>
-        {[0, 1, 2, 3].map((item) => (
-          <DashboardCard key={item} style={styles.skeletonMetricCard}>
+
+      <View
+        onLayout={grid.onLayout}
+        style={styles.skeletonMetricGrid}
+        testID="dashboard-skeleton-metrics"
+      >
+        {Array.from({ length: SKELETON_METRIC_COUNT }, (_value, index) => (
+          <DashboardCard
+            key={index}
+            style={[
+              styles.skeletonMetricCard,
+              grid.itemStyle,
+              { height: heights.metricCard },
+            ]}
+          >
             <SkeletonLines widths={[90, 140, "100%"]} />
           </DashboardCard>
         ))}
       </View>
-      <View style={styles.skeletonPair}>
-        {[0, 1].map((item) => (
-          <DashboardCard key={item} style={styles.skeletonLargeCard}>
-            <SkeletonLines widths={[item === 0 ? 150 : 130, "100%"]} />
-          </DashboardCard>
-        ))}
+
+      <View style={[styles.skeletonPair, !paired && styles.skeletonStacked]}>
+        <DashboardCard style={styles.skeletonChartCard}>
+          <SkeletonLines widths={[150, 220]} />
+          <DashboardSkeleton
+            style={{ height: plotHeightFor(grid.rowWidth), width: "100%" }}
+          />
+        </DashboardCard>
+        <DashboardCard
+          style={[styles.skeletonSideCard, { height: heights.side }]}
+        >
+          <SkeletonLines widths={[130, "100%", "100%", "100%", "100%"]} />
+        </DashboardCard>
       </View>
-      <DashboardCard style={styles.skeletonTableCard}>
+
+      <DashboardCard
+        style={[styles.skeletonTableCard, { height: heights.table }]}
+      >
         <SkeletonLines
           widths={[160, "100%", "100%", "100%", "100%", "100%", "100%"]}
         />
@@ -502,7 +583,8 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     width: "100%",
   },
-  loadingLayout: { gap: spacing.md, width: "100%" },
+  // The content column's own gap, so sections land where the skeleton left them.
+  loadingLayout: { gap: 20, width: "100%" },
   setupBody: {
     color: colors.neutral[550],
     fontFamily: "Montserrat_400Regular",
@@ -552,27 +634,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  skeletonHeroCard: {
-    height: 144,
-    justifyContent: "center",
-    padding: spacing.lg,
-  },
-  skeletonLargeCard: {
+  // Matches the welcome banner's own padding and compact form.
+  // Height is supplied per width class; only padding is fixed here.
+  skeletonHeroCard: { justifyContent: "center", padding: spacing.lg },
+  // Height comes from the chart at render time, so only padding is fixed here.
+  skeletonChartCard: { flex: 1, gap: spacing.md, minWidth: 0, padding: spacing.lg },
+  skeletonSideCard: {
     flex: 1,
-    height: 358,
-    minWidth: 260,
+    gap: spacing.md,
+    minWidth: 0,
     padding: spacing.lg,
   },
   skeletonLines: { gap: spacing.sm, width: "100%" },
-  skeletonMetricCard: {
-    flex: 1,
-    height: 156,
-    minWidth: 180,
-    padding: spacing.lg,
+  // Width is supplied by the shared metric grid; only the card's own box is set.
+  skeletonMetricCard: { padding: spacing.lg },
+  skeletonMetricGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: metricGridGap,
   },
-  skeletonPair: { flexDirection: "row", flexWrap: "wrap", gap: 20 },
-  skeletonRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
-  skeletonTableCard: { height: 392, padding: spacing.lg },
+  // The same row and gap the real paired sections use.
+  skeletonPair: { flexDirection: "row", gap: spacing.lg },
+  skeletonStacked: { flexDirection: "column" },
+  skeletonTableCard: { padding: spacing.lg },
   srOnly: {
     height: 1,
     left: -10000,

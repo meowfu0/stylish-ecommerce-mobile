@@ -93,20 +93,28 @@ export function SectionHeading({
 
 export function DashboardButton({
   disabled = false,
+  fullWidth = false,
   icon,
   label,
   large = false,
   onPress,
+  testID,
   title,
   tone = "secondary",
+  trailingIcon,
 }: {
   disabled?: boolean;
+  /** Stretches to the container, for a card's primary call to action. */
+  fullWidth?: boolean;
   icon?: DashboardIconName;
   label: string;
   large?: boolean;
   onPress?: () => void;
+  testID?: string;
   title?: string;
   tone?: "primary" | "secondary" | "quiet";
+  /** Rendered after the label, for "continue"-style affordances. */
+  trailingIcon?: DashboardIconName;
 }) {
   const [hovered, setHovered] = useState(false);
   const [pressed, setPressed] = useState(false);
@@ -132,7 +140,9 @@ export function DashboardButton({
         tone === "quiet" && styles.buttonQuiet,
         pressed && !disabled && styles.buttonPressed,
         disabled && styles.buttonDisabled,
+        fullWidth && styles.buttonFullWidth,
       ]}
+      testID={testID}
     >
       {icon ? (
         <DashboardIcon
@@ -151,6 +161,13 @@ export function DashboardButton({
       >
         {label}
       </StylishText>
+      {trailingIcon ? (
+        <DashboardIcon
+          color={tone === "primary" ? colors.neutral[0] : colors.ink.primary}
+          name={trailingIcon}
+          size={18}
+        />
+      ) : null}
     </Pressable>
   );
 }
@@ -235,9 +252,14 @@ const styles = StyleSheet.create({
     borderColor: colors.brand.primaryHover,
   },
   buttonQuiet: { backgroundColor: "transparent" },
+  buttonFullWidth: { alignSelf: "stretch", width: "100%" },
   buttonSecondary: {
     backgroundColor: colors.neutral[0],
     borderColor: colors.neutral[200],
+    // Required alongside an all-sides `borderWidth`: on web these serialise to
+    // the `border` shorthand, which resets the omitted style to `none` and
+    // silently collapses the outline to zero width.
+    borderStyle: "solid",
     borderWidth: 1,
   },
   card: {
@@ -324,6 +346,9 @@ const styles = StyleSheet.create({
   skeleton: {
     backgroundColor: colors.neutral[200],
     borderRadius: borderRadius.lg,
+    // Without a height every placeholder collapsed to nothing and the cards
+    // rendered empty. Callers that need a block override it.
+    height: 12,
     opacity: 0.7,
   },
 });

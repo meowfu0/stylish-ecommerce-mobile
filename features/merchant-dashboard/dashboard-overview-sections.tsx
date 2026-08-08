@@ -13,18 +13,18 @@ import { borderRadius, colors, spacing } from "@/constants/design-tokens";
 import { can } from "@/features/merchant-dashboard/dashboard-access";
 import {
   actionItems,
-  chartSeries,
   dashboardMetrics,
   pipelineStages,
 } from "@/features/merchant-dashboard/dashboard-data";
+import { emptySalesSeries } from "@/features/merchant-dashboard/dashboard-data-source";
 import { useResponsiveGrid } from "@/features/merchant-dashboard/dashboard-grid";
+import { MetricSparkline } from "@/features/merchant-dashboard/metric-sparkline";
 import {
-  buildMonotoneLinePoints,
-  type ChartPoint,
-  DashboardLineChart,
-  defaultCurveSamplesPerSegment,
-  projectValue,
-} from "@/features/merchant-dashboard/dashboard-line-chart";
+  SALES_SERIES,
+  salesChartSummary,
+  salesTotals,
+} from "@/features/merchant-dashboard/sales-chart-model";
+import { SalesPerformanceChart } from "@/features/merchant-dashboard/sales-performance-chart";
 import {
   DashboardButton,
   DashboardCard,
@@ -34,11 +34,16 @@ import {
 } from "@/features/merchant-dashboard/dashboard-primitives";
 import type {
   ChartCadence,
+  DateRange,
   MerchantSession,
   Metric,
   PipelineStage,
+  SalesSeries,
 } from "@/features/merchant-dashboard/dashboard-types";
+import { CHART_CADENCES } from "@/features/merchant-dashboard/dashboard-types";
 import {
+  DATE_RANGE_LABELS,
+  formatCount,
   formatPeso,
   greetingFor,
 } from "@/features/merchant-dashboard/dashboard-format";
@@ -105,9 +110,14 @@ export function WelcomeBanner({
   );
 }
 
-const metricGridGap = spacing.sm;
+/**
+ * Metric grid geometry. Exported so the loading skeleton can lay its
+ * placeholders out on the same grid and the cards do not jump when the real
+ * metrics arrive.
+ */
+export const metricGridGap = spacing.sm;
 /** Below this a card can no longer show a compact peso value in full. */
-const metricMinCardWidth = 250;
+export const metricMinCardWidth = 250;
 
 export function MetricsSection({
   metrics = dashboardMetrics,
@@ -204,7 +214,7 @@ function MetricCard({
             </StylishText>
           </View>
         </View>
-        <Sparkline
+        <MetricSparkline
           data={metric.sparkline}
           metricKey={metric.key}
           positive={positive}
@@ -214,190 +224,26 @@ function MetricCard({
   );
 }
 
-/**
- * Trend line for one metric card. It measures its own box and normalizes the
- * series against its own range, so any unit the analytics API returns —
- * centavos, order counts, percentages — plots correctly without tuning.
- */
-function Sparkline({
-  data,
-  metricKey,
-  positive,
+export function SalesPerformance({
+  dateRange = "7d",
+  empty = false,
+  salesSeries = emptySalesSeries,
 }: {
-  data: readonly number[];
-  metricKey: string;
-  positive: boolean;
+  dateRange?: DateRange;
+  empty?: boolean;
+  salesSeries?: SalesSeries;
 }) {
-  const [size, setSize] = useState({ height: 0, width: 0 });
-  const values = data.filter((value) => Number.isFinite(value));
-
-  return (
-    <View
-      accessibilityLabel={
-        values.length > 0
-          ? `${positive ? "Upward" : "Downward"} trend across ${values.length} points`
-          : "Trend data unavailable"
-      }
-      accessibilityRole="image"
-      onLayout={(event) => {
-        const { height, width } = event.nativeEvent.layout;
-        setSize({ height, width });
-      }}
-      style={styles.sparkline}
-      testID={`metric-sparkline-${metricKey}`}
-    >
-      <DashboardLineChart
-        color={positive ? colors.feedback.success : colors.feedback.danger}
-        height={size.height}
-        testID={`metric-sparkline-line-${metricKey}`}
-        values={[...values]}
-        width={size.width}
-      />
-    </View>
-  );
-}
-
-type SalesChartDataKey = "orders" | "refunds" | "revenue";
-
-const chartPlotBottom = 150;
-const chartPlotHeight = 140;
-const chartCurveSamplesPerSegment = defaultCurveSamplesPerSegment;
-
-function chartPointY(value: number, maximum: number) {
-  return projectValue({
-    bottom: chartPlotBottom,
-    height: chartPlotHeight,
-    maximum,
-    minimum: 0,
-    value,
-  });
-}
-
-function buildMonotoneChartPoints({
-  chartWidth,
-  dataKey,
-  maximum,
-  samplesPerSegment = chartCurveSamplesPerSegment,
-}: {
-  chartWidth: number;
-  dataKey: SalesChartDataKey;
-  maximum: number;
-  samplesPerSegment?: number;
-}): ChartPoint[] {
-  return buildMonotoneLinePoints({
-    bottom: chartPlotBottom,
-    height: chartPlotHeight,
-    maximum,
-    minimum: 0,
-    samplesPerSegment,
-    values: chartSeries.map((point) => point[dataKey]),
-    width: chartWidth,
-  });
-}
-
-function ChartSeriesLine({
-  chartWidth,
-  color,
-  dashed = false,
-  dataKey,
-  maximum,
-}: {
-  chartWidth: number;
-  color: string;
-  dashed?: boolean;
-  dataKey: SalesChartDataKey;
-  maximum: number;
-}) {
-  if (chartWidth <= 0) return null;
-  const points = buildMonotoneChartPoints({
-    chartWidth,
-    dataKey,
-    maximum,
-    samplesPerSegment: dashed ? 1 : chartCurveSamplesPerSegment,
-  });
-
-  return (
-    <View
-      pointerEvents="none"
-      style={styles.chartSeriesLayer}
-      testID={`chart-series-${dataKey}`}
-    >
-      {points.slice(0, -1).map((point, index) => {
-        const next = points[index + 1];
-        const deltaX = next.x - point.x;
-        const deltaY = next.y - point.y;
-        const length = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-        const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
-
-        return (
-          <View
-            key={`${dataKey}-${index}`}
-            style={[
-              styles.chartSeriesSegment,
-              dashed
-                ? styles.chartSeriesSegmentDashed
-                : { backgroundColor: color },
-              dashed && { borderTopColor: color },
-              {
-                left: point.x,
-                top: point.y,
-                transform: [{ rotate: `${angle}deg` }],
-                width: length,
-              },
-            ]}
-          />
-        );
-      })}
-    </View>
-  );
-}
-
-function RevenueArea({ chartWidth }: { chartWidth: number }) {
-  if (chartWidth <= 0) return null;
-  const points = buildMonotoneChartPoints({
-    chartWidth,
-    dataKey: "revenue",
-    maximum: 100000,
-  });
-
-  return (
-    <View
-      pointerEvents="none"
-      style={styles.chartSeriesLayer}
-      testID="chart-series-revenue-area"
-    >
-      {points.slice(0, -1).map((point, index) => {
-        const next = points[index + 1];
-        const top = Math.min(point.y, next.y);
-        return (
-          <View
-            key={`revenue-area-${index}`}
-            style={[
-              styles.chartRevenueAreaSlice,
-              {
-                height: chartPlotBottom - top,
-                left: point.x,
-                top,
-                width: Math.max(next.x - point.x + 1, 1),
-              },
-            ]}
-          >
-            <View style={styles.chartRevenueAreaBase} />
-            <View style={styles.chartRevenueAreaMiddle} />
-            <View style={styles.chartRevenueAreaTop} />
-          </View>
-        );
-      })}
-    </View>
-  );
-}
-
-export function SalesPerformance({ empty = false }: { empty?: boolean }) {
   const [cadence, setCadence] = useState<ChartCadence>("daily");
-  const [chartWidth, setChartWidth] = useState(0);
+  // Granularity selects a different dataset rather than relabelling one series,
+  // which is also the shape the analytics endpoint will return per interval.
+  const points = salesSeries[cadence] ?? [];
+  const showEmpty = empty || points.length === 0;
+  const totals = salesTotals(points);
+  const rangeLabel = DATE_RANGE_LABELS[dateRange];
+
   const cadenceControl = (
     <View style={styles.segmentedControl}>
-      {(["daily", "weekly", "monthly"] as ChartCadence[]).map((item) => (
+      {CHART_CADENCES.map((item) => (
         <Pressable
           accessibilityRole="button"
           accessibilityState={{ selected: cadence === item }}
@@ -427,85 +273,32 @@ export function SalesPerformance({ empty = false }: { empty?: boolean }) {
     <DashboardCard style={styles.growCard} testID="dashboard-sales-performance">
       <SectionHeading
         action={cadenceControl}
-        description="Last 7 days · daily view"
+        description={`${rangeLabel} · ${cadence} view`}
         title="Sales performance"
       />
       <View style={styles.chartContent}>
+        {/* Legend and plot read the same series definitions, so a colour can
+            never say one thing here and another in the chart. */}
         <View style={styles.legend}>
-          <LegendItem
-            color={colors.brand.primary}
-            label="Revenue"
-            note="Gross revenue in pesos"
-          />
-          <LegendItem
-            color={colors.brand.blue}
-            label="Orders"
-            note="Order count"
-          />
-          <LegendItem
-            color={colors.neutral[400]}
-            label="Refunds"
-            note="Refunded value in pesos"
-            variant="dashed"
-          />
+          {SALES_SERIES.map((series) => (
+            <LegendItem
+              color={series.color}
+              key={series.id}
+              label={series.label}
+              note={series.note}
+              testID={`sales-legend-swatch-${series.id}`}
+            />
+          ))}
         </View>
 
-        <View
-          accessibilityLabel={
-            empty
-              ? "Sales chart has no data for this range."
-              : "Revenue rose from 58,100 pesos to 83,975 pesos while orders rose from 32 to 53. Refunds remained below 2,000 pesos."
-          }
-          accessibilityRole="image"
-          onLayout={(event) => setChartWidth(event.nativeEvent.layout.width)}
-          style={[styles.chart, empty && styles.chartEmptySurface]}
-          testID="dashboard-sales-chart"
-        >
-          {!empty ? (
-            <>
-              {[0, 1, 2, 3].map((line) => (
-                <View
-                  key={line}
-                  style={[styles.chartGridLine, { top: line * 52 }]}
-                />
-              ))}
-              <RevenueArea chartWidth={chartWidth} />
-              <ChartSeriesLine
-                chartWidth={chartWidth}
-                color={colors.brand.primary}
-                dataKey="revenue"
-                maximum={100000}
-              />
-              <ChartSeriesLine
-                chartWidth={chartWidth}
-                color={colors.brand.blue}
-                dataKey="orders"
-                maximum={60}
-              />
-              <ChartSeriesLine
-                chartWidth={chartWidth}
-                color={colors.neutral[400]}
-                dashed
-                dataKey="refunds"
-                maximum={100000}
-              />
-            </>
-          ) : null}
-          {!empty ? (
-            <View style={styles.chartLabels}>
-              {chartSeries.map((point) => (
-                <StylishText
-                  key={point.label}
-                  style={styles.chartLabel}
-                  unstyled
-                  variant="caption"
-                >
-                  {point.label}
-                </StylishText>
-              ))}
-            </View>
-          ) : null}
-          {empty ? (
+        {showEmpty ? (
+          <View
+            accessibilityLabel={`Sales chart has no data for ${rangeLabel}.`}
+            accessibilityRole="image"
+            accessible
+            style={[styles.chart, styles.chartEmptySurface]}
+            testID="dashboard-sales-chart"
+          >
             <View style={styles.chartEmpty}>
               <DashboardIcon
                 color={colors.neutral[400]}
@@ -528,14 +321,31 @@ export function SalesPerformance({ empty = false }: { empty?: boolean }) {
                 appear here.
               </StylishText>
             </View>
-          ) : null}
-        </View>
+          </View>
+        ) : (
+          <SalesPerformanceChart
+            accessibilityLabel={salesChartSummary({
+              cadence,
+              points,
+              rangeLabel,
+              totals,
+            })}
+            points={points}
+            testID="dashboard-sales-chart"
+          />
+        )}
 
-        {!empty ? (
+        {!showEmpty ? (
           <View style={styles.chartTotals}>
-            <ChartTotal label="Revenue" value="₱486,275" />
-            <ChartTotal label="Orders" value="318" />
-            <ChartTotal label="Refunds" value="₱8,480" />
+            <ChartTotal
+              label="Revenue"
+              value={formatPeso(totals.revenue, { decimals: false })}
+            />
+            <ChartTotal label="Orders" value={formatCount(totals.orders)} />
+            <ChartTotal
+              label="Refunds"
+              value={formatPeso(totals.refunds, { decimals: false })}
+            />
           </View>
         ) : null}
       </View>
@@ -543,27 +353,27 @@ export function SalesPerformance({ empty = false }: { empty?: boolean }) {
   );
 }
 
+/**
+ * One legend entry. The swatch is a filled dot for every series, including the
+ * dashed refunds line: the reference identifies series by colour alone, and a
+ * dot reads as a colour key rather than as a sample of the stroke.
+ */
 function LegendItem({
   color,
   label,
   note,
-  variant = "line",
+  testID,
 }: {
   color: string;
   label: string;
   note: string;
-  variant?: "dashed" | "line";
+  testID?: string;
 }) {
   return (
     <View style={styles.legendItem}>
       <View
-        style={[
-          styles.legendSwatch,
-          variant === "dashed" && styles.legendSwatchDashed,
-          variant === "dashed"
-            ? { borderTopColor: color }
-            : { backgroundColor: color },
-        ]}
+        style={[styles.legendSwatch, { backgroundColor: color }]}
+        testID={testID}
       />
       <StylishText style={styles.legendLabel} unstyled variant="caption">
         {label}
@@ -860,77 +670,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginTop: spacing.xs,
   },
-  chartGridLine: {
-    backgroundColor: colors.neutral[200],
-    height: 1,
-    left: 0,
-    position: "absolute",
-    right: 0,
-  },
-  chartLabel: {
-    color: colors.neutral[550],
-    flex: 1,
-    fontFamily: "Montserrat_400Regular",
-    fontSize: 9,
-    lineHeight: 14,
-    textAlign: "center",
-  },
-  chartLabels: {
-    bottom: 0,
-    flexDirection: "row",
-    left: 0,
-    position: "absolute",
-    right: 0,
-  },
-  chartRevenueAreaBase: {
-    backgroundColor: colors.brand.primary,
-    bottom: 0,
-    left: 0,
-    opacity: 0.025,
-    position: "absolute",
-    right: 0,
-    top: 0,
-  },
-  chartRevenueAreaMiddle: {
-    backgroundColor: colors.brand.primary,
-    height: "62%",
-    left: 0,
-    opacity: 0.04,
-    position: "absolute",
-    right: 0,
-    top: 0,
-  },
-  chartRevenueAreaSlice: {
-    overflow: "hidden",
-    position: "absolute",
-  },
-  chartRevenueAreaTop: {
-    backgroundColor: colors.brand.primary,
-    height: "30%",
-    left: 0,
-    opacity: 0.05,
-    position: "absolute",
-    right: 0,
-    top: 0,
-  },
-  chartSeriesLayer: {
-    bottom: 0,
-    left: 0,
-    position: "absolute",
-    right: 0,
-    top: 0,
-  },
-  chartSeriesSegment: {
-    height: 2,
-    position: "absolute",
-    transformOrigin: "left center",
-  },
-  chartSeriesSegmentDashed: {
-    backgroundColor: "transparent",
-    borderStyle: "dashed",
-    borderTopWidth: 2,
-    height: 0,
-  },
   chartTotal: { flex: 1, gap: spacing.xxs },
   chartTotalLabel: {
     color: colors.neutral[550],
@@ -1001,14 +740,8 @@ const styles = StyleSheet.create({
   legendSwatch: {
     borderRadius: borderRadius.pill,
     flexShrink: 0,
-    height: 2,
-    width: 12,
-  },
-  legendSwatchDashed: {
-    backgroundColor: "transparent",
-    borderStyle: "dashed",
-    borderTopWidth: 2,
-    height: 0,
+    height: 10,
+    width: 10,
   },
   metricBody: {
     alignItems: "flex-end",
@@ -1144,18 +877,6 @@ const styles = StyleSheet.create({
   segmentLabelActive: {
     color: colors.ink.primary,
     fontFamily: "Montserrat_600SemiBold",
-  },
-  sparkline: {
-    // Yields to the metric value rather than competing with it: never grows
-    // past its basis, shrinks when the card is tight, and the trend line
-    // reprojects itself onto whatever box it ends up with.
-    flexBasis: 112,
-    flexGrow: 0,
-    flexShrink: 1,
-    height: 62,
-    minWidth: 56,
-    overflow: "hidden",
-    position: "relative",
   },
   welcomeActions: {
     alignItems: "center",
