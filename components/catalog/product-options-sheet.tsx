@@ -253,11 +253,7 @@ export function ProductOptionsSheet<Value extends string>({
   }, [options.length, reduceMotion, title, visible]);
 
   useEffect(() => {
-    if (
-      !visible ||
-      Platform.OS !== "web" ||
-      typeof document === "undefined"
-    ) {
+    if (!visible || Platform.OS !== "web" || typeof document === "undefined") {
       return;
     }
 
