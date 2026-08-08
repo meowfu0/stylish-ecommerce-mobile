@@ -1,13 +1,16 @@
 import type {
   ActionItem,
   ActivityEvent,
+  CatalogSummaryCounts,
   DashboardNotification,
   InventoryAlert,
+  InventorySummary,
   MerchantSession,
   Metric,
   PipelineStage,
   ProductRow,
   RecentOrder,
+  SalesSeries,
 } from "@/features/merchant-dashboard/dashboard-types";
 import { rolePermissions } from "@/features/merchant-dashboard/dashboard-access";
 
@@ -69,15 +72,54 @@ export const dashboardMetrics: Metric[] = [
   },
 ];
 
-export const chartSeries = [
-  { label: "Jul 25", orders: 32, refunds: 1800, revenue: 58100 },
-  { label: "Jul 26", orders: 41, refunds: 900, revenue: 67400 },
-  { label: "Jul 27", orders: 29, refunds: 1220, revenue: 51700 },
-  { label: "Jul 28", orders: 45, refunds: 1040, revenue: 74200 },
-  { label: "Jul 29", orders: 42, refunds: 1670, revenue: 68400 },
-  { label: "Jul 30", orders: 51, refunds: 1930, revenue: 80500 },
-  { label: "Jul 31", orders: 53, refunds: 1920, revenue: 83975 },
-];
+/**
+ * Sales fixtures per cadence. Money is centavos so `formatPeso` reads them
+ * without a second currency convention. Each cadence is a genuinely different
+ * dataset — the chart selects one rather than relabelling a single series.
+ */
+export const salesSeries: SalesSeries = {
+  daily: [
+    { label: "Jul 25", orders: 32, refunds: 180_000, revenue: 5_810_000 },
+    { label: "Jul 26", orders: 41, refunds: 90_000, revenue: 6_740_000 },
+    { label: "Jul 27", orders: 29, refunds: 122_000, revenue: 5_170_000 },
+    { label: "Jul 28", orders: 45, refunds: 104_000, revenue: 7_420_000 },
+    { label: "Jul 29", orders: 42, refunds: 167_000, revenue: 6_840_000 },
+    { label: "Jul 30", orders: 51, refunds: 193_000, revenue: 8_050_000 },
+    { label: "Jul 31", orders: 53, refunds: 192_000, revenue: 8_397_500 },
+  ],
+  weekly: [
+    { label: "Jun 23", orders: 268, refunds: 812_000, revenue: 41_250_000 },
+    { label: "Jun 30", orders: 291, refunds: 693_000, revenue: 45_180_000 },
+    { label: "Jul 7", orders: 254, refunds: 905_000, revenue: 39_640_000 },
+    { label: "Jul 14", orders: 312, refunds: 748_000, revenue: 49_870_000 },
+    { label: "Jul 21", orders: 305, refunds: 1_021_000, revenue: 48_120_000 },
+    { label: "Jul 28", orders: 293, refunds: 1_048_000, revenue: 48_427_500 },
+  ],
+  monthly: [
+    { label: "Feb", orders: 1_042, refunds: 3_120_000, revenue: 162_400_000 },
+    { label: "Mar", orders: 1_188, refunds: 2_870_000, revenue: 184_900_000 },
+    { label: "Apr", orders: 1_095, refunds: 3_410_000, revenue: 171_300_000 },
+    { label: "May", orders: 1_264, refunds: 3_050_000, revenue: 198_600_000 },
+    { label: "Jun", orders: 1_211, refunds: 3_620_000, revenue: 189_450_000 },
+    { label: "Jul", orders: 1_355, refunds: 3_510_000, revenue: 212_780_000 },
+  ],
+};
+
+export const catalogSummary: CatalogSummaryCounts = {
+  activeProducts: 214,
+  archivedProducts: 26,
+  draftProducts: 18,
+  inactiveProducts: 9,
+  missingActiveVariants: 3,
+  missingImages: 5,
+};
+
+export const inventorySummary: InventorySummary = {
+  inStock: 431,
+  lowStock: 12,
+  outOfStock: 3,
+  totalActiveVariants: 486,
+};
 
 export const pipelineStages: PipelineStage[] = [
   { count: 18, key: "new", label: "New", tone: "pink" },
@@ -191,7 +233,7 @@ export const topProducts: ProductRow[] = [
 export const recentOrders: RecentOrder[] = [
   {
     customer: "Maria Santos",
-    date: "Aug 1, 2026",
+    date: "2026-08-01",
     fulfillment: "Unfulfilled",
     items: 3,
     orderNumber: "LUM-24817",
@@ -201,7 +243,7 @@ export const recentOrders: RecentOrder[] = [
   },
   {
     customer: "Jonas Reyes",
-    date: "Aug 1, 2026",
+    date: "2026-08-01",
     fulfillment: "Packing",
     items: 1,
     orderNumber: "LUM-24816",
@@ -211,7 +253,7 @@ export const recentOrders: RecentOrder[] = [
   },
   {
     customer: "Camille Bautista",
-    date: "Aug 1, 2026",
+    date: "2026-08-01",
     fulfillment: "Unfulfilled",
     items: 5,
     orderNumber: "LUM-24815",
@@ -221,7 +263,7 @@ export const recentOrders: RecentOrder[] = [
   },
   {
     customer: "Rafael Dizon",
-    date: "Jul 31, 2026",
+    date: "2026-07-31",
     fulfillment: "Shipped",
     items: 2,
     orderNumber: "LUM-24814",
@@ -231,7 +273,7 @@ export const recentOrders: RecentOrder[] = [
   },
   {
     customer: "Liza Mercado",
-    date: "Jul 31, 2026",
+    date: "2026-07-31",
     fulfillment: "Delivered",
     items: 4,
     orderNumber: "LUM-24813",
@@ -241,7 +283,7 @@ export const recentOrders: RecentOrder[] = [
   },
   {
     customer: "Andrei Villanueva",
-    date: "Jul 31, 2026",
+    date: "2026-07-31",
     fulfillment: "Delivered",
     items: 1,
     orderNumber: "LUM-24812",
@@ -251,7 +293,7 @@ export const recentOrders: RecentOrder[] = [
   },
   {
     customer: "Bea Navarro",
-    date: "Jul 30, 2026",
+    date: "2026-07-30",
     fulfillment: "Packing",
     items: 2,
     orderNumber: "LUM-24811",
@@ -261,7 +303,7 @@ export const recentOrders: RecentOrder[] = [
   },
   {
     customer: "Paolo Cruz",
-    date: "Jul 30, 2026",
+    date: "2026-07-30",
     fulfillment: "Delivered",
     items: 3,
     orderNumber: "LUM-24810",
@@ -271,7 +313,7 @@ export const recentOrders: RecentOrder[] = [
   },
   {
     customer: "Nina Flores",
-    date: "Jul 29, 2026",
+    date: "2026-07-29",
     fulfillment: "Shipped",
     items: 1,
     orderNumber: "LUM-24809",
@@ -281,7 +323,7 @@ export const recentOrders: RecentOrder[] = [
   },
   {
     customer: "Miguel Ramos",
-    date: "Jul 29, 2026",
+    date: "2026-07-29",
     fulfillment: "Delivered",
     items: 2,
     orderNumber: "LUM-24808",
@@ -291,7 +333,7 @@ export const recentOrders: RecentOrder[] = [
   },
   {
     customer: "Aya Mendoza",
-    date: "Jul 28, 2026",
+    date: "2026-07-28",
     fulfillment: "Unfulfilled",
     items: 4,
     orderNumber: "LUM-24807",
@@ -301,7 +343,7 @@ export const recentOrders: RecentOrder[] = [
   },
   {
     customer: "Carlo Garcia",
-    date: "Jul 28, 2026",
+    date: "2026-07-28",
     fulfillment: "Delivered",
     items: 2,
     orderNumber: "LUM-24806",
@@ -311,7 +353,7 @@ export const recentOrders: RecentOrder[] = [
   },
   {
     customer: "Trina Lim",
-    date: "Jul 27, 2026",
+    date: "2026-07-27",
     fulfillment: "Packing",
     items: 3,
     orderNumber: "LUM-24805",
@@ -321,7 +363,7 @@ export const recentOrders: RecentOrder[] = [
   },
   {
     customer: "Luis Aquino",
-    date: "Jul 27, 2026",
+    date: "2026-07-27",
     fulfillment: "Delivered",
     items: 1,
     orderNumber: "LUM-24804",
