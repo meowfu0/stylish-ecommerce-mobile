@@ -48,6 +48,14 @@ backend/node_modules/
 backend/dist/
 backend/certs/
 
+# Local backend integration documentation
+backend/docs/EMAIL_DELIVERY.md
+backend/docs/frontend-merchant-catalog.md
+backend/docs/frontend-merchant-inventory.md
+backend/docs/frontend-merchant-onboarding.md
+backend/docs/frontend-product-images.md
+backend/docs/frontend-storefront.md
+
 # Local Claude task specifications
 docs/merchant-*.md
 docs/velori-*.md
