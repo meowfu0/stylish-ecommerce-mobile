@@ -15,7 +15,10 @@ import {
   DashboardLoadingState,
   DashboardStateBanner,
 } from "@/features/merchant-dashboard/dashboard-states";
-import { MerchantSidebar } from "@/features/merchant-dashboard/merchant-sidebar";
+import {
+  MerchantSidebar,
+  SIDEBAR_LOGO_MAX_WIDTH,
+} from "@/features/merchant-dashboard/merchant-sidebar";
 import { merchantNavigationItems } from "@/features/merchant-dashboard/merchant-navigation";
 import { SidebarPressable as WebSidebarPressable } from "@/features/merchant-dashboard/sidebar-pressable.web";
 import type { MerchantSession } from "@/features/merchant-dashboard/dashboard-types";
@@ -130,7 +133,9 @@ describe("merchant dashboard layout regressions", () => {
     // A cap plus the artwork's own ratio, so the lockup tracks the sidebar
     // width instead of restating a pixel size copied from a screenshot.
     expect(logo.width).toBe("100%");
-    expect(logo.maxWidth).toBe(144);
+    // The cap itself is a design decision the sidebar owns; asserting the
+    // constant keeps this test about the sizing contract rather than a number.
+    expect(logo.maxWidth).toBe(SIDEBAR_LOGO_MAX_WIDTH);
     expect(logo.aspectRatio).toBeCloseTo(VELORI_LOGO_ASPECT_RATIO, 4);
     expect(logo.flexShrink).toBe(1);
     expect(logo.height).toBeUndefined();
@@ -334,7 +339,7 @@ describe("merchant dashboard layout regressions", () => {
     });
   });
 
-  it("keeps an active child branch highlighted without auto-expanding it", async () => {
+  it("opens the group that owns the active child and highlights the child", () => {
     const screen = render(
       <MerchantSidebar
         activeItemLabel="Products"
@@ -344,10 +349,49 @@ describe("merchant dashboard layout regressions", () => {
       />,
     );
 
+    // Landing on a Catalog page opens Catalog, rather than leaving the merchant
+    // to find their own place in the tree.
+    expect(
+      screen.getByLabelText("Catalog").props.accessibilityState.expanded,
+    ).toBe(true);
+    // The highlight moves to the child, so the group row itself stays neutral.
+    expect(
+      screen.getByLabelText("Catalog").props.accessibilityState.selected,
+    ).toBe(false);
+
+    const product = screen.getByLabelText("Products");
+
+    expect(product.props.accessibilityState.selected).toBe(true);
+    expect(StyleSheet.flatten(product.props.style).backgroundColor).toBe(
+      "#FCF3F6",
+    );
+    // Siblings stay neutral.
+    expect(
+      StyleSheet.flatten(screen.getByLabelText("Categories").props.style)
+        .backgroundColor,
+    ).toBeUndefined();
+  });
+
+  it("marks the collapsed group itself when the merchant closes it by hand", async () => {
+    const screen = render(
+      <MerchantSidebar
+        activeItemLabel="Products"
+        onToggleRail={jest.fn()}
+        rail={false}
+        session={ownerSession}
+      />,
+    );
+
+    fireEvent.press(screen.getByLabelText("Catalog"));
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText("Products")).toBeNull();
+    });
+    // With the child hidden the group carries the active treatment instead, so
+    // the merchant can still see where they are.
     expect(
       screen.getByLabelText("Catalog").props.accessibilityState.expanded,
     ).toBe(false);
-    expect(screen.queryByLabelText("Products")).toBeNull();
     expect(
       screen.getByLabelText("Catalog").props.accessibilityState.selected,
     ).toBe(true);
@@ -355,17 +399,6 @@ describe("merchant dashboard layout regressions", () => {
       StyleSheet.flatten(screen.getByLabelText("Catalog").props.style)
         .backgroundColor,
     ).toBe("#FCF3F6");
-
-    fireEvent.press(screen.getByLabelText("Catalog"));
-    await waitFor(() => {
-      expect(screen.getByLabelText("Products")).toBeTruthy();
-    });
-    const product = screen.getByLabelText("Products");
-
-    expect(product.props.accessibilityState.selected).toBe(true);
-    expect(StyleSheet.flatten(product.props.style).backgroundColor).toBe(
-      "#FCF3F6",
-    );
   });
 
   it("enables navigation scrolling only when its content overflows", () => {

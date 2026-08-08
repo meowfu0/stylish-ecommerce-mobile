@@ -47,7 +47,9 @@ describe("sortOrdersByDate", () => {
     const original = [...recentOrders];
     const ascending = sortOrdersByDate(recentOrders, "asc");
 
-    expect(ascending[0].date <= ascending[ascending.length - 1].date).toBe(true);
+    expect(ascending[0].date <= ascending[ascending.length - 1].date).toBe(
+      true,
+    );
     expect(recentOrders).toEqual(original);
   });
 });
@@ -56,7 +58,9 @@ describe("RecentOrders", () => {
   it("formats ISO dates for display while sorting on the raw value", () => {
     const screen = render(<RecentOrders compact={false} session={owner} />);
 
-    expect(screen.getAllByText(formatOrderDate("2026-08-01")).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(formatOrderDate("2026-08-01")).length,
+    ).toBeGreaterThan(0);
     expect(screen.queryByText("2026-08-01")).toBeNull();
   });
 
@@ -160,15 +164,13 @@ describe("RecentOrders", () => {
 
   it("withholds fulfilment from a role that cannot fulfil orders", () => {
     const open = recentOrders.find(
-      (order) => order.status !== "Cancelled" && order.fulfillment !== "Delivered",
+      (order) =>
+        order.status !== "Cancelled" && order.fulfillment !== "Delivered",
     );
     if (!open) throw new Error("fixture needs an unfulfilled order");
 
     const screen = render(
-      <RecentOrders
-        compact={false}
-        session={{ ...owner, permissions: [] }}
-      />,
+      <RecentOrders compact={false} session={{ ...owner, permissions: [] }} />,
     );
     openMenu(screen.getByTestId(`order-actions-${open.orderNumber}`));
 

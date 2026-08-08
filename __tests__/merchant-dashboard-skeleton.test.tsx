@@ -23,10 +23,8 @@ const layout = (screen: ReturnType<typeof render>, width: number) =>
   });
 
 const cardCount = (screen: ReturnType<typeof render>) =>
-  (
-    screen.getByTestId("dashboard-skeleton-metrics").props
-      .children as unknown[]
-  ).length;
+  (screen.getByTestId("dashboard-skeleton-metrics").props.children as unknown[])
+    .length;
 
 describe("DashboardLoadingState", () => {
   it("announces itself as busy for assistive technology", () => {

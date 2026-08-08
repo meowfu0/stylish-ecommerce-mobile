@@ -47,10 +47,7 @@ function layoutSparkline(
   });
 }
 
-function segmentTops(
-  screen: ReturnType<typeof render>,
-  key: string,
-): number[] {
+function segmentTops(screen: ReturnType<typeof render>, key: string): number[] {
   const line = screen.getByTestId(`metric-sparkline-line-${key}`);
   const segments = line.props.children as { props: { style: ViewStyle } }[];
 
@@ -144,7 +141,13 @@ describe("line chart engine", () => {
 
   it("centers a flat series instead of dividing by a zero range", () => {
     expect(
-      projectValue({ bottom: 60, height: 60, maximum: 4, minimum: 4, value: 4 }),
+      projectValue({
+        bottom: 60,
+        height: 60,
+        maximum: 4,
+        minimum: 4,
+        value: 4,
+      }),
     ).toBe(30);
   });
 

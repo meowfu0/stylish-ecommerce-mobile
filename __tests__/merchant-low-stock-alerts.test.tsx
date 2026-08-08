@@ -69,9 +69,7 @@ describe("LowStockAlerts", () => {
     const depleted: InventoryAlert[] = [
       { ...lowStockAlerts[0], available: 0, sku: "ZERO-1" },
     ];
-    const screen = render(
-      <LowStockAlerts alerts={depleted} session={owner} />,
-    );
+    const screen = render(<LowStockAlerts alerts={depleted} session={owner} />);
 
     expect(screen.getByText("Out of stock")).toBeTruthy();
     const zero = StyleSheet.flatten(screen.getByText("0").props.style);

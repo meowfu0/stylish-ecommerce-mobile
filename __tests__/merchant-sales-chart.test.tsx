@@ -177,9 +177,7 @@ describe("SalesPerformance", () => {
 
   it("shows the empty state rather than plotting an empty series", () => {
     const screen = render(
-      <SalesPerformance
-        salesSeries={{ daily: [], monthly: [], weekly: [] }}
-      />,
+      <SalesPerformance salesSeries={{ daily: [], monthly: [], weekly: [] }} />,
     );
 
     expect(screen.getByText("No sales data for this range yet")).toBeTruthy();

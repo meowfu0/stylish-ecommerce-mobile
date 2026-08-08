@@ -4,7 +4,10 @@ import { StyleSheet } from "react-native";
 import { colors } from "@/constants/design-tokens";
 import { rolePermissions } from "@/features/merchant-dashboard/dashboard-access";
 import { dashboardNotifications } from "@/features/merchant-dashboard/dashboard-data";
-import { MerchantHeader } from "@/features/merchant-dashboard/merchant-header";
+import {
+  MerchantHeader,
+  notificationLabel,
+} from "@/features/merchant-dashboard/merchant-header";
 import type {
   DashboardNotification,
   MerchantSession,
@@ -110,7 +113,7 @@ describe("header notifications dropdown", () => {
       { key: "b", message: "Two", time: "earlier", unread: false },
     ]);
 
-    expect(screen.getByLabelText("1 unread notifications")).toBeTruthy();
+    expect(screen.getByLabelText(notificationLabel(1))).toBeTruthy();
     fireEvent.press(screen.getByTestId("header-notifications"));
     expect(screen.getByText("1 unread")).toBeTruthy();
   });

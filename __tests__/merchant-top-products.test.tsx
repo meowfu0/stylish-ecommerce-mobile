@@ -47,9 +47,7 @@ describe("TopProducts", () => {
     expect(children[children.length - 1].props?.testID).toBe(
       `top-product-view-${topProducts[0].sku}`,
     );
-    expect(
-      screen.getByLabelText(`View ${topProducts[0].name}`),
-    ).toBeTruthy();
+    expect(screen.getByLabelText(`View ${topProducts[0].name}`)).toBeTruthy();
   });
 
   it("colours the trend by direction and keeps it data-driven", () => {
