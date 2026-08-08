@@ -57,9 +57,7 @@ export const useCartStore = create<CartStore>((set) => ({
   items: [],
   removeItem: (id, size) =>
     set((state) => ({
-      items: state.items.filter(
-        (item) => item.id !== id || item.size !== size,
-      ),
+      items: state.items.filter((item) => item.id !== id || item.size !== size),
     })),
 }));
 
@@ -67,7 +65,4 @@ export const selectCartQuantity = (state: CartStore) =>
   state.items.reduce((total, item) => total + item.quantity, 0);
 
 export const selectCartSubtotal = (state: CartStore) =>
-  state.items.reduce(
-    (total, item) => total + item.price * item.quantity,
-    0,
-  );
+  state.items.reduce((total, item) => total + item.price * item.quantity, 0);
