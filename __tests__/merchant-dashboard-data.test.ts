@@ -7,9 +7,10 @@ import {
 import { useMerchantDashboardData } from "@/features/merchant-dashboard/use-merchant-dashboard-data";
 import { AuthRequestError } from "@/services/auth/auth-error";
 
-function countingLoaders(
-  overrides: Partial<DashboardSectionLoaders> = {},
-): { calls: () => number; loaders: DashboardSectionLoaders } {
+function countingLoaders(overrides: Partial<DashboardSectionLoaders> = {}): {
+  calls: () => number;
+  loaders: DashboardSectionLoaders;
+} {
   let calls = 0;
   const counted = Object.fromEntries(
     Object.entries({ ...defaultDashboardSectionLoaders, ...overrides }).map(
