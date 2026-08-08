@@ -41,7 +41,8 @@ const crc32 = (() => {
   }
   return (buf) => {
     let c = -1;
-    for (let i = 0; i < buf.length; i += 1) c = table[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
+    for (let i = 0; i < buf.length; i += 1)
+      c = table[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
     return (c ^ -1) >>> 0;
   };
 })();
@@ -83,7 +84,10 @@ function decodePng(buf) {
 
   for (let y = 0; y < height; y += 1) {
     const filter = raw[y * (stride + 1)];
-    const line = raw.subarray(y * (stride + 1) + 1, y * (stride + 1) + 1 + stride);
+    const line = raw.subarray(
+      y * (stride + 1) + 1,
+      y * (stride + 1) + 1 + stride,
+    );
     const cur = out.subarray(y * stride, (y + 1) * stride);
     const prev = y ? out.subarray((y - 1) * stride, y * stride) : null;
     for (let i = 0; i < stride; i += 1) {
@@ -199,7 +203,11 @@ function square(src, size, coverage, background) {
     (size * coverage) / src.width,
     (size * coverage) / src.height,
   );
-  const fitted = resize(src, Math.round(src.width * scale), Math.round(src.height * scale));
+  const fitted = resize(
+    src,
+    Math.round(src.width * scale),
+    Math.round(src.height * scale),
+  );
   const dst = surface(size, size);
   if (background) {
     for (let i = 0; i < size * size; i += 1) {
@@ -218,7 +226,9 @@ function square(src, size, coverage, background) {
       const sa = fitted.data[s + 3] / 255;
       if (sa === 0) continue;
       for (let c = 0; c < 3; c += 1) {
-        dst.data[d + c] = Math.round(fitted.data[s + c] * sa + dst.data[d + c] * (1 - sa));
+        dst.data[d + c] = Math.round(
+          fitted.data[s + c] * sa + dst.data[d + c] * (1 - sa),
+        );
       }
       dst.data[d + 3] = Math.round(255 * sa + dst.data[d + 3] * (1 - sa));
     }
@@ -253,15 +263,22 @@ function flatten(src) {
 
 function composeSource() {
   const svg = fs.readFileSync(SOURCE, "utf8");
-  const encoded = [...svg.matchAll(/data:image\/png;base64,([A-Za-z0-9+/=]+)/g)];
+  const encoded = [
+    ...svg.matchAll(/data:image\/png;base64,([A-Za-z0-9+/=]+)/g),
+  ];
   if (encoded.length !== 2) {
-    throw new Error(`expected 2 embedded images in the source SVG, found ${encoded.length}`);
+    throw new Error(
+      `expected 2 embedded images in the source SVG, found ${encoded.length}`,
+    );
   }
 
-  const images = encoded.map((match) => decodePng(Buffer.from(match[1], "base64")));
+  const images = encoded.map((match) =>
+    decodePng(Buffer.from(match[1], "base64")),
+  );
   const mask = images.find((image) => image.channels === 1);
   const art = images.find((image) => image.channels === 3);
-  if (!mask || !art) throw new Error("source SVG is missing its mask or artwork layer");
+  if (!mask || !art)
+    throw new Error("source SVG is missing its mask or artwork layer");
   if (mask.width !== art.width || mask.height !== art.height) {
     throw new Error("mask and artwork layers differ in size");
   }
@@ -277,7 +294,10 @@ function composeSource() {
     if (alpha === 0) continue;
     const unmultiply = 255 / alpha;
     for (let c = 0; c < 3; c += 1) {
-      composed.data[i * 4 + c] = Math.min(255, Math.round(art.data[i * 3 + c] * unmultiply));
+      composed.data[i * 4 + c] = Math.min(
+        255,
+        Math.round(art.data[i * 3 + c] * unmultiply),
+      );
     }
   }
   return composed;
@@ -300,7 +320,8 @@ function despeckle(image) {
         for (let dx = -2; dx <= 2; dx += 1) {
           const nx = x + dx;
           const ny = y + dy;
-          if (nx < 0 || ny < 0 || nx >= image.width || ny >= image.height) continue;
+          if (nx < 0 || ny < 0 || nx >= image.width || ny >= image.height)
+            continue;
           if (alphaAt(nx, ny) >= 64) {
             strong = true;
             break;
@@ -342,7 +363,8 @@ function markBounds(image, lockup) {
   const occupied = new Uint32Array(image.width);
   for (let y = 0; y < image.height; y += 1) {
     for (let x = 0; x < image.width; x += 1) {
-      if (image.data[(y * image.width + x) * 4 + 3] >= INK_THRESHOLD) occupied[x] += 1;
+      if (image.data[(y * image.width + x) * 4 + 3] >= INK_THRESHOLD)
+        occupied[x] += 1;
     }
   }
   let start = -1;
@@ -351,7 +373,8 @@ function markBounds(image, lockup) {
     if (occupied[x] === 0) {
       if (start < 0) start = x;
     } else if (start >= 0) {
-      if (!widest || x - start > widest.width) widest = { width: x - start, x: start };
+      if (!widest || x - start > widest.width)
+        widest = { width: x - start, x: start };
       start = -1;
     }
   }
@@ -363,7 +386,12 @@ function crop(image, bounds) {
   const dst = surface(bounds.width, bounds.height);
   for (let y = 0; y < bounds.height; y += 1) {
     const from = ((bounds.y + y) * image.width + bounds.x) * 4;
-    image.data.copy(dst.data, y * bounds.width * 4, from, from + bounds.width * 4);
+    image.data.copy(
+      dst.data,
+      y * bounds.width * 4,
+      from,
+      from + bounds.width * 4,
+    );
   }
   return dst;
 }
@@ -382,22 +410,40 @@ const markOnlyBounds = markBounds(composed, lockupBounds);
 const lockup = crop(composed, lockupBounds);
 const mark = crop(composed, markOnlyBounds);
 
-console.log(`source ${composed.width}x${composed.height}, cleared ${cleared} speckle pixels`);
-console.log(`lockup ${lockup.width}x${lockup.height} (aspect ${(lockup.width / lockup.height).toFixed(4)})`);
-console.log(`mark   ${mark.width}x${mark.height} (aspect ${(mark.width / mark.height).toFixed(4)})`);
+console.log(
+  `source ${composed.width}x${composed.height}, cleared ${cleared} speckle pixels`,
+);
+console.log(
+  `lockup ${lockup.width}x${lockup.height} (aspect ${(lockup.width / lockup.height).toFixed(4)})`,
+);
+console.log(
+  `mark   ${mark.width}x${mark.height} (aspect ${(mark.width / mark.height).toFixed(4)})`,
+);
 console.log("writing:");
 
 // Runtime artwork. The widest on-screen lockup is 217pt and the widest mark is
 // 32pt, so these carry roughly 3x headroom at a 3x pixel ratio.
-write("velori-logo.png", resize(lockup, 768, Math.round(768 / (lockup.width / lockup.height))));
-write("velori-mark.png", resize(mark, Math.round(256 * (mark.width / mark.height)), 256));
+write(
+  "velori-logo.png",
+  resize(lockup, 768, Math.round(768 / (lockup.width / lockup.height))),
+);
+write(
+  "velori-mark.png",
+  resize(mark, Math.round(256 * (mark.width / mark.height)), 256),
+);
 
 // Launcher artwork. iOS rejects an alpha channel, and Android's adaptive icon
 // crops to roughly the inner 66%, so the foreground layer stays well inside it.
 write("velori-icon.png", flatten(square(mark, 1024, 0.62, [255, 255, 255])));
 write("android-icon-foreground.png", square(mark, 1024, 0.44, null));
-write("android-icon-background.png", flatten(square(mark, 1024, 0, [255, 255, 255])));
-write("android-icon-monochrome.png", square(silhouette(mark, MONOCHROME_INK), 1024, 0.44, null));
+write(
+  "android-icon-background.png",
+  flatten(square(mark, 1024, 0, [255, 255, 255])),
+);
+write(
+  "android-icon-monochrome.png",
+  square(silhouette(mark, MONOCHROME_INK), 1024, 0.44, null),
+);
 
 console.log(
   `\nlockup aspect ratio for components/brand/velori-logo.tsx: ${(lockup.width / lockup.height).toFixed(4)}` +
