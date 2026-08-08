@@ -76,6 +76,7 @@ export function MerchantDashboardScreen() {
   const authReason = useAuthSessionStore((state) => state.reason);
   const authStatus = useAuthSessionStore((state) => state.status);
   const workspace = useAuthWorkspaceStore((state) => state.selectedWorkspace);
+  const workspaceStatus = useAuthWorkspaceStore((state) => state.status);
   const previewState =
     process.env.NODE_ENV === "production"
       ? undefined
@@ -94,10 +95,13 @@ export function MerchantDashboardScreen() {
   const sidebarWidth = useRef(
     new Animated.Value(rail ? MERCHANT_SIDEBAR_RAIL_WIDTH : MERCHANT_SIDEBAR_WIDTH),
   ).current;
+  // Softens the hand-off from the skeleton to the real sections.
+  const contentFade = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (mobileNavigation) setRail(false);
   }, [mobileNavigation]);
+
 
   useEffect(() => {
     const target = rail ? MERCHANT_SIDEBAR_RAIL_WIDTH : MERCHANT_SIDEBAR_WIDTH;
@@ -131,10 +135,13 @@ export function MerchantDashboardScreen() {
       );
       return;
     }
+    // The stored workspace may still be loading on a refresh. Redirecting
+    // before it lands is what used to throw the merchant back to the picker.
+    if (workspaceStatus === "restoring") return;
     if (!workspace || workspace.kind !== "merchant") {
       router.replace("/auth/choose-workspace");
     }
-  }, [authReason, authStatus, router, workspace]);
+  }, [authReason, authStatus, router, workspace, workspaceStatus]);
 
   const session = useMemo<MerchantSession | null>(() => {
     if (!workspace || workspace.kind !== "merchant") return null;
@@ -164,6 +171,24 @@ export function MerchantDashboardScreen() {
     };
   }, [authUser, workspace]);
 
+  useEffect(() => {
+    // Runs once the session resolves, so the sections arrive as a fade rather
+    // than a swap. Opacity only, and instant under reduce motion.
+    if (!session) return;
+    if (reducedMotion) {
+      contentFade.setValue(1);
+      return;
+    }
+    const animation = Animated.timing(contentFade, {
+      duration: 220,
+      easing: Easing.out(Easing.quad),
+      toValue: 1,
+      useNativeDriver: true,
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [contentFade, reducedMotion, session]);
+
   const requiresActiveStore = navigationRequiresActiveStore(navigationTarget);
   const blockedBeforeData =
     !session ||
@@ -177,12 +202,30 @@ export function MerchantDashboardScreen() {
   // decides the state, so a blocked dashboard never retries failing calls.
   const dashboard = useMerchantDashboardData({ enabled: !blockedBeforeData });
 
-  // No workspace yet: skeletons while the session is being restored, and a
-  // quiet page while the redirect above is in flight.
+  const mainAvailableWidth =
+    width -
+    (mobileNavigation
+      ? 0
+      : rail
+        ? MERCHANT_SIDEBAR_RAIL_WIDTH
+        : MERCHANT_SIDEBAR_WIDTH) -
+    (dockNotifications ? 320 : 0);
+  // Metric cards pick their own column count from their measured row width.
+  // Computed before the restoring branch so the skeleton and the loaded
+  // dashboard resolve the same two-column breakpoint and nothing shifts.
+  const paired = mainAvailableWidth >= 820;
+
+  // No workspace yet: skeletons while either the session or the remembered
+  // workspace is still being restored, and a quiet page while the redirect
+  // above is in flight. Both must count, or a refresh shows a blank dashboard
+  // for as long as the stored workspace takes to read.
+  const restoring =
+    authStatus === "restoring" || workspaceStatus === "restoring";
+
   if (!session) {
     return (
       <SafeAreaView edges={["top", "bottom"]} style={styles.page}>
-        {authStatus === "restoring" ? (
+        {restoring ? (
           <ScrollView
             className="st-scroll"
             contentContainerStyle={[
@@ -192,7 +235,7 @@ export function MerchantDashboardScreen() {
             style={styles.mainScroll}
           >
             <View style={styles.contentColumn}>
-              <DashboardLoadingState />
+              <DashboardLoadingState paired={paired} />
             </View>
           </ScrollView>
         ) : null}
@@ -210,17 +253,6 @@ export function MerchantDashboardScreen() {
     session,
   });
   const contentPadding = mobileContent ? spacing.md : spacing.lg;
-  const mainAvailableWidth =
-    width -
-    (mobileNavigation
-      ? 0
-      : rail
-        ? MERCHANT_SIDEBAR_RAIL_WIDTH
-        : MERCHANT_SIDEBAR_WIDTH) -
-    (dockNotifications ? 320 : 0);
-  // Metric cards pick their own column count from their measured row width.
-  const paired = mainAvailableWidth >= 820;
-  const unreadCount = 3;
 
   return (
     <SafeAreaView edges={["top", "bottom"]} style={styles.page}>
@@ -239,7 +271,6 @@ export function MerchantDashboardScreen() {
         <View style={styles.mainColumn}>
           <MerchantHeader
             dateRange={dateRange}
-            notificationCount={unreadCount}
             onDateRangeChange={(range) => {
               setDateRange(range);
               // A new range needs new figures, and the current ones stay on
@@ -260,10 +291,18 @@ export function MerchantDashboardScreen() {
             ]}
             style={styles.mainScroll}
           >
-            <View style={styles.contentColumn}>
+            {/* Opacity only — the skeleton already reserves this column's
+                geometry, so fading in cannot move or restyle anything. */}
+            <Animated.View
+              style={[styles.contentColumn, { opacity: contentFade }]}
+            >
               <DashboardOverviewContent
+                catalogSummary={dashboard.catalogSummary}
                 compactOrders={mobileNavigation}
+                dateRange={dateRange}
                 failedSections={dashboard.failedSections}
+                inventorySummary={dashboard.inventorySummary}
+                salesSeries={dashboard.salesSeries}
                 hasSalesHistory={dashboard.hasSalesHistory}
                 metrics={dashboard.metrics}
                 mobile={mobileContent}
@@ -291,7 +330,7 @@ export function MerchantDashboardScreen() {
                 session={session}
                 state={state}
               />
-            </View>
+            </Animated.View>
           </ScrollView>
         </View>
 

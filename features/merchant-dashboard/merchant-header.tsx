@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Modal,
   Pressable,
@@ -16,30 +16,37 @@ import {
   type DashboardIconName,
 } from "@/features/merchant-dashboard/dashboard-primitives";
 import type {
+  DashboardNotification,
   DateRange,
   MerchantSession,
 } from "@/features/merchant-dashboard/dashboard-types";
+import { dashboardNotifications } from "@/features/merchant-dashboard/dashboard-data";
+import { DATE_RANGE_LABELS } from "@/features/merchant-dashboard/dashboard-format";
+import {
+  DashboardMenu,
+  type MenuAnchor,
+} from "@/features/merchant-dashboard/dashboard-menu";
+import { NotificationMenu } from "@/features/merchant-dashboard/notification-menu";
 import { signOutCurrentSession } from "@/services/auth/auth-session";
 
-const DATE_LABELS: Record<DateRange, string> = {
-  "7d": "Last 7 days",
-  "30d": "Last 30 days",
-  "90d": "Last 90 days",
-  mtd: "Month to date",
-};
+const DATE_LABELS = DATE_RANGE_LABELS;
 
-type HeaderMenu = "account" | "date" | null;
+type HeaderMenu = "account" | null;
+
+/** Ordered as the design lists them; the labels come from the shared map. */
+const DATE_RANGES = Object.keys(DATE_LABELS) as DateRange[];
 
 export function MerchantHeader({
   dateRange,
-  notificationCount,
+  notifications = dashboardNotifications,
   onDateRangeChange,
   onOpenNavigation,
   onOpenNotifications,
   session,
 }: {
   dateRange: DateRange;
-  notificationCount: number;
+  /** Omitted only in previews; the badge and panel both derive from this. */
+  notifications?: readonly DashboardNotification[];
   onDateRangeChange: (range: DateRange) => void;
   onOpenNavigation: () => void;
   onOpenNotifications: () => void;
@@ -50,6 +57,37 @@ export function MerchantHeader({
   const [menu, setMenu] = useState<HeaderMenu>(null);
   const compact = width < 1280;
   const mobile = width < 1024;
+  // Derived, so the badge can never disagree with the panel it opens.
+  const notificationCount = notifications.filter((item) => item.unread).length;
+
+  // The date menu anchors to its own trigger rather than floating in the
+  // header's corner, so it opens directly beneath the button that owns it.
+  const dateTrigger = useRef<View>(null);
+  const [dateAnchor, setDateAnchor] = useState<MenuAnchor | null>(null);
+  const [dateOpen, setDateOpen] = useState(false);
+
+  const openDateMenu = () => {
+    setDateOpen(true);
+    dateTrigger.current?.measureInWindow((x, y, triggerWidth, height) => {
+      setDateAnchor({ height, width: triggerWidth, x, y });
+    });
+  };
+
+  const bellTrigger = useRef<View>(null);
+  const [bellAnchor, setBellAnchor] = useState<MenuAnchor | null>(null);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+
+  // A second press on the bell closes the panel it opened.
+  const toggleNotifications = () => {
+    if (notificationsOpen) {
+      setNotificationsOpen(false);
+      return;
+    }
+    setNotificationsOpen(true);
+    bellTrigger.current?.measureInWindow((x, y, triggerWidth, height) => {
+      setBellAnchor({ height, width: triggerWidth, x, y });
+    });
+  };
 
   const signOut = async () => {
     setMenu(null);
@@ -92,8 +130,12 @@ export function MerchantHeader({
         <Pressable
           accessibilityLabel={`Date range ${DATE_LABELS[dateRange]}`}
           accessibilityRole="button"
-          onPress={() => setMenu("date")}
+          accessibilityState={{ expanded: dateOpen }}
+          className="focus-visible:ring-[3px] focus-visible:ring-brand-blue/55"
+          onPress={openDateMenu}
+          ref={dateTrigger}
           style={styles.dateButton}
+          testID="header-date-range"
         >
           <DashboardIcon name="calendar-month-outline" />
           {!mobile ? (
@@ -102,14 +144,33 @@ export function MerchantHeader({
             </StylishText>
           ) : null}
         </Pressable>
-        <View>
+
+        <DashboardMenu
+          accessibilityLabel="Date range options"
+          anchor={dateAnchor}
+          items={DATE_RANGES.map((range) => ({
+            // The selected row shows a check in place of its calendar icon.
+            icon: "calendar-blank-outline",
+            key: range,
+            label: DATE_LABELS[range],
+            onPress: () => onDateRangeChange(range),
+            selected: range === dateRange,
+          }))}
+          minWidth={200}
+          onClose={() => setDateOpen(false)}
+          testID="header-date-range-menu"
+          visible={dateOpen}
+        />
+        <View ref={bellTrigger}>
           <HeaderIconButton
+            expanded={notificationsOpen}
             icon="bell-outline"
             label={`${notificationCount} unread notifications`}
-            onPress={onOpenNotifications}
+            onPress={toggleNotifications}
+            testID="header-notifications"
           />
           {notificationCount ? (
-            <View style={styles.notificationBadge}>
+            <View pointerEvents="none" style={styles.notificationBadge}>
               <StylishText
                 style={styles.notificationBadgeText}
                 unstyled
@@ -120,6 +181,14 @@ export function MerchantHeader({
             </View>
           ) : null}
         </View>
+
+        <NotificationMenu
+          anchor={bellAnchor}
+          notifications={notifications}
+          onClose={() => setNotificationsOpen(false)}
+          onSeeAll={onOpenNotifications}
+          visible={notificationsOpen}
+        />
         {!mobile ? (
           <HeaderIconButton
             icon="help-circle-outline"
@@ -178,21 +247,6 @@ export function MerchantHeader({
           style={styles.modalBackdrop}
         >
           <View style={[styles.popover, mobile && styles.popoverMobile]}>
-            {menu === "date"
-              ? (Object.keys(DATE_LABELS) as DateRange[]).map((range) => (
-                  <PopoverItem
-                    icon={
-                      range === dateRange ? "check" : "calendar-blank-outline"
-                    }
-                    key={range}
-                    label={DATE_LABELS[range]}
-                    onPress={() => {
-                      onDateRangeChange(range);
-                      setMenu(null);
-                    }}
-                  />
-                ))
-              : null}
             {menu === "account" ? (
               <>
                 <PopoverItem icon="account-outline" label="Account profile" />
@@ -234,20 +288,28 @@ function HeaderSearch() {
 }
 
 function HeaderIconButton({
+  expanded,
   icon,
   label,
   onPress,
+  testID,
 }: {
+  /** Set when the button owns a popover, so its state is announced. */
+  expanded?: boolean;
   icon: DashboardIconName;
   label: string;
   onPress?: () => void;
+  testID?: string;
 }) {
   return (
     <Pressable
       accessibilityLabel={label}
       accessibilityRole="button"
+      accessibilityState={expanded === undefined ? undefined : { expanded }}
+      className="focus-visible:ring-[3px] focus-visible:ring-brand-blue/55"
       onPress={onPress}
       style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+      testID={testID}
     >
       <DashboardIcon color={colors.ink.primary} name={icon} size={20} />
     </Pressable>
