@@ -72,7 +72,10 @@ export function SalesPerformanceChart({
   // One measurement drives everything: the gutters are fixed-width flex
   // children, so the plot is exactly what is left over.
   const axisWidths = axisWidthsFor(rootWidth);
-  const plotWidth = Math.max(0, rootWidth - axisWidths.money - axisWidths.count);
+  const plotWidth = Math.max(
+    0,
+    rootWidth - axisWidths.money - axisWidths.count,
+  );
 
   const money = niceAxis(
     Math.max(
@@ -403,7 +406,10 @@ function ActiveDot({
   return (
     <View
       pointerEvents="none"
-      style={[styles.activeDot, { backgroundColor: color, left: left - 4, top: top - 4 }]}
+      style={[
+        styles.activeDot,
+        { backgroundColor: color, left: left - 4, top: top - 4 },
+      ]}
     />
   );
 }

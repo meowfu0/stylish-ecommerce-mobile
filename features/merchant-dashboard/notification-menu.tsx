@@ -76,7 +76,10 @@ export function NotificationMenu({
             testID={`notification-${item.key}`}
           >
             <View
-              style={[styles.dot, item.unread ? styles.dotUnread : styles.dotRead]}
+              style={[
+                styles.dot,
+                item.unread ? styles.dotUnread : styles.dotRead,
+              ]}
               testID={`notification-dot-${item.key}`}
             />
             <View style={styles.rowCopy}>

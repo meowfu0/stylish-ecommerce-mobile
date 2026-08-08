@@ -46,10 +46,7 @@ export function MetricSparkline({
       testID={`metric-sparkline-${metricKey}`}
     >
       {values.length > 0 ? (
-        <View
-          style={styles.fill}
-          testID={`metric-sparkline-line-${metricKey}`}
-        >
+        <View style={styles.fill} testID={`metric-sparkline-line-${metricKey}`}>
           <ResponsiveContainer height="100%" width="100%">
             <AreaChart
               data={series.map((value, index) => ({ index, value }))}

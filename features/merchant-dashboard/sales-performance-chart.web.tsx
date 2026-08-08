@@ -182,7 +182,10 @@ export function SalesPerformanceChart({
             width={width < 420 ? 30 : 42}
             yAxisId="count"
           />
-          <Tooltip content={<ChartTooltip />} cursor={{ stroke: GRID_STROKE }} />
+          <Tooltip
+            content={<ChartTooltip />}
+            cursor={{ stroke: GRID_STROKE }}
+          />
 
           <Area
             activeDot={{ r: 4, strokeWidth: 0 }}
